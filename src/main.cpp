@@ -2,6 +2,7 @@
 #include <LoRaModule.h>
 #include <esp32-hal-log.h>
 #include <time.h>
+#include <Arduino.h>
 
 #include "Display.h"
 
