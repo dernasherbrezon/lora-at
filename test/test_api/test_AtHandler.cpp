@@ -72,28 +72,34 @@ void test_success_stop_even_if_not_running(void) {
 void test_pull(void) {
   setupFrame();
   assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  // force loop on LoraModule
+  assert_request_response("", "");
   assert_request_response("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", "AT+PULL\r\n");
 }
 
 void test_frames_after_stop(void) {
   setupFrame();
   assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  // force loop on LoraModule
+  assert_request_response("", "");
   assert_request_response("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", "AT+STOPRX\r\n");
 }
 
 void test_query_chips(void) {
-  assert_request_response("SX1278 - 433/470Mhz\r\nSX1276 - 433/868/915Mhz\r\nOK\r\n", "AT+CHIP?\r\n");
+  assert_request_response("SX1278 - 433/470Mhz\r\nSX1276 - 433/868/915Mhz\r\nOK\r\n", "AT+CHIPS?\r\n");
 }
 
 void test_set_chip(void) {
-  assert_request_response("OK\r\n", "AT+CHIP=SX1278 - 433/470Mhz\r\n");
+  assert_request_response("OK\r\n", "AT+CHIP=1\r\n");
+}
+
+void test_set_unknown_chip(void) {
+  assert_request_response("Unable to find chip index: 2\r\nERROR\r\n", "AT+CHIP=2\r\n");
 }
 
 void test_get_chip(void) {
   //FIXME
 }
-
-
 
 void setup() {
   // NOTE!!! Wait for >2 secs

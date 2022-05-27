@@ -56,28 +56,21 @@ void AtHandler::handle(Stream *in, Stream *out) {
 
   if (strcmp("AT+CHIPS?", this->buffer) == 0) {
     for (size_t i = 0; i < this->chips.getAll().size(); i++) {
-      out->println(this->chips.getAll().at(i)->getName());
+      out->printf("%zu,%s\r\n", i, this->chips.getAll().at(i)->getName());
     }
     out->print("OK\r\n");
     return;
   }
 
-  char chipName[255];
-  memset(chipName, '\0', sizeof(chipName));
-  int matched = sscanf(this->buffer, "AT+CHIP=%s", chipName);
+  size_t chip_index = 0;
+  int matched = sscanf(this->buffer, "AT+CHIP=%z", &chip_index);
   if (matched == 1) {
-    Chip *found = NULL;
-    for (size_t i = 0; i < this->chips.getAll().size(); i++) {
-      if (strncmp(chipName, this->chips.getAll().at(i)->getName(), 255) == 0) {
-        found = this->chips.getAll().at(i);
-        break;
-      }
-    }
-    if (found == NULL) {
-      out->printf("Unable to find chip name: %s\r\n", chipName);
+    if (chip_index >= this->chips.getAll().size()) {
+      out->printf("Unable to find chip index: %zu\r\n", chip_index);
       out->print("ERROR\r\n");
       return;
     }
+    Chip *found = this->chips.getAll().at(chip_index);
 
     int16_t code = this->lora->init(found);
     if (code != ERR_NONE) {

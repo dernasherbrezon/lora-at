@@ -1,6 +1,7 @@
 #include <Util.h>
 #include <stdlib.h>
 #include <unity.h>
+#include <string.h>
 
 uint8_t *output = NULL;
 size_t output_len = 0;
