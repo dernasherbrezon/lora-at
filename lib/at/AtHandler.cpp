@@ -114,7 +114,7 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
       out->print("ERROR\r\n");
       return;
     }
-    out->printf("%s,%f,%f,%f,%ld\r\n", data, curFrame->getRssi(), curFrame->getSnr(), curFrame->getFrequencyError(), curFrame->getTimestamp());
+    out->printf("%s,%g,%g,%g,%ld\r\n", data, curFrame->getRssi(), curFrame->getSnr(), curFrame->getFrequencyError(), curFrame->getTimestamp());
     free(data);
     delete curFrame;
   }
