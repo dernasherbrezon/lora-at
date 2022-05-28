@@ -1,5 +1,6 @@
 #include "AtHandler.h"
 
+#include <EEPROM.h>
 #include <Util.h>
 #include <string.h>
 
@@ -13,19 +14,13 @@
 
 AtHandler::AtHandler(LoRaModule *lora) {
   this->lora = lora;
+  this->loadConfig();
 }
 
 void AtHandler::handle(Stream *in, Stream *out) {
   size_t length = read_line(in);
   if (length == 0) {
-    if (!this->receiving) {
-      return;
-    }
-    LoRaFrame *frame = this->lora->loop();
-    if (frame == NULL) {
-      return;
-    }
-    this->receivedFrames.push_back(frame);
+    this->handleLoraFrames();
     return;
   }
   if (strcmp("AT", this->buffer) == 0) {
@@ -62,25 +57,24 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
 
+  if (strcmp("AT+CHIP?", this->buffer) == 0) {
+    if (this->config_chip != NULL) {
+      out->printf("%s\r\n", this->config_chip->getName());
+      if (this->config_chip->loraSupported) {
+        out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
+      }
+      if (this->config_chip->fskSupported) {
+        out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
+      }
+    }
+    out->print("OK\r\n");
+    return;
+  }
+
   size_t chip_index = 0;
   int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
-    if (chip_index >= this->chips.getAll().size()) {
-      out->printf("Unable to find chip index: %zu\r\n", chip_index);
-      out->print("ERROR\r\n");
-      return;
-    }
-    Chip *found = this->chips.getAll().at(chip_index);
-
-    int16_t code = this->lora->init(found);
-    if (code != ERR_NONE) {
-      out->printf("Unable to initialize lora: %d\r\n", code);
-      out->print("ERROR\r\n");
-      return;
-    }
-
-    //FIXME save chip into persistent memory
-    out->print("OK\r\n");
+    this->handleChip(chip_index, out);
     return;
   }
 
@@ -159,4 +153,66 @@ size_t AtHandler::read_line(Stream *in) {
   }
   // buffer is full
   return 0;
+}
+
+void AtHandler::handleLoraFrames() {
+  if (!this->receiving) {
+    return;
+  }
+  LoRaFrame *frame = this->lora->loop();
+  if (frame == NULL) {
+    return;
+  }
+  this->receivedFrames.push_back(frame);
+}
+
+void AtHandler::handleChip(size_t chip_index, Stream *out) {
+  if (chip_index >= this->chips.getAll().size()) {
+    out->printf("Unable to find chip index: %zu\r\n", chip_index);
+    out->print("ERROR\r\n");
+    return;
+  }
+  this->config_chip = this->chips.getAll().at(chip_index);
+
+  int16_t code = this->lora->init(config_chip);
+  if (code != ERR_NONE) {
+    out->printf("Unable to initialize lora: %d\r\n", code);
+    out->print("ERROR\r\n");
+    return;
+  }
+
+  if (!EEPROM.begin(sizeof(uint8_t) + sizeof(size_t))) {
+    out->print("unable to open EEPROM for storing data\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
+  EEPROM.writeAll(0, this->config_version);
+  EEPROM.writeAll(sizeof(this->config_version), chip_index);
+  EEPROM.end();
+
+  out->print("OK\r\n");
+}
+
+void AtHandler::loadConfig() {
+  if (!EEPROM.begin(sizeof(uint8_t) + sizeof(size_t))) {
+    return;
+  }
+  if (EEPROM.readByte(0) != this->config_version) {
+    EEPROM.end();
+    return;
+  }
+  size_t chip_index = 0;
+  chip_index = EEPROM.readAll(sizeof(uint8_t), chip_index);
+  EEPROM.end();
+  // just invalid chip
+  if (chip_index >= this->chips.getAll().size()) {
+    return;
+  }
+  this->config_chip = this->chips.getAll().at(chip_index);
+
+  int16_t code = this->lora->init(config_chip);
+  if (code != ERR_NONE) {
+    this->config_chip = NULL;
+    return;
+  }
 }

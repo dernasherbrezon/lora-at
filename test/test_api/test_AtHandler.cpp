@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <AtHandler.h>
+#include <EEPROM.h>
 #include <unity.h>
 
 #include "MockLoRaModule.h"
@@ -13,6 +14,14 @@ void setUp(void) {
   mock.txCode = ERR_NONE;
   mock.expectedFrames.clear();
   mock.currentFrameIndex = 0;
+
+  // cleanup EEPROM between tests
+  EEPROM.begin(sizeof(uint8_t) + sizeof(size_t));
+  uint8_t version = 0;  // invalid version
+  size_t chip_index = 0;
+  EEPROM.writeAll(0, version);
+  EEPROM.writeAll(sizeof(uint8_t), chip_index);
+  EEPROM.end();
 }
 
 void setupFrame() {
@@ -118,7 +127,26 @@ void test_set_unknown_chip(void) {
 }
 
 void test_get_chip(void) {
-  //FIXME
+  AtHandler handler(&mock);
+  StreamString request;
+  request.print("AT+CHIP?\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
+
+  request.clear();
+  response.clear();
+  request.print("AT+CHIP=1\r\n");
+  handler.handle(&request, &response);
+
+  request.clear();
+  response.clear();
+  request.print("AT+CHIP?\r\n");
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("TTGO - 868/915Mhz\r\nLORA,863,928\r\nFSK,863,928\r\nOK\r\n", response.c_str());
+
+  // test new instance will load chip from EEPROM
+  assert_request_response("TTGO - 868/915Mhz\r\nLORA,863,928\r\nFSK,863,928\r\nOK\r\n", "AT+CHIP?\r\n");
 }
 
 void setup() {
