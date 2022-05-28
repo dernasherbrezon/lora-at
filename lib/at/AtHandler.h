@@ -4,6 +4,7 @@
 #include <Chips.h>
 #include <LoRaModule.h>
 #include <Stream.h>
+#include <Preferences.h>
 
 #define BUFFER_LENGTH 1024
 
@@ -28,6 +29,7 @@ class AtHandler {
   Chips chips;
   bool receiving = false;
   std::vector<LoRaFrame *> receivedFrames;
+  Preferences preferences;
 
   uint8_t config_version = 1;
   Chip *config_chip = NULL;

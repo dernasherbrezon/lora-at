@@ -1,6 +1,6 @@
 #include "AtHandler.h"
 
-#include <EEPROM.h>
+#include <Arduino.h>
 #include <Util.h>
 #include <string.h>
 
@@ -164,14 +164,11 @@ void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
     return;
   }
 
-  if (!EEPROM.begin(sizeof(uint8_t) + sizeof(size_t))) {
-    out->print("unable to open EEPROM for storing data\r\n");
-    out->print("ERROR\r\n");
+  if (!preferences.begin("lora-at", false)) {
     return;
   }
-  EEPROM.writeAll(0, this->config_version);
-  EEPROM.writeAll(sizeof(this->config_version), chip_index);
-  EEPROM.end();
+  preferences.putUChar("chip_index", (uint8_t)chip_index);
+  preferences.end();
 
   out->print("OK\r\n");
 }
@@ -190,16 +187,11 @@ void AtHandler::handleQueryChip(Stream *out) {
 }
 
 void AtHandler::loadConfig() {
-  if (!EEPROM.begin(sizeof(uint8_t) + sizeof(size_t))) {
+  if (!preferences.begin("lora-at", true)) {
     return;
   }
-  if (EEPROM.readByte(0) != this->config_version) {
-    EEPROM.end();
-    return;
-  }
-  size_t chip_index = 0;
-  chip_index = EEPROM.readAll(sizeof(uint8_t), chip_index);
-  EEPROM.end();
+  size_t chip_index = preferences.getUChar("chip_index");
+  preferences.end();
   // just invalid chip
   if (chip_index >= this->chips.getAll().size()) {
     return;
