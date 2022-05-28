@@ -5,8 +5,6 @@
 #include "MockLoRaModule.h"
 #include "StreamString.h"
 
-#define ARDUINO_VARIANT "native"
-
 MockLoRaModule mock;
 
 void setUp(void) {
