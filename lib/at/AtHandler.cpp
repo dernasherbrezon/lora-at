@@ -69,6 +69,14 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
 
+  char message[512];
+  matched = sscanf(this->buffer, "AT+LORATX=%s,%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
+  if (matched == 10) {
+    state.ldro = (LdroType)ldro;
+    this->handleLoraTx(message, state, out);
+    return;
+  }
+
   out->print("unknown command\r\n");
   out->print("ERROR\r\n");
 }
@@ -231,4 +239,28 @@ void AtHandler::handleLoraRx(LoraState state, Stream *out) {
     out->printf("Unable to start lora: %d\r\n", code);
     out->print("ERROR\r\n");
   }
+}
+
+void AtHandler::handleLoraTx(char *message, LoraState state, Stream *out) {
+  if (this->lora->isReceivingData()) {
+    out->print("cannot transmit during receive\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
+  uint8_t *binaryData = NULL;
+  size_t binaryDataLength = 0;
+  int code = convertStringToHex(message, &binaryData, &binaryDataLength);
+  if (code != 0) {
+    out->printf("unable to convert HEX to byte array: %d\r\n", code);
+    out->print("ERROR\r\n");
+    return;
+  }
+  code = lora->loraTx(binaryData, binaryDataLength, &state);
+  free(binaryData);
+  if (code != 0) {
+    out->printf("unable to send data: %d\r\n", code);
+    out->print("ERROR\r\n");
+    return;
+  }
+  out->print("OK\r\n");
 }

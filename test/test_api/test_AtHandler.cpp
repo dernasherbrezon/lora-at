@@ -8,6 +8,11 @@
 
 MockLoRaModule mock;
 
+const char *VALID_TX_REQUEST = "AT+LORATX=CAFE,433.0,10.4,9,6,18,10,55,0,0\r\n";
+const char *INVALID_TX_REQUEST = "AT+LORATX=CA FE,433.0,10.4,9,6,18,10,55,0,0\r\n";
+const char *INVALID_TX_DATA_REQUEST = "AT+LORATX=CAXE,433.0,10.4,9,6,18,10,55,0,0\r\n";
+const char *UNKNOWN_COMMAND_RESPONSE = "unknown command\r\nERROR\r\n";
+
 void setUp(void) {
   mock.rxCode = ERR_NONE;
   mock.receiving = false;
@@ -57,19 +62,19 @@ void test_at_gmr() {
   assert_request_response("1.0\r\nOK\r\n", "AT+GMR\r\n");
 }
 
-void test_at_lorarx() {
+void test_success_lorarx() {
   assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
 }
 
-void test_at_invalidreq_lorarx() {
-  assert_request_response("unknown command\r\nERROR\r\n", "AT+LORARX=433.0 10.4,9,6,18,10,55,0,0\r\n");
+void test_invalidreq_lorarx() {
+  assert_request_response(UNKNOWN_COMMAND_RESPONSE, "AT+LORARX=433.0 10.4,9,6,18,10,55,0,0\r\n");
 }
 
-void test_at_unknown_command() {
-  assert_request_response("unknown command\r\nERROR\r\n", "AT+UNKNOWN\r\n");
+void test_unknown_command() {
+  assert_request_response(UNKNOWN_COMMAND_RESPONSE, "AT+UNKNOWN\r\n");
 }
 
-void test_at_failed_lorarx() {
+void test_failed_lorarx() {
   mock.rxCode = -1;
   assert_request_response("Unable to start lora: -1\r\nERROR\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
 }
@@ -149,6 +154,32 @@ void test_get_chip(void) {
   assert_request_response("TTGO - 868/915Mhz\r\nLORA,863,928\r\nFSK,863,928\r\nOK\r\n", "AT+CHIP?\r\n");
 }
 
+void test_cant_tx_during_receive(void) {
+  mock.receiving = true;
+  assert_request_response("cannot transmit during receive\r\nERROR\r\n", VALID_TX_REQUEST);
+}
+
+void test_invalid_tx_request(void) {
+  mock.receiving = false;
+  assert_request_response(UNKNOWN_COMMAND_RESPONSE, INVALID_TX_REQUEST);
+}
+
+void test_invalid_lora_tx_code(void) {
+  mock.receiving = false;
+  mock.txCode = -1;
+  assert_request_response("unable to send data: -1\r\nERROR\r\n", VALID_TX_REQUEST);
+}
+
+void test_invalid_tx_data_request(void) {
+  mock.receiving = false;
+  assert_request_response("unable to convert HEX to byte array: -1\r\nERROR\r\n", INVALID_TX_DATA_REQUEST);
+}
+
+void test_success_tx(void) {
+  mock.receiving = false;
+  assert_request_response("OK\r\n", VALID_TX_REQUEST);
+}
+
 void setup() {
   // NOTE!!! Wait for >2 secs
   // if board doesn't support software reset via Serial.DTR/RTS
@@ -157,15 +188,22 @@ void setup() {
   UNITY_BEGIN();
   RUN_TEST(test_at_command);
   RUN_TEST(test_at_gmr);
-  RUN_TEST(test_at_lorarx);
-  RUN_TEST(test_at_invalidreq_lorarx);
-  RUN_TEST(test_at_unknown_command);
-  RUN_TEST(test_at_failed_lorarx);
+  RUN_TEST(test_success_lorarx);
+  RUN_TEST(test_invalidreq_lorarx);
+  RUN_TEST(test_unknown_command);
+  RUN_TEST(test_failed_lorarx);
   RUN_TEST(test_success_stop_even_if_not_running);
   RUN_TEST(test_pull);
   RUN_TEST(test_frames_after_stop);
   RUN_TEST(test_query_chips);
   RUN_TEST(test_set_chip);
+  RUN_TEST(test_set_unknown_chip);
+  RUN_TEST(test_get_chip);
+  RUN_TEST(test_cant_tx_during_receive);
+  RUN_TEST(test_invalid_tx_request);
+  RUN_TEST(test_invalid_lora_tx_code);
+  RUN_TEST(test_invalid_tx_data_request);
+  RUN_TEST(test_success_tx);
   UNITY_END();
 }
 

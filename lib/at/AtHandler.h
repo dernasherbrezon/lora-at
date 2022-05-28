@@ -5,7 +5,7 @@
 #include <LoRaModule.h>
 #include <Stream.h>
 
-#define BUFFER_LENGTH 257
+#define BUFFER_LENGTH 1024
 
 class AtHandler {
  public:
@@ -20,6 +20,7 @@ class AtHandler {
   void handleQueryChips(Stream *out);
   void handleStopRx(Stream *in, Stream *out);
   void handleLoraRx(LoraState state, Stream *out);
+  void handleLoraTx(char *message, LoraState state, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
