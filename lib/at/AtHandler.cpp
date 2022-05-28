@@ -70,7 +70,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
   }
 
   char message[512];
-  matched = sscanf(this->buffer, "AT+LORATX=%s,%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
+  matched = sscanf(this->buffer, "AT+LORATX=%[^,],%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
   if (matched == 10) {
     state.ldro = (LdroType)ldro;
     this->handleLoraTx(message, state, out);
@@ -200,6 +200,8 @@ void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
   }
 
   if (!preferences.begin("lora-at", false)) {
+    out->print("Unable to write preferences\r\n");
+    out->print("ERROR\r\n");
     return;
   }
   preferences.putBool("initialized", true);
