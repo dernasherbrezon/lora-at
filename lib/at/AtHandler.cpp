@@ -149,6 +149,41 @@ void AtHandler::handleLoraFrames() {
   this->receivedFrames.push_back(frame);
 }
 
+void AtHandler::handleQueryChip(Stream *out) {
+  if (this->config_chip != NULL) {
+    out->printf("%s\r\n", this->config_chip->getName());
+    if (this->config_chip->loraSupported) {
+      out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
+    }
+    if (this->config_chip->fskSupported) {
+      out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
+    }
+  }
+  out->print("OK\r\n");
+}
+
+void AtHandler::loadConfig() {
+  if (!preferences.begin("lora-at", true)) {
+    return;
+  }
+  if (!preferences.getBool("initialized")) {
+    return;
+  }
+  size_t chip_index = preferences.getUChar("chip_index");
+  preferences.end();
+  // just invalid chip
+  if (chip_index >= this->chips.getAll().size()) {
+    return;
+  }
+  this->config_chip = this->chips.getAll().at(chip_index);
+
+  int16_t code = this->lora->init(config_chip);
+  if (code != ERR_NONE) {
+    this->config_chip = NULL;
+    return;
+  }
+}
+
 void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
   if (chip_index >= this->chips.getAll().size()) {
     out->printf("Unable to find chip index: %zu\r\n", chip_index);
@@ -167,42 +202,11 @@ void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
   if (!preferences.begin("lora-at", false)) {
     return;
   }
+  preferences.putBool("initialized", true);
   preferences.putUChar("chip_index", (uint8_t)chip_index);
   preferences.end();
 
   out->print("OK\r\n");
-}
-
-void AtHandler::handleQueryChip(Stream *out) {
-  if (this->config_chip != NULL) {
-    out->printf("%s\r\n", this->config_chip->getName());
-    if (this->config_chip->loraSupported) {
-      out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
-    }
-    if (this->config_chip->fskSupported) {
-      out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
-    }
-  }
-  out->print("OK\r\n");
-}
-
-void AtHandler::loadConfig() {
-  if (!preferences.begin("lora-at", true)) {
-    return;
-  }
-  size_t chip_index = preferences.getUChar("chip_index");
-  preferences.end();
-  // just invalid chip
-  if (chip_index >= this->chips.getAll().size()) {
-    return;
-  }
-  this->config_chip = this->chips.getAll().at(chip_index);
-
-  int16_t code = this->lora->init(config_chip);
-  if (code != ERR_NONE) {
-    this->config_chip = NULL;
-    return;
-  }
 }
 
 void AtHandler::handleStopRx(Stream *in, Stream *out) {

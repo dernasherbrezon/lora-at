@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <AtHandler.h>
-#include <EEPROM.h>
 #include <unity.h>
 
 #include "MockLoRaModule.h"
@@ -20,13 +19,12 @@ void setUp(void) {
   mock.expectedFrames.clear();
   mock.currentFrameIndex = 0;
 
-  // cleanup EEPROM between tests
-  EEPROM.begin(sizeof(uint8_t) + sizeof(size_t));
-  uint8_t version = 0;  // invalid version
-  size_t chip_index = 0;
-  EEPROM.writeAll(0, version);
-  EEPROM.writeAll(sizeof(uint8_t), chip_index);
-  EEPROM.end();
+  Preferences preferences;
+  if (!preferences.begin("lora-at", false)) {
+    return;
+  }
+  preferences.putBool("initialized", false);
+  preferences.end();
 }
 
 void setupFrame() {
