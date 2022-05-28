@@ -34,13 +34,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
   if (strcmp("AT+STOPRX", this->buffer) == 0) {
-    if (!this->receiving) {
-      out->print("OK\r\n");
-      return;
-    }
-    this->receiving = false;
-    this->lora->stopRx();
-    this->handlePull(in, out);
+    this->handleStopRx(in, out);
     return;
   }
 
@@ -50,31 +44,19 @@ void AtHandler::handle(Stream *in, Stream *out) {
   }
 
   if (strcmp("AT+CHIPS?", this->buffer) == 0) {
-    for (size_t i = 0; i < this->chips.getAll().size(); i++) {
-      out->printf("%zu,%s\r\n", i, this->chips.getAll().at(i)->getName());
-    }
-    out->print("OK\r\n");
+    this->handleQueryChips(out);
     return;
   }
 
   if (strcmp("AT+CHIP?", this->buffer) == 0) {
-    if (this->config_chip != NULL) {
-      out->printf("%s\r\n", this->config_chip->getName());
-      if (this->config_chip->loraSupported) {
-        out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
-      }
-      if (this->config_chip->fskSupported) {
-        out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
-      }
-    }
-    out->print("OK\r\n");
+    this->handleQueryChip(out);
     return;
   }
 
   size_t chip_index = 0;
   int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
-    this->handleChip(chip_index, out);
+    this->handleSetChip(chip_index, out);
     return;
   }
 
@@ -83,14 +65,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
   matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
   if (matched == 9) {
     state.ldro = (LdroType)ldro;
-    int16_t code = this->lora->startLoraRx(&state);
-    if (code == 0) {
-      out->print("OK\r\n");
-      this->receiving = true;
-    } else {
-      out->printf("Unable to start lora: %d\r\n", code);
-      out->print("ERROR\r\n");
-    }
+    this->handleLoraRx(state, out);
     return;
   }
 
@@ -166,7 +141,7 @@ void AtHandler::handleLoraFrames() {
   this->receivedFrames.push_back(frame);
 }
 
-void AtHandler::handleChip(size_t chip_index, Stream *out) {
+void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
   if (chip_index >= this->chips.getAll().size()) {
     out->printf("Unable to find chip index: %zu\r\n", chip_index);
     out->print("ERROR\r\n");
@@ -193,6 +168,19 @@ void AtHandler::handleChip(size_t chip_index, Stream *out) {
   out->print("OK\r\n");
 }
 
+void AtHandler::handleQueryChip(Stream *out) {
+  if (this->config_chip != NULL) {
+    out->printf("%s\r\n", this->config_chip->getName());
+    if (this->config_chip->loraSupported) {
+      out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
+    }
+    if (this->config_chip->fskSupported) {
+      out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
+    }
+  }
+  out->print("OK\r\n");
+}
+
 void AtHandler::loadConfig() {
   if (!EEPROM.begin(sizeof(uint8_t) + sizeof(size_t))) {
     return;
@@ -214,5 +202,33 @@ void AtHandler::loadConfig() {
   if (code != ERR_NONE) {
     this->config_chip = NULL;
     return;
+  }
+}
+
+void AtHandler::handleStopRx(Stream *in, Stream *out) {
+  if (!this->receiving) {
+    out->print("OK\r\n");
+    return;
+  }
+  this->receiving = false;
+  this->lora->stopRx();
+  this->handlePull(in, out);
+}
+
+void AtHandler::handleQueryChips(Stream *out) {
+  for (size_t i = 0; i < this->chips.getAll().size(); i++) {
+    out->printf("%zu,%s\r\n", i, this->chips.getAll().at(i)->getName());
+  }
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleLoraRx(LoraState state, Stream *out) {
+  int16_t code = this->lora->startLoraRx(&state);
+  if (code == 0) {
+    out->print("OK\r\n");
+    this->receiving = true;
+  } else {
+    out->printf("Unable to start lora: %d\r\n", code);
+    out->print("ERROR\r\n");
   }
 }

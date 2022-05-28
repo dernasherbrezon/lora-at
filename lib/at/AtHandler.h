@@ -15,7 +15,11 @@ class AtHandler {
  private:
   void handleLoraFrames();
   void handlePull(Stream *in, Stream *out);
-  void handleChip(size_t chip_index, Stream *out);
+  void handleSetChip(size_t chip_index, Stream *out);
+  void handleQueryChip(Stream *out);
+  void handleQueryChips(Stream *out);
+  void handleStopRx(Stream *in, Stream *out);
+  void handleLoraRx(LoraState state, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
