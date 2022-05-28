@@ -63,7 +63,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
   }
 
   size_t chip_index = 0;
-  int matched = sscanf(this->buffer, "AT+CHIP=%z", &chip_index);
+  int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
     if (chip_index >= this->chips.getAll().size()) {
       out->printf("Unable to find chip index: %zu\r\n", chip_index);
@@ -80,6 +80,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
     }
 
     //FIXME save chip into persistent memory
+    out->print("OK\r\n");
     return;
   }
 

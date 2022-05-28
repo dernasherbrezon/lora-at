@@ -5,6 +5,8 @@
 #include "MockLoRaModule.h"
 #include "StreamString.h"
 
+#define ARDUINO_VARIANT "native"
+
 MockLoRaModule mock;
 
 void setUp(void) {
@@ -71,22 +73,42 @@ void test_success_stop_even_if_not_running(void) {
 
 void test_pull(void) {
   setupFrame();
-  assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  AtHandler handler(&mock);
+  StreamString request;
+  request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
   // force loop on LoraModule
-  assert_request_response("", "");
-  assert_request_response("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", "AT+PULL\r\n");
+  request.clear();
+  response.clear();
+  handler.handle(&request, &response);
+  request.clear();
+  response.clear();
+  request.print("AT+PULL\r\n");
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", response.c_str());
 }
 
 void test_frames_after_stop(void) {
   setupFrame();
-  assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  AtHandler handler(&mock);
+  StreamString request;
+  request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
   // force loop on LoraModule
-  assert_request_response("", "");
-  assert_request_response("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", "AT+STOPRX\r\n");
+  request.clear();
+  response.clear();
+  handler.handle(&request, &response);
+  request.clear();
+  response.clear();
+  request.print("AT+STOPRX\r\n");
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("CAFE,-11.22,3.2,13.2,1605980902\r\nOK\r\n", response.c_str());
 }
 
 void test_query_chips(void) {
-  assert_request_response("SX1278 - 433/470Mhz\r\nSX1276 - 433/868/915Mhz\r\nOK\r\n", "AT+CHIPS?\r\n");
+  assert_request_response("0,TTGO - 433/470Mhz\r\n1,TTGO - 868/915Mhz\r\nOK\r\n", "AT+CHIPS?\r\n");
 }
 
 void test_set_chip(void) {
