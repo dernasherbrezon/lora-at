@@ -428,7 +428,7 @@ LoRaFrame *LoRaModule::readFrame() {
     result->setSnr(sx->getSNR());
     result->setFrequencyError(sx->getFrequencyError(false));
   }
-  log_i("frame received: %d bytes RSSI: %f SNR: %f", result->getDataLength(), result->getRssi(), result->getSnr());
+  log_i("frame received: %d bytes RSSI: %f SNR: %f Timestamp: %ld", result->getDataLength(), result->getRssi(), result->getSnr(), result->getTimestamp());
   return result;
 }
 

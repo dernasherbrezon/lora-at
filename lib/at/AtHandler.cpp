@@ -100,41 +100,27 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
 }
 
 size_t AtHandler::read_line(Stream *in) {
-  size_t result = 0;
-  byte b;
-  unsigned long start_time = millis();
-  unsigned long timeout = 1000L;
-  memset(this->buffer, '\0', BUFFER_LENGTH);
-  int reading_state = READING_CHARS;
-  while (result < BUFFER_LENGTH) {
-    switch (reading_state) {
-      case READING_CHARS:
-        b = in->read();
-        if (b != -1) {
-          // A byte has been received
-          if ((char)b == '\r') {
-            return result;
-          } else {
-            this->buffer[result] = b;
-            result++;
-          }
-        } else {
-          reading_state = TIMEOUT;
-        }
-        break;
-      case TIMEOUT:
-        // Control if timeout is expired
-        if ((millis() - start_time) > timeout) {
-          // Timeout expired
-          return 0;
-        } else {
-          // Continue reading chars
-          reading_state = READING_CHARS;
-        }
-        break;
-    }  // end switch reading_state
+  //Check to see if anything is available in the serial receive buffer
+  while (in->available() > 0) {
+    static unsigned int message_pos = 0;
+    //Read the next available byte in the serial receive buffer
+    char inByte = in->read();
+    if (inByte == '\r') {
+      continue;
+    }
+    //Message coming in (check not terminating character) and guard for over message size
+    if (inByte != '\n' && (message_pos < BUFFER_LENGTH - 1)) {
+      //Add the incoming byte to our message
+      this->buffer[message_pos] = inByte;
+      message_pos++;
+    } else {
+      //Add null character to string
+      this->buffer[message_pos] = '\0';
+      size_t result = message_pos;
+      message_pos = 0;
+      return result;
+    }
   }
-  // buffer is full
   return 0;
 }
 
