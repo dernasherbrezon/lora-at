@@ -167,6 +167,7 @@ void AtHandler::loadConfig() {
     return;
   }
   if (!preferences.getBool("initialized")) {
+    preferences.end();
     return;
   }
   size_t chip_index = preferences.getUChar("chip_index");
@@ -199,11 +200,7 @@ void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
     return;
   }
 
-  if (!preferences.begin("lora-at", false)) {
-    out->print("Unable to write preferences\r\n");
-    out->print("ERROR\r\n");
-    return;
-  }
+  preferences.begin("lora-at", false);
   preferences.putBool("initialized", true);
   preferences.putUChar("chip_index", (uint8_t)chip_index);
   preferences.end();

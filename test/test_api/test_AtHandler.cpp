@@ -8,7 +8,7 @@
 MockLoRaModule mock;
 
 const char *VALID_TX_REQUEST = "AT+LORATX=CAFE,433.0,10.4,9,6,18,10,55,0,0\r\n";
-const char *INVALID_TX_REQUEST = "AT+LORATX=CA FE,433.0,10.4,9,6,18,10,55,0,0\r\n";
+const char *INVALID_TX_REQUEST = "AT+LORATX=433.0,10.4,9,6,18,10,55,0,0\r\n";
 const char *INVALID_TX_DATA_REQUEST = "AT+LORATX=CAXE,433.0,10.4,9,6,18,10,55,0,0\r\n";
 const char *UNKNOWN_COMMAND_RESPONSE = "unknown command\r\nERROR\r\n";
 
@@ -141,6 +141,7 @@ void test_get_chip(void) {
   response.clear();
   request.print("AT+CHIP=1\r\n");
   handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
 
   request.clear();
   response.clear();
