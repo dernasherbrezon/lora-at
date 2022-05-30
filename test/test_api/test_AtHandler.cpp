@@ -64,6 +64,18 @@ void test_success_lorarx() {
   assert_request_response("OK\r\n", "AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
 }
 
+void test_double_start(void) {
+  AtHandler handler(&mock);
+  StreamString request;
+  request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
+  response.clear();
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("already receiving\r\nERROR\r\n", response.c_str());
+}
+
 void test_invalidreq_lorarx() {
   assert_request_response(UNKNOWN_COMMAND_RESPONSE, "AT+LORARX=433.0 10.4,9,6,18,10,55,0,0\r\n");
 }
@@ -203,6 +215,7 @@ void setup() {
   RUN_TEST(test_invalid_lora_tx_code);
   RUN_TEST(test_invalid_tx_data_request);
   RUN_TEST(test_success_tx);
+  RUN_TEST(test_double_start);
   UNITY_END();
 }
 

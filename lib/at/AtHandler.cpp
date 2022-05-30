@@ -212,6 +212,11 @@ void AtHandler::handleQueryChips(Stream *out) {
 }
 
 void AtHandler::handleLoraRx(LoraState state, Stream *out) {
+  if (this->receiving) {
+    out->printf("already receiving\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
   int16_t code = this->lora->startLoraRx(&state);
   if (code == 0) {
     out->print("OK\r\n");
