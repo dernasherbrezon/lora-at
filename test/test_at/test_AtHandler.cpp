@@ -6,6 +6,7 @@
 #include "StreamString.h"
 
 MockLoRaModule mock;
+Display display;
 
 const char *VALID_TX_REQUEST = "AT+LORATX=CAFE,433.0,10.4,9,6,18,10,55,0,0\r\n";
 const char *INVALID_TX_REQUEST = "AT+LORATX=433.0,10.4,9,6,18,10,55,0,0\r\n";
@@ -13,6 +14,8 @@ const char *INVALID_TX_DATA_REQUEST = "AT+LORATX=CAXE,433.0,10.4,9,6,18,10,55,0,
 const char *UNKNOWN_COMMAND_RESPONSE = "unknown command\r\nERROR\r\n";
 
 void setUp(void) {
+  display.setEnabled(false);
+
   mock.rxCode = ERR_NONE;
   mock.receiving = false;
   mock.txCode = ERR_NONE;
@@ -44,7 +47,7 @@ void setupFrame() {
 }
 
 void assert_request_response(const char *expected, const char *req) {
-  AtHandler handler(&mock);
+  AtHandler handler(&mock, &display);
   StreamString request;
   request.print(req);
   StreamString response;
@@ -65,7 +68,7 @@ void test_success_lorarx() {
 }
 
 void test_double_start(void) {
-  AtHandler handler(&mock);
+  AtHandler handler(&mock, &display);
   StreamString request;
   request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
   StreamString response;
@@ -95,7 +98,7 @@ void test_success_stop_even_if_not_running(void) {
 
 void test_pull(void) {
   setupFrame();
-  AtHandler handler(&mock);
+  AtHandler handler(&mock, &display);
   StreamString request;
   request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
   StreamString response;
@@ -113,7 +116,7 @@ void test_pull(void) {
 
 void test_frames_after_stop(void) {
   setupFrame();
-  AtHandler handler(&mock);
+  AtHandler handler(&mock, &display);
   StreamString request;
   request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
   StreamString response;
@@ -142,7 +145,7 @@ void test_set_unknown_chip(void) {
 }
 
 void test_get_chip(void) {
-  AtHandler handler(&mock);
+  AtHandler handler(&mock, &display);
   StreamString request;
   request.print("AT+CHIP?\r\n");
   StreamString response;
@@ -191,6 +194,20 @@ void test_success_tx(void) {
   assert_request_response("OK\r\n", VALID_TX_REQUEST);
 }
 
+void test_display(void) {
+  AtHandler handler(&mock, &display);
+  StreamString request;
+  request.print("AT+DISPLAY=1\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
+
+  request.clear();
+  response.clear();
+  request.print("AT+DISPLAY?\r\n");
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("1\r\nOK\r\n", response.c_str());
+}
+
 void setup() {
   // NOTE!!! Wait for >2 secs
   // if board doesn't support software reset via Serial.DTR/RTS
@@ -216,6 +233,7 @@ void setup() {
   RUN_TEST(test_invalid_tx_data_request);
   RUN_TEST(test_success_tx);
   RUN_TEST(test_double_start);
+  RUN_TEST(test_display);
   UNITY_END();
 }
 

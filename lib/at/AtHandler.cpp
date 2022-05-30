@@ -12,8 +12,9 @@
 #define FIRMWARE_VERSION "1.0"
 #endif
 
-AtHandler::AtHandler(LoRaModule *lora) {
+AtHandler::AtHandler(LoRaModule *lora, Display *display) {
   this->lora = lora;
+  this->display = display;
   this->loadConfig();
 }
 
@@ -43,6 +44,11 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
 
+  if (strcmp("AT+DISPLAY?", this->buffer) == 0) {
+    this->handleQueryDisplay(out);
+    return;
+  }
+
   if (strcmp("AT+CHIPS?", this->buffer) == 0) {
     this->handleQueryChips(out);
     return;
@@ -57,6 +63,13 @@ void AtHandler::handle(Stream *in, Stream *out) {
   int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
     this->handleSetChip(chip_index, out);
+    return;
+  }
+
+  int enabled;
+  matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
+  if (matched == 1) {
+    this->handleSetDisplay(enabled, out);
     return;
   }
 
@@ -151,6 +164,9 @@ void AtHandler::handleQueryChip(Stream *out) {
 void AtHandler::loadConfig() {
   if (!preferences.begin("lora-at", true)) {
     return;
+  }
+  if (preferences.getBool("display_init")) {
+    this->display->setEnabled(true);
   }
   if (!preferences.getBool("initialized")) {
     preferences.end();
@@ -248,5 +264,20 @@ void AtHandler::handleLoraTx(char *message, LoraState state, Stream *out) {
     out->print("ERROR\r\n");
     return;
   }
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleQueryDisplay(Stream *out) {
+  out->printf("%d\r\n", this->display->isEnabled());
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleSetDisplay(bool enabled, Stream *out) {
+  this->display->setEnabled(enabled);
+
+  preferences.begin("lora-at", false);
+  preferences.putBool("display_init", enabled);
+  preferences.end();
+
   out->print("OK\r\n");
 }

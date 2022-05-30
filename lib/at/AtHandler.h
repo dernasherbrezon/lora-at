@@ -3,6 +3,7 @@
 
 #include <Chips.h>
 #include <LoRaModule.h>
+#include <Display.h>
 #include <Stream.h>
 #include <Preferences.h>
 
@@ -10,7 +11,7 @@
 
 class AtHandler {
  public:
-  AtHandler(LoRaModule *lora);
+  AtHandler(LoRaModule *lora, Display *display);
   void handle(Stream *in, Stream *out);
 
  private:
@@ -22,10 +23,13 @@ class AtHandler {
   void handleStopRx(Stream *in, Stream *out);
   void handleLoraRx(LoraState state, Stream *out);
   void handleLoraTx(char *message, LoraState state, Stream *out);
+  void handleQueryDisplay(Stream *out);
+  void handleSetDisplay(bool enabled, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
   LoRaModule *lora;
+  Display *display;
   Chips chips;
   bool receiving = false;
   std::vector<LoRaFrame *> receivedFrames;

@@ -15,6 +15,7 @@ class Display {
   void setProgress(uint8_t progress);
   void update();
   void setEnabled(bool enabled);
+  bool isEnabled();
 
  private:
   const char *status = NULL;

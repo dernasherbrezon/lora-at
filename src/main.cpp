@@ -35,7 +35,7 @@ void setup() {
     display->update();
   });
 
-  handler = new AtHandler(lora);
+  handler = new AtHandler(lora, display);
   display->setStatus("IDLE");
   display->update();
   log_i("setup completed");
