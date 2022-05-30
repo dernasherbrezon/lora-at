@@ -25,6 +25,8 @@ class AtHandler {
   void handleLoraTx(char *message, LoraState state, Stream *out);
   void handleQueryDisplay(Stream *out);
   void handleSetDisplay(bool enabled, Stream *out);
+  void handleQueryTime(Stream *out);
+  void handleSetTime(unsigned long time, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];

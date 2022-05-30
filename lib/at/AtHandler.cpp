@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <Util.h>
 #include <string.h>
+#include <sys/time.h>
+#include <time.h>
 
 // reading states
 #define READING_CHARS 2
@@ -59,6 +61,11 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
 
+  if (strcmp("AT+TIME?", this->buffer) == 0) {
+    this->handleQueryTime(out);
+    return;
+  }
+
   size_t chip_index = 0;
   int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
@@ -70,6 +77,13 @@ void AtHandler::handle(Stream *in, Stream *out) {
   matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
   if (matched == 1) {
     this->handleSetDisplay(enabled, out);
+    return;
+  }
+
+  unsigned long time;
+  matched = sscanf(this->buffer, "AT+TIME=%lu", &time);
+  if (matched == 1) {
+    this->handleSetTime(time, out);
     return;
   }
 
@@ -280,4 +294,31 @@ void AtHandler::handleSetDisplay(bool enabled, Stream *out) {
   preferences.end();
 
   out->print("OK\r\n");
+}
+
+void AtHandler::handleQueryTime(Stream *out) {
+  time_t timer;
+  char buffer[26];
+  struct tm *tm_info;
+
+  timer = time(NULL);
+  tm_info = localtime(&timer);
+
+  strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
+  out->printf("%s\r\n", buffer);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleSetTime(unsigned long time, Stream *out) {
+  struct timeval now;
+  now.tv_sec = time;
+  now.tv_usec = 0;
+  int code = settimeofday(&now, NULL);
+  if (code != 0) {
+    out->printf("unable to set time: %d\r\n", code);
+    out->print("ERROR\r\n");
+  } else {
+    out->print("OK\r\n");
+  }
 }

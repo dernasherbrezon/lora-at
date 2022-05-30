@@ -75,6 +75,8 @@ void test_double_start(void) {
   handler.handle(&request, &response);
   TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
   response.clear();
+  request.clear();
+  request.print("AT+LORARX=433.0,10.4,9,6,18,10,55,0,0\r\n");
   handler.handle(&request, &response);
   TEST_ASSERT_EQUAL_STRING("already receiving\r\nERROR\r\n", response.c_str());
 }
