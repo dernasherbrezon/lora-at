@@ -202,12 +202,28 @@ void test_display(void) {
   request.print("AT+DISPLAY=1\r\n");
   StreamString response;
   handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
 
   request.clear();
   response.clear();
   request.print("AT+DISPLAY?\r\n");
   handler.handle(&request, &response);
   TEST_ASSERT_EQUAL_STRING("1\r\nOK\r\n", response.c_str());
+}
+
+void test_time(void) {
+  AtHandler handler(&mock, &display);
+  StreamString request;
+  request.print("AT+TIME=1649679986\r\n");
+  StreamString response;
+  handler.handle(&request, &response);
+  TEST_ASSERT_EQUAL_STRING("OK\r\n", response.c_str());
+
+  request.clear();
+  response.clear();
+  request.print("AT+TIME?\r\n");
+  handler.handle(&request, &response);
+  TEST_ASSERT_TRUE_MESSAGE(response.endsWith("OK\r\n"), "OK is expected");
 }
 
 void setup() {
