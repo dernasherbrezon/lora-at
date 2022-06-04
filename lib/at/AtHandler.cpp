@@ -179,9 +179,7 @@ void AtHandler::loadConfig() {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
-  if (preferences.getBool("display_init")) {
-    this->display->setEnabled(true);
-  }
+  this->display->setEnabled(preferences.getBool("display_init"));
   if (!preferences.getBool("initialized")) {
     preferences.end();
     return;
