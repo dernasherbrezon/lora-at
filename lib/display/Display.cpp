@@ -188,10 +188,11 @@ void Display::setStatus(const char *status) {
 void Display::setEnabled(bool enabled) {
   if (!enabled && this->display != NULL) {
     this->display->resetDisplay();
-  } else if (enabled) {
-    this->update();
   }
   this->enabled = enabled;
+  if (enabled) {
+    this->update();
+  }
 }
 
 bool Display::isEnabled() {
