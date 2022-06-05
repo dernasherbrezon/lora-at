@@ -129,3 +129,29 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
         </tr>
     </tbody>
 </table>
+
+# Supported boards
+
+ * [ttgo-lora32-v2](https://docs.platformio.org/en/latest/boards/espressif32/ttgo-lora32-v2.html)
+ * [ttgo-lora32-v1](https://docs.platformio.org/en/latest/boards/espressif32/ttgo-lora32-v1.html)
+ * [ttgo-lora32-v21](https://docs.platformio.org/en/latest/boards/espressif32/ttgo-lora32-v21.html)
+ * [heltec_wifi_lora_32](https://docs.platformio.org/en/latest/boards/espressif32/heltec_wifi_lora_32.html)
+ * [heltec_wifi_lora_32_V2](https://docs.platformio.org/en/latest/boards/espressif32/heltec_wifi_lora_32_V2.html)
+ * [ttgo-t-beam](https://docs.platformio.org/en/latest/boards/espressif32/ttgo-t-beam.html)
+
+# How to install / compile
+
+1. Install [PlatformIO](https://platformio.org) GUI or CLI version
+
+2. Clone this repository:
+
+```bash
+git clone https://github.com/dernasherbrezon/lora-at.git
+```
+
+3. Build the application. Replace ```board``` with one of board names above.
+
+```bash
+cd lora-at
+pio run -t upload -e board
+```
