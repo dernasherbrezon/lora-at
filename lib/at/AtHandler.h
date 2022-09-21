@@ -2,16 +2,18 @@
 #define AtHandler_h
 
 #include <Chips.h>
-#include <LoRaModule.h>
+#include <DeepSleepHandler.h>
 #include <Display.h>
-#include <Stream.h>
+#include <LoRaModule.h>
+#include <LoRaShadowClient.h>
 #include <Preferences.h>
+#include <Stream.h>
 
 #define BUFFER_LENGTH 1024
 
 class AtHandler {
  public:
-  AtHandler(LoRaModule *lora, Display *display);
+  AtHandler(LoRaModule *lora, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler);
   void handle(Stream *in, Stream *out);
 
  private:
@@ -27,11 +29,14 @@ class AtHandler {
   void handleSetDisplay(bool enabled, Stream *out);
   void handleQueryTime(Stream *out);
   void handleSetTime(unsigned long time, Stream *out);
+  void handleDeepSleepConfig(uint8_t *btaddress,  size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
   LoRaModule *lora;
   Display *display;
+  LoRaShadowClient *client;
+  DeepSleepHandler *dsHandler;
   Chips chips;
   bool receiving = false;
   std::vector<LoRaFrame *> receivedFrames;

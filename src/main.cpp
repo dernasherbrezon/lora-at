@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <AtHandler.h>
+#include <DeepSleepHandler.h>
 #include <LoRaModule.h>
+#include <LoRaShadowClient.h>
 #include <esp32-hal-log.h>
 #include <time.h>
 
@@ -17,6 +19,8 @@
 LoRaModule *lora = NULL;
 AtHandler *handler;
 Display *display = NULL;
+LoRaShadowClient *client = NULL;
+DeepSleepHandler *dsHandler = NULL;
 
 void setup() {
   Serial.begin(115200);
@@ -35,7 +39,10 @@ void setup() {
     display->update();
   });
 
-  handler = new AtHandler(lora, display);
+  client = new LoRaShadowClient();
+  dsHandler = new DeepSleepHandler();
+
+  handler = new AtHandler(lora, display, client, dsHandler);
   display->setStatus("IDLE");
   display->update();
   log_i("setup completed");
@@ -43,4 +50,5 @@ void setup() {
 
 void loop() {
   handler->handle(&Serial, &Serial);
+  dsHandler->loop();
 }

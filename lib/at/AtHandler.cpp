@@ -14,9 +14,11 @@
 #define FIRMWARE_VERSION "1.0"
 #endif
 
-AtHandler::AtHandler(LoRaModule *lora, Display *display) {
+AtHandler::AtHandler(LoRaModule *lora, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler) {
   this->lora = lora;
   this->display = display;
+  this->client = client;
+  this->dsHandler = dsHandler;
   this->loadConfig();
 }
 
@@ -104,6 +106,17 @@ void AtHandler::handle(Stream *in, Stream *out) {
     return;
   }
 
+  uint8_t address[6];
+  uint64_t deepSleepPeriod = 0L;
+  uint64_t inactivityTimeout = 0L;
+  matched = sscanf(this->buffer, "AT+DSCONFIG=%hhd:%hhd:%hhd:%hhd:%hhd:%hhd,%" SCNu64 ",%" SCNu64 "", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5], &deepSleepPeriod, &inactivityTimeout);
+  if (matched == 8) {
+    this->handleDeepSleepConfig(address, sizeof(address), deepSleepPeriod, inactivityTimeout, out);
+    return;
+  }
+
+  //FIXME command to force go into deep sleep mode
+
   out->print("unknown command\r\n");
   out->print("ERROR\r\n");
 }
@@ -127,21 +140,21 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
 }
 
 size_t AtHandler::read_line(Stream *in) {
-  //Check to see if anything is available in the serial receive buffer
+  // Check to see if anything is available in the serial receive buffer
   while (in->available() > 0) {
     static unsigned int message_pos = 0;
-    //Read the next available byte in the serial receive buffer
+    // Read the next available byte in the serial receive buffer
     char inByte = in->read();
     if (inByte == '\r') {
       continue;
     }
-    //Message coming in (check not terminating character) and guard for over message size
+    // Message coming in (check not terminating character) and guard for over message size
     if (inByte != '\n' && (message_pos < BUFFER_LENGTH - 1)) {
-      //Add the incoming byte to our message
+      // Add the incoming byte to our message
       this->buffer[message_pos] = inByte;
       message_pos++;
     } else {
-      //Add null character to string
+      // Add null character to string
       this->buffer[message_pos] = '\0';
       size_t result = message_pos;
       message_pos = 0;
@@ -319,4 +332,19 @@ void AtHandler::handleSetTime(unsigned long time, Stream *out) {
   } else {
     out->print("OK\r\n");
   }
+}
+
+void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out) {
+  if (!client->init(address, address_len)) {
+    out->printf("unable to connect to lora-shadow: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
+    out->print("ERROR\r\n");
+    return;
+  }
+  if (!dsHandler->init(deepSleepPeriod, inactivityTimeout)) {
+    out->printf("unable to configure deep sleep\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
+  // FIXME output local bt address
+  out->print("OK\r\n");
 }
