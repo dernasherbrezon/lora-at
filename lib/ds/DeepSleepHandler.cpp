@@ -3,8 +3,8 @@
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
 
-//FIXME preserve memory during deep sleep
-//FIXME correctly wake up
+// FIXME preserve memory during deep sleep
+// FIXME correctly wake up
 
 DeepSleepHandler::DeepSleepHandler() {
   if (!preferences.begin("lora-at", true)) {
@@ -13,6 +13,10 @@ DeepSleepHandler::DeepSleepHandler() {
   this->deepSleepPeriod = preferences.getULong64("period");
   this->inactivityTimeout = preferences.getULong64("inactivity");
   preferences.end();
+  if (esp_sleep_enable_timer_wakeup(deepSleepPeriod * 1000) != ESP_OK) {
+    this->deepSleepPeriod = 0;
+  }
+  this->lastActiveTime = esp_timer_get_time();
 }
 
 bool DeepSleepHandler::init(uint64_t deepSleepPeriodMillis, uint64_t inactivityTimeout) {
@@ -39,7 +43,7 @@ void DeepSleepHandler::loop() {
   if (esp_timer_get_time() - this->lastActiveTime < this->inactivityTimeout) {
     return;
   }
-  log_i("go into deep sleep mode");
+  log_i("go into deep sleep mode for %d seconds", deepSleepPeriod / 1000);
   Serial.flush();
   esp_deep_sleep_start();
 }

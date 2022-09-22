@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <BLEDevice.h>
 
 // reading states
 #define READING_CHARS 2
@@ -109,11 +110,13 @@ void AtHandler::handle(Stream *in, Stream *out) {
   uint8_t address[6];
   uint64_t deepSleepPeriod = 0L;
   uint64_t inactivityTimeout = 0L;
-  matched = sscanf(this->buffer, "AT+DSCONFIG=%hhd:%hhd:%hhd:%hhd:%hhd:%hhd,%" SCNu64 ",%" SCNu64 "", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5], &deepSleepPeriod, &inactivityTimeout);
+  matched = sscanf(this->buffer, "AT+DSCONFIG=%hhx:%hhx:%hhx:%hhx:%hhx:%hhx,%" SCNu64 ",%" SCNu64 "", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5], &deepSleepPeriod, &inactivityTimeout);
   if (matched == 8) {
     this->handleDeepSleepConfig(address, sizeof(address), deepSleepPeriod, inactivityTimeout, out);
     return;
   }
+
+  //FIXME disable display when going deep sleep
 
   //FIXME command to force go into deep sleep mode
 
@@ -345,6 +348,8 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
     out->print("ERROR\r\n");
     return;
   }
-  // FIXME output local bt address
+
+  out->print(BLEDevice::getAddress().toString().c_str());
+  out->print("\r\n");
   out->print("OK\r\n");
 }
