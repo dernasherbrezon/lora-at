@@ -2,6 +2,7 @@
 #define Display_h
 
 #include <LoRaModule.h>
+#include <Preferences.h>
 #include <SSD1306Wire.h>
 #include <Wire.h>
 
@@ -20,7 +21,8 @@ class Display {
  private:
   const char *status = NULL;
   SSD1306Wire *display = NULL;
-  bool enabled = true;
+  bool enabled;
+  Preferences preferences;
 };
 
 #endif

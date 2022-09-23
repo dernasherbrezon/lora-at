@@ -50,7 +50,6 @@ void setup() {
   }
   client = new LoRaShadowClient();
 
-  // FIXME do not load display
   display = new Display();
   display->init();
 

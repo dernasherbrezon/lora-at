@@ -189,7 +189,6 @@ void AtHandler::loadConfig() {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
-  this->display->setEnabled(preferences.getBool("display_init"));
   if (!preferences.getBool("initialized")) {
     preferences.end();
     return;
@@ -296,11 +295,6 @@ void AtHandler::handleQueryDisplay(Stream *out) {
 
 void AtHandler::handleSetDisplay(bool enabled, Stream *out) {
   this->display->setEnabled(enabled);
-
-  preferences.begin("lora-at", false);
-  preferences.putBool("display_init", enabled);
-  preferences.end();
-
   out->print("OK\r\n");
 }
 
@@ -344,10 +338,6 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
   }
 
   this->display->setEnabled(false);
-
-  preferences.begin("lora-at", false);
-  preferences.putBool("display_init", false);
-  preferences.end();
 
   out->print(BLEDevice::getAddress().toString().c_str());
   out->print("\r\n");

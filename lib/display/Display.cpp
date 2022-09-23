@@ -148,6 +148,15 @@ void Display::init() {
     log_i("OLED pins were not configured. continue without display");
     return;
   }
+  if (!preferences.begin("lora-at", true)) {
+    this->enabled = false;
+    return;
+  }
+  this->enabled = preferences.getBool("display_init");
+  preferences.end();
+  if (!this->enabled) {
+    return;
+  }
   this->display = new SSD1306Wire(0x3c, PIN_OLED_SDA, PIN_OLED_SCL);
 #ifdef PIN_OLED_RST
   pinMode(PIN_OLED_RST, OUTPUT);
@@ -193,6 +202,9 @@ void Display::setEnabled(bool enabled) {
   if (enabled) {
     this->update();
   }
+  preferences.begin("lora-at", false);
+  preferences.putBool("display_init", enabled);
+  preferences.end();
 }
 
 bool Display::isEnabled() {
