@@ -19,6 +19,7 @@ enum ModemType { NONE = 0,
 struct ObservationRequest {
   uint64_t startTimeMillis = 0;
   uint64_t endTimeMillis = 0;
+  uint64_t currentTimeMillis = 0;
   float freq;
   float bw;
   uint8_t sf;

@@ -7,52 +7,55 @@ DeepSleepHandler::DeepSleepHandler() {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
-  this->deepSleepPeriod = preferences.getULong64("period");
-  this->inactivityTimeout = preferences.getULong64("inactivity");
+  this->deepSleepPeriodMicros = preferences.getULong64("period");
+  this->inactivityTimeoutMicros = preferences.getULong64("inactivity");
   preferences.end();
+  if (!this->isDeepSleepWakeup()) {
+    this->lastActiveTimeMicros = esp_timer_get_time();
+  }
 }
 
-bool DeepSleepHandler::init(uint64_t deepSleepPeriodMillis, uint64_t inactivityTimeout) {
+bool DeepSleepHandler::init(uint64_t deepSleepPeriodMicros, uint64_t inactivityTimeoutMicros) {
   if (!preferences.begin("lora-at", false)) {
     return false;
   }
-  this->deepSleepPeriod = deepSleepPeriodMillis;
-  this->inactivityTimeout = inactivityTimeout;
-  preferences.putULong64("period", deepSleepPeriod);
-  preferences.putULong64("inactivity", inactivityTimeout);
+  this->deepSleepPeriodMicros = deepSleepPeriodMicros;
+  this->inactivityTimeoutMicros = inactivityTimeoutMicros;
+  preferences.putULong64("period", deepSleepPeriodMicros);
+  preferences.putULong64("inactivity", inactivityTimeoutMicros);
   preferences.end();
   return true;
 }
 
-void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMillis) {
+void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
   uint64_t deepSleepTime;
-  if (deepSleepRequestedMillis == 0 || this->deepSleepPeriod < deepSleepRequestedMillis) {
-    deepSleepTime = this->deepSleepPeriod / 1000;
+  if (deepSleepRequestedMicros == 0 || this->deepSleepPeriodMicros < deepSleepRequestedMicros) {
+    deepSleepTime = this->deepSleepPeriodMicros;
   } else {
-    deepSleepTime = deepSleepRequestedMillis / 1000;
+    deepSleepTime = deepSleepRequestedMicros;
   }
-  log_i("entering deep sleep mode for %d seconds", deepSleepTime);
+  log_i("entering deep sleep mode for %d seconds", deepSleepTime / 1000000);
   Serial.flush();
-  esp_sleep_enable_timer_wakeup(deepSleepTime * 1000);
+  esp_sleep_enable_timer_wakeup(deepSleepTime);
   esp_deep_sleep_start();
 }
 
 void DeepSleepHandler::handleInactive(bool resetInactiveTimer) {
-  if (this->deepSleepPeriod == 0) {
+  if (this->deepSleepPeriodMicros == 0) {
     // not configured
     return;
   }
   uint64_t currentTime = esp_timer_get_time();
 
   if (resetInactiveTimer) {
-    this->lastActiveTime = currentTime;
+    this->lastActiveTimeMicros = currentTime;
   }
 
-  if (currentTime - this->lastActiveTime < this->inactivityTimeout) {
+  if (currentTime - this->lastActiveTimeMicros < this->inactivityTimeoutMicros) {
     return;
   }
 
-  log_i("not active for %d seconds. going into deep sleep", this->inactivityTimeout / 1000);
+  log_i("not active for %d seconds. going into deep sleep", this->inactivityTimeoutMicros / 1000000);
   this->enterDeepSleep(0);
 }
 

@@ -29,9 +29,8 @@ void scheduleObservation() {
   // always attempt to load fresh config
   client->loadRequest(&scheduledObservation);
   if (scheduledObservation.startTimeMillis != 0) {
-    uint64_t currentTime = esp_timer_get_time();
-    if (scheduledObservation.startTimeMillis > currentTime) {
-      dsHandler->enterDeepSleep(scheduledObservation.startTimeMillis - currentTime);
+    if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
+      dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
       lora->startLoraRx(&scheduledObservation);
     }
@@ -44,15 +43,6 @@ void setup() {
   Serial.begin(115200);
   log_i("starting. firmware version: %s", FIRMWARE_VERSION);
 
-  dsHandler = new DeepSleepHandler();
-  if (dsHandler->isDeepSleepWakeup()) {
-    scheduleObservation();
-  }
-  client = new LoRaShadowClient();
-
-  display = new Display();
-  display->init();
-
   lora = new LoRaModule();
   lora->setOnRxStartedCallback([] {
     display->setStatus("RECEIVING");
@@ -62,6 +52,16 @@ void setup() {
     display->setStatus("IDLE");
     display->update();
   });
+
+  client = new LoRaShadowClient();
+
+  dsHandler = new DeepSleepHandler();
+  if (dsHandler->isDeepSleepWakeup()) {
+    scheduleObservation();
+  }
+
+  display = new Display();
+  display->init();
 
   handler = new AtHandler(lora, display, client, dsHandler);
   display->setStatus("IDLE");

@@ -15,10 +15,10 @@ class LoRaShadowClient {
   void sendData(LoRaFrame *frame);
 
  private:
-  BLEClient *client;
-  BLERemoteService *service;
-  BLERemoteCharacteristic *req;
-  BLEAddress *address;
+  BLEClient *client = NULL;
+  BLERemoteService *service = NULL;
+  BLERemoteCharacteristic *req = NULL;
+  BLEAddress *address = NULL;
   Preferences preferences;
 };
 
