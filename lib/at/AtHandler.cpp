@@ -1,11 +1,11 @@
 #include "AtHandler.h"
 
 #include <Arduino.h>
+#include <BLEDevice.h>
 #include <Util.h>
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#include <BLEDevice.h>
 
 // reading states
 #define READING_CHARS 2
@@ -23,80 +23,79 @@ AtHandler::AtHandler(LoRaModule *lora, Display *display, LoRaShadowClient *clien
   this->loadConfig();
 }
 
-void AtHandler::handle(Stream *in, Stream *out) {
+bool AtHandler::handle(Stream *in, Stream *out) {
   size_t length = read_line(in);
   if (length == 0) {
-    this->handleLoraFrames();
-    return;
+    return false;
   }
   if (strcmp("AT", this->buffer) == 0) {
     out->print("OK\r\n");
-    return;
+    return true;
   }
   if (strcmp("AT+GMR", this->buffer) == 0) {
     out->print(FIRMWARE_VERSION);
     out->print("\r\n");
     out->print("OK\r\n");
-    return;
+    return true;
   }
   if (strcmp("AT+STOPRX", this->buffer) == 0) {
     this->handleStopRx(in, out);
-    return;
+    return true;
   }
 
   if (strcmp("AT+PULL", this->buffer) == 0) {
     this->handlePull(in, out);
-    return;
+    return true;
   }
 
   if (strcmp("AT+DISPLAY?", this->buffer) == 0) {
     this->handleQueryDisplay(out);
-    return;
+    return true;
   }
 
   if (strcmp("AT+CHIPS?", this->buffer) == 0) {
     this->handleQueryChips(out);
-    return;
+    return true;
   }
 
   if (strcmp("AT+CHIP?", this->buffer) == 0) {
     this->handleQueryChip(out);
-    return;
+    return true;
   }
 
   if (strcmp("AT+TIME?", this->buffer) == 0) {
     this->handleQueryTime(out);
-    return;
+    return true;
   }
 
   size_t chip_index = 0;
   int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
   if (matched == 1) {
     this->handleSetChip(chip_index, out);
-    return;
+    return true;
   }
 
   int enabled;
   matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
   if (matched == 1) {
     this->handleSetDisplay(enabled, out);
-    return;
+    return true;
   }
 
   unsigned long time;
   matched = sscanf(this->buffer, "AT+TIME=%lu", &time);
   if (matched == 1) {
     this->handleSetTime(time, out);
-    return;
+    return true;
   }
 
-  LoraState state;
+  ObservationRequest state;
   uint8_t ldro;
   matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
   if (matched == 9) {
     state.ldro = (LdroType)ldro;
     this->handleLoraRx(state, out);
-    return;
+    return true;
   }
 
   char message[512];
@@ -104,7 +103,7 @@ void AtHandler::handle(Stream *in, Stream *out) {
   if (matched == 10) {
     state.ldro = (LdroType)ldro;
     this->handleLoraTx(message, state, out);
-    return;
+    return true;
   }
 
   uint8_t address[6];
@@ -113,15 +112,17 @@ void AtHandler::handle(Stream *in, Stream *out) {
   matched = sscanf(this->buffer, "AT+DSCONFIG=%hhx:%hhx:%hhx:%hhx:%hhx:%hhx,%" SCNu64 ",%" SCNu64 "", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5], &deepSleepPeriod, &inactivityTimeout);
   if (matched == 8) {
     this->handleDeepSleepConfig(address, sizeof(address), deepSleepPeriod, inactivityTimeout, out);
-    return;
+    return true;
   }
 
-  //FIXME disable display when going deep sleep
-
-  //FIXME command to force go into deep sleep mode
+  if (strcmp("AT+DS", this->buffer) == 0) {
+    this->dsHandler->enterDeepSleep(0);
+    return true;
+  }
 
   out->print("unknown command\r\n");
   out->print("ERROR\r\n");
+  return true;
 }
 
 void AtHandler::handlePull(Stream *in, Stream *out) {
@@ -167,14 +168,7 @@ size_t AtHandler::read_line(Stream *in) {
   return 0;
 }
 
-void AtHandler::handleLoraFrames() {
-  if (!this->receiving) {
-    return;
-  }
-  LoRaFrame *frame = this->lora->loop();
-  if (frame == NULL) {
-    return;
-  }
+void AtHandler::addFrame(LoRaFrame *frame) {
   this->receivedFrames.push_back(frame);
 }
 
@@ -255,7 +249,7 @@ void AtHandler::handleQueryChips(Stream *out) {
   out->print("OK\r\n");
 }
 
-void AtHandler::handleLoraRx(LoraState state, Stream *out) {
+void AtHandler::handleLoraRx(ObservationRequest state, Stream *out) {
   if (this->receiving) {
     out->printf("already receiving\r\n");
     out->print("ERROR\r\n");
@@ -271,7 +265,7 @@ void AtHandler::handleLoraRx(LoraState state, Stream *out) {
   }
 }
 
-void AtHandler::handleLoraTx(char *message, LoraState state, Stream *out) {
+void AtHandler::handleLoraTx(char *message, ObservationRequest state, Stream *out) {
   if (this->lora->isReceivingData()) {
     out->print("cannot transmit during receive\r\n");
     out->print("ERROR\r\n");
@@ -348,6 +342,12 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
     out->print("ERROR\r\n");
     return;
   }
+
+  this->display->setEnabled(false);
+
+  preferences.begin("lora-at", false);
+  preferences.putBool("display_init", false);
+  preferences.end();
 
   out->print(BLEDevice::getAddress().toString().c_str());
   out->print("\r\n");

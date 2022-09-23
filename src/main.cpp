@@ -4,6 +4,7 @@
 #include <LoRaModule.h>
 #include <LoRaShadowClient.h>
 #include <esp32-hal-log.h>
+#include <esp_timer.h>
 #include <time.h>
 
 #include "Display.h"
@@ -22,10 +23,34 @@ Display *display = NULL;
 LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 
+RTC_DATA_ATTR ObservationRequest scheduledObservation;
+
+void scheduleObservation() {
+  // always attempt to load fresh config
+  client->loadRequest(&scheduledObservation);
+  if (scheduledObservation.startTimeMillis != 0) {
+    uint64_t currentTime = esp_timer_get_time();
+    if (scheduledObservation.startTimeMillis > currentTime) {
+      dsHandler->enterDeepSleep(scheduledObservation.startTimeMillis - currentTime);
+    } else {
+      lora->startLoraRx(&scheduledObservation);
+    }
+  } else {
+    dsHandler->enterDeepSleep(0);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   log_i("starting. firmware version: %s", FIRMWARE_VERSION);
 
+  dsHandler = new DeepSleepHandler();
+  if (dsHandler->isDeepSleepWakeup()) {
+    scheduleObservation();
+  }
+  client = new LoRaShadowClient();
+
+  // FIXME do not load display
   display = new Display();
   display->init();
 
@@ -39,9 +64,6 @@ void setup() {
     display->update();
   });
 
-  client = new LoRaShadowClient();
-  dsHandler = new DeepSleepHandler();
-
   handler = new AtHandler(lora, display, client, dsHandler);
   display->setStatus("IDLE");
   display->update();
@@ -49,6 +71,23 @@ void setup() {
 }
 
 void loop() {
-  handler->handle(&Serial, &Serial);
-  dsHandler->loop();
+  if (lora->isReceivingData()) {
+    LoRaFrame *frame = lora->loop();
+    if (frame != NULL) {
+      client->sendData(frame);
+      handler->addFrame(frame);
+    }
+    return;
+  }
+
+  // FIXME thread sleep 1sec? Or some task based thing?
+
+  if (scheduledObservation.endTimeMillis != 0 && scheduledObservation.endTimeMillis < esp_timer_get_time()) {
+    lora->stopRx();
+    scheduleObservation();
+    return;
+  }
+
+  bool someActivityHappened = handler->handle(&Serial, &Serial);
+  dsHandler->handleInactive(someActivityHappened);
 }

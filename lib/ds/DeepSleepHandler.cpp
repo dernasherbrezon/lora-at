@@ -3,9 +3,6 @@
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
 
-// FIXME preserve memory during deep sleep
-// FIXME correctly wake up
-
 DeepSleepHandler::DeepSleepHandler() {
   if (!preferences.begin("lora-at", true)) {
     return;
@@ -13,10 +10,6 @@ DeepSleepHandler::DeepSleepHandler() {
   this->deepSleepPeriod = preferences.getULong64("period");
   this->inactivityTimeout = preferences.getULong64("inactivity");
   preferences.end();
-  if (esp_sleep_enable_timer_wakeup(deepSleepPeriod * 1000) != ESP_OK) {
-    this->deepSleepPeriod = 0;
-  }
-  this->lastActiveTime = esp_timer_get_time();
 }
 
 bool DeepSleepHandler::init(uint64_t deepSleepPeriodMillis, uint64_t inactivityTimeout) {
@@ -28,22 +21,41 @@ bool DeepSleepHandler::init(uint64_t deepSleepPeriodMillis, uint64_t inactivityT
   preferences.putULong64("period", deepSleepPeriod);
   preferences.putULong64("inactivity", inactivityTimeout);
   preferences.end();
-  if (esp_sleep_enable_timer_wakeup(deepSleepPeriodMillis * 1000) != ESP_OK) {
-    return false;
-  }
-  this->lastActiveTime = esp_timer_get_time();
   return true;
 }
 
-void DeepSleepHandler::loop() {
-  if (deepSleepPeriod == 0) {
+void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMillis) {
+  uint64_t deepSleepTime;
+  if (deepSleepRequestedMillis == 0 || this->deepSleepPeriod < deepSleepRequestedMillis) {
+    deepSleepTime = this->deepSleepPeriod / 1000;
+  } else {
+    deepSleepTime = deepSleepRequestedMillis / 1000;
+  }
+  log_i("entering deep sleep mode for %d seconds", deepSleepTime);
+  Serial.flush();
+  esp_sleep_enable_timer_wakeup(deepSleepTime * 1000);
+  esp_deep_sleep_start();
+}
+
+void DeepSleepHandler::handleInactive(bool resetInactiveTimer) {
+  if (this->deepSleepPeriod == 0) {
     // not configured
     return;
   }
-  if (esp_timer_get_time() - this->lastActiveTime < this->inactivityTimeout) {
+  uint64_t currentTime = esp_timer_get_time();
+
+  if (resetInactiveTimer) {
+    this->lastActiveTime = currentTime;
+  }
+
+  if (currentTime - this->lastActiveTime < this->inactivityTimeout) {
     return;
   }
-  log_i("go into deep sleep mode for %d seconds", deepSleepPeriod / 1000);
-  Serial.flush();
-  esp_deep_sleep_start();
+
+  log_i("not active for %d seconds. going into deep sleep", this->inactivityTimeout / 1000);
+  this->enterDeepSleep(0);
+}
+
+bool DeepSleepHandler::isDeepSleepWakeup() {
+  return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER;
 }

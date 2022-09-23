@@ -1,6 +1,6 @@
 #include "MockLoRaModule.h"
 
-int16_t MockLoRaModule::startLoraRx(LoraState *request) {
+int16_t MockLoRaModule::startLoraRx(ObservationRequest *request) {
   return rxCode;
 }
 
@@ -20,6 +20,6 @@ void MockLoRaModule::stopRx() {
 bool MockLoRaModule::isReceivingData() {
   return receiving;
 }
-int16_t MockLoRaModule::loraTx(uint8_t *data, size_t dataLength, LoraState *request) {
+int16_t MockLoRaModule::loraTx(uint8_t *data, size_t dataLength, ObservationRequest *request) {
   return txCode;
 }

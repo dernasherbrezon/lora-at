@@ -5,11 +5,11 @@
 
 class MockLoRaModule : public LoRaModule {
  public:
-  int16_t startLoraRx(LoraState *request);
+  int16_t startLoraRx(ObservationRequest *request);
   LoRaFrame *loop();
   void stopRx();
   bool isReceivingData();
-  int16_t loraTx(uint8_t *data, size_t dataLength, LoraState *request);
+  int16_t loraTx(uint8_t *data, size_t dataLength, ObservationRequest *request);
 
   int16_t rxCode = ERR_NONE;
   std::vector<LoRaFrame *> expectedFrames;

@@ -14,22 +14,22 @@
 class AtHandler {
  public:
   AtHandler(LoRaModule *lora, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler);
-  void handle(Stream *in, Stream *out);
+  bool handle(Stream *in, Stream *out);
+  void addFrame(LoRaFrame *frame);
 
  private:
-  void handleLoraFrames();
   void handlePull(Stream *in, Stream *out);
   void handleSetChip(size_t chip_index, Stream *out);
   void handleQueryChip(Stream *out);
   void handleQueryChips(Stream *out);
   void handleStopRx(Stream *in, Stream *out);
-  void handleLoraRx(LoraState state, Stream *out);
-  void handleLoraTx(char *message, LoraState state, Stream *out);
+  void handleLoraRx(ObservationRequest state, Stream *out);
+  void handleLoraTx(char *message, ObservationRequest state, Stream *out);
   void handleQueryDisplay(Stream *out);
   void handleSetDisplay(bool enabled, Stream *out);
   void handleQueryTime(Stream *out);
   void handleSetTime(unsigned long time, Stream *out);
-  void handleDeepSleepConfig(uint8_t *btaddress,  size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out);
+  void handleDeepSleepConfig(uint8_t *btaddress, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out);
   void loadConfig();
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];

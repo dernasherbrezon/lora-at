@@ -16,7 +16,9 @@ enum ModemType { NONE = 0,
                  LORA = 1,
                  FSK = 2 };
 
-struct LoraState {
+struct ObservationRequest {
+  uint64_t startTimeMillis = 0;
+  uint64_t endTimeMillis = 0;
   float freq;
   float bw;
   uint8_t sf;
@@ -48,10 +50,10 @@ class LoRaModule {
   ~LoRaModule();
   int16_t init(Chip *chip);
   // virtual functions used by Mock overrides in tests
-  virtual int16_t startLoraRx(LoraState *request);
+  virtual int16_t startLoraRx(ObservationRequest *request);
   virtual int16_t startFskRx(FskState *request);
 
-  virtual int16_t loraTx(uint8_t *data, size_t dataLength, LoraState *request);
+  virtual int16_t loraTx(uint8_t *data, size_t dataLength, ObservationRequest *request);
   virtual int16_t fskTx(uint8_t *data, size_t dataLength, FskState *request);
 
   virtual LoRaFrame *loop();
@@ -68,7 +70,7 @@ class LoRaModule {
   ChipType type = ChipType::TYPE_SX1278;  // some default chip type
   bool receivingData = false;
 
-  LoraState lora;
+  ObservationRequest lora;
   bool loraInitialized = false;
 
   FskState fsk;
@@ -82,7 +84,7 @@ class LoRaModule {
   LoRaFrame *readFrame();
   void reset();
 
-  int16_t syncLoraModemState(LoraState *request);
+  int16_t syncLoraModemState(ObservationRequest *request);
   int16_t syncFskModemState(FskState *request);
 
   int16_t startReceive();

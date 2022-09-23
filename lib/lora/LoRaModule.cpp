@@ -78,7 +78,7 @@ void setFlag(void) {
   receivedFlag = true;
 }
 
-int16_t LoRaModule::startLoraRx(LoraState *request) {
+int16_t LoRaModule::startLoraRx(ObservationRequest *request) {
   if (loraInitialized) {
     request->power = lora.power;
   }
@@ -127,7 +127,7 @@ int16_t LoRaModule::startReceive() {
   return status;
 }
 
-int16_t LoRaModule::syncLoraModemState(LoraState *request) {
+int16_t LoRaModule::syncLoraModemState(ObservationRequest *request) {
   int16_t status;
   if (isSX1278()) {
     SX1278 *sx = (SX1278 *)this->phys;
@@ -220,7 +220,7 @@ int16_t LoRaModule::syncLoraModemState(LoraState *request) {
   } else {
     return ERR_CHIP_NOT_FOUND;
   }
-  memcpy(&lora, request, sizeof(LoraState));
+  memcpy(&lora, request, sizeof(ObservationRequest));
   loraInitialized = true;
   activeModem = ModemType::LORA;
   return ERR_NONE;
@@ -478,7 +478,7 @@ int LoRaModule::getTempRaw(int8_t *value) {
   return -1;
 }
 
-int16_t LoRaModule::loraTx(uint8_t *data, size_t dataLength, LoraState *request) {
+int16_t LoRaModule::loraTx(uint8_t *data, size_t dataLength, ObservationRequest *request) {
   if (loraInitialized) {
     request->gain = lora.gain;
   }
