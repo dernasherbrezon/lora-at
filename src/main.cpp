@@ -81,6 +81,7 @@ void loop() {
 
   // FIXME thread sleep 1sec? Or some task based thing?
 
+  //FIXME micros vs millis + esp_timer_get_time is not UNIX timestamp
   if (scheduledObservation.endTimeMillis != 0 && scheduledObservation.endTimeMillis < esp_timer_get_time()) {
     lora->stopRx();
     scheduleObservation();

@@ -23,17 +23,21 @@ LoRaShadowClient::LoRaShadowClient() {
 }
 
 bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
-  BLEDevice::init("lora-at");
-  BLEClient *client = BLEDevice::createClient();
   this->address = new BLEAddress(address);
-  if (!client->connect(*this->address)) {
-    return false;
+  if (this->client == NULL) {
+    BLEDevice::init("lora-at");
+    BLEClient *tempClient = BLEDevice::createClient();
+    if (!tempClient->connect(*this->address)) {
+      return false;
+    }
+    this->client = tempClient;
   }
-  BLERemoteService *service = client->getService(SERVICE_UUID);
-  client->disconnect();
-  if (service == NULL) {
-    log_i("can't find lora-at BLE service");
-    return false;
+  if (this->service == NULL) {
+    this->service = this->client->getService(SERVICE_UUID);
+    if (this->service == NULL) {
+      log_i("can't find lora-at BLE service");
+      return false;
+    }
   }
 
   if (!preferences.begin("lora-at", false)) {
@@ -72,9 +76,12 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   uint8_t *raw = (uint8_t *)value.data();
   size_t raw_length = value.size();
   if (raw_length == 0) {
+    log_i("no observation scheduled");
+    memset(state, 0, sizeof(ObservationRequest));
     return;
   }
   memcpy(state, raw, raw_length);
+  log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldro);
 }
 
 void LoRaShadowClient::sendData(LoRaFrame *frame) {

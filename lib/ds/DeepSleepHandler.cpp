@@ -28,6 +28,10 @@ bool DeepSleepHandler::init(uint64_t deepSleepPeriodMicros, uint64_t inactivityT
 }
 
 void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
+  if (this->deepSleepPeriodMicros == 0) {
+    // not configured
+    return;
+  }
   uint64_t deepSleepTime;
   if (deepSleepRequestedMicros == 0 || this->deepSleepPeriodMicros < deepSleepRequestedMicros) {
     deepSleepTime = this->deepSleepPeriodMicros;
