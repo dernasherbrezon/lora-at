@@ -331,7 +331,7 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
     out->print("ERROR\r\n");
     return;
   }
-  if (!dsHandler->init(deepSleepPeriod, inactivityTimeout)) {
+  if (!dsHandler->init(deepSleepPeriod * 1000, inactivityTimeout * 1000)) {
     out->printf("unable to configure deep sleep\r\n");
     out->print("ERROR\r\n");
     return;

@@ -46,6 +46,7 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
 
 void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   if (this->client == NULL) {
+    BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
     if (!tempClient->connect(*this->address)) {
       return;
@@ -78,6 +79,7 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
 
 void LoRaShadowClient::sendData(LoRaFrame *frame) {
   if (this->client == NULL) {
+    BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
     if (!tempClient->connect(*this->address)) {
       return;
