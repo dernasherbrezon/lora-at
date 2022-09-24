@@ -24,6 +24,7 @@ LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 
 RTC_DATA_ATTR ObservationRequest scheduledObservation;
+uint64_t stopObservationMicros = 0;
 
 void scheduleObservation() {
   // always attempt to load fresh config
@@ -32,6 +33,9 @@ void scheduleObservation() {
     if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
+      // do not setup/mess with local timer during deep sleep mode
+      // use server-side millis
+      stopObservationMicros = esp_timer_get_time() + (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
       lora->startLoraRx(&scheduledObservation);
     }
   } else {
@@ -81,8 +85,7 @@ void loop() {
 
   // FIXME thread sleep 1sec? Or some task based thing?
 
-  //FIXME micros vs millis + esp_timer_get_time is not UNIX timestamp
-  if (scheduledObservation.endTimeMillis != 0 && scheduledObservation.endTimeMillis < esp_timer_get_time()) {
+  if (stopObservationMicros != 0 && stopObservationMicros < esp_timer_get_time()) {
     lora->stopRx();
     scheduleObservation();
     return;
