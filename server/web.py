@@ -55,6 +55,8 @@ class ScheduleHandler(BaseHTTPRequestHandler):
             if client != None and client.getFrames() != None:
                 for cur in client.getFrames():
                     frames.append(cur.__dict__)
+                # reset frames to empty once returned via API
+                client.setFrames([])
             self.wfile.write(bytes(json.dumps(frames), "utf-8"))
         else:
             self.sendStatus(404)

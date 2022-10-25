@@ -127,6 +127,22 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
         <tr>
             <td>AT+DISPLAY=1<br>OK</td>
         </tr>
+        <tr>
+            <td rowspan="2">Configure deep sleep mode</td>
+            <td>AT+DSCONFIG=server_bt_address,inactivity_timeout,deep_sleep_period</td>
+            <td rowspan="2">This command will configure deep sleep mode. After startup ESP will wait inactivity_timeout before going into deep sleep mode. Any AT command will reset this timeout. Once in deep sleep mode it will sleep for deep_sleep_period, wake up, check server_bt_address for any observation updates. If none, then it will go to sleep again. If there any, then it will start LoRa rx and periodically send frames to server_bt_address. The command will return client's bluetooth address. Going into deep sleep mode will automatically turn display off</td>
+        </tr>
+        <tr>
+            <td>AT+DSCONFIG=B8:27:EB:6C:7C:F8,30000,30000<br>B8:27:EB:6C:5B:AA<br>OK</td>
+        </tr>
+        <tr>
+            <td rowspan="2">Enter deep sleep mode</td>
+            <td>AT+DS</td>
+            <td rowspan="2">Go into deep sleep mode immediately using the current configuration.</td>
+        </tr>
+        <tr>
+            <td>AT+DS<br>OK</td>
+        </tr>
     </tbody>
 </table>
 

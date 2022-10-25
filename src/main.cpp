@@ -33,9 +33,17 @@ void scheduleObservation() {
     if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
-      // do not setup/mess with local timer during deep sleep mode
       // use server-side millis
       stopObservationMicros = esp_timer_get_time() + (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
+      // set current server time
+      // LoRaModule will use current time for just received frame
+      struct timeval now;
+      now.tv_sec = scheduledObservation.currentTimeMillis / 1000;
+      now.tv_usec = 0;
+      int code = settimeofday(&now, NULL);
+      if( code != 0 ) {
+        log_e("unable to set current time. LoRa frame timestamp will be incorrect");
+      }
       lora->startLoraRx(&scheduledObservation);
     }
   } else {

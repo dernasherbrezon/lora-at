@@ -34,12 +34,16 @@ class ClientConfiguration:
         self.btaddress = json["btaddress"]
         self.minFrequency = json["minFrequency"]
         self.maxFrequency = json["maxFrequency"]
+        self.frames = []
 
     def setSchedule(self, schedule):
         self.schedule = schedule.sort(key=lambda x: x.startTimeMillis)
     
     def getFrames(self):
         return self.frames
+
+    def setFrames(self, frames):
+        self.frames = frames
 
     def findNextObservation(self):
         if self.schedule == None:
@@ -53,6 +57,9 @@ class ClientConfiguration:
                 return cur
 
         return None
+
+    def addFrame(self, frame):
+        self.frame.append(frame)
 
 
 

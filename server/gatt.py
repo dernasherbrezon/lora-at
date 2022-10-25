@@ -75,23 +75,35 @@ class ScheduleCharacteristic(bluez.Characteristic):
         self.add_descriptor(ScheduleDescriptor(bus, 0, self))
 
     def ReadValue(self, options):
-        lastPart = '/dev_'
-        index = options['device'].rfind(lastPart)
-        btaddress = options['device'][index + len(lastPart):].replace('_',':')
-        if self.config.hasClient(btaddress) == False:
-            print('client was not configured %s' % btaddress)
+        client = self.parseClient(options)
+        if client == None:
             return []
-        client = self.config.getClients()[btaddress]
         observationReq = client.findNextObservation()
         if observationReq == None:
             return []
 
-        # add 
+        # FIXME serialize request into dbus.bytes 
 
         return []
     
     def WriteValue(self, value, options):
         print('Write value opitons: ' + repr(value) + " " + repr(options))
+        client = self.parseClient(options)
+        if client == None:
+            return
+
+        # FIXME parse frame
+        frame = {}
+        client.addFrame(frame)
+    
+    def parseClient(self, options):
+        lastPart = '/dev_'
+        index = options['device'].rfind(lastPart)
+        btaddress = options['device'][index + len(lastPart):].replace('_',':')
+        if self.config.hasClient(btaddress) == False:
+            print('client was not configured %s' % btaddress)
+            return None
+        return self.config.getClients()[btaddress]
 
 class ScheduleDescriptor(bluez.Descriptor):
     
