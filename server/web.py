@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 import json
+import logging
 from configuration import ObservationRequest
 
 
@@ -70,5 +71,6 @@ class ScheduleHandler(BaseHTTPRequestHandler):
         response = {}
         response["status"] = status
         if message != None:
+            logging.info(message)
             response["message"] = message
         self.wfile.write(bytes(json.dumps(response), "utf-8"))

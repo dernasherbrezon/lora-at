@@ -1,5 +1,6 @@
 
 import json
+import logging
 from datetime import datetime
 
 class LoraFrame:
@@ -37,6 +38,7 @@ class ClientConfiguration:
         self.frames = []
 
     def setSchedule(self, schedule):
+        logging.info('new schedule for ' + self.btaddress + ' ' + schedule)
         self.schedule = schedule.sort(key=lambda x: x.startTimeMillis)
     
     def getFrames(self):
@@ -93,6 +95,7 @@ class Configuration:
     def setSchedule(self, btaddress, schedule):
         client = self.clients[btaddress]
         if client == None:
+            logging.info('unknown client')
             return
         client.setSchedule(schedule)
 

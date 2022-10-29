@@ -5,6 +5,9 @@ import dbus.service
 import bluez
 import configuration
 import threading
+import logging
+import struct
+import time
 
 try:
   from gi.repository import GObject
@@ -77,23 +80,30 @@ class ScheduleCharacteristic(bluez.Characteristic):
     def ReadValue(self, options):
         client = self.parseClient(options)
         if client == None:
+            logging.info("unknown client")
             return []
         observationReq = client.findNextObservation()
         if observationReq == None:
+            logging.info("[" + client + "] no schedule")
             return []
 
-        # FIXME serialize request into dbus.bytes 
-
-        return []
+        logging.info("[" + client + "] observation: " + observationReq)
+        # network byte order
+        packed = struct.pack("!QQQffBBBbHHB", observationReq.startTimeMillis, observationReq.endTimeMillis, int(time.time() * 1000), observationReq.freq, observationReq.bw, observationReq.sf, observationReq.cr, observationReq.syncWord, observationReq.power, observationReq.preambleLength, observationReq.gain, observationReq.ldro)
+        return dbus.Array(packed, signature=dbus.Signature('y'))
     
     def WriteValue(self, value, options):
-        print('Write value opitons: ' + repr(value) + " " + repr(options))
         client = self.parseClient(options)
         if client == None:
+            logging.info("unknown client")
             return
 
-        # FIXME parse frame
+        headerFormat = "!fffQL"
+        headerSize = struct.calcsize(headerFormat)
         frame = {}
+        frame.frequencyError, frame.rssi, frame.snr, frame.timestamp, frame.dataLength = struct.unpack(headerFormat, value[:headerSize])
+        frame.data = struct.unpack("%ds" % frame.dataLength, value[headerSize:])
+        logging.info("[" + client + "] received frame: " + frame)
         client.addFrame(frame)
     
     def parseClient(self, options):
