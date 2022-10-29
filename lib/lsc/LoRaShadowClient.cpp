@@ -112,34 +112,32 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
   length += 4;  // frame->getFrequencyError();
   length += 4;  // frame->getRssi();
   length += 4;  // frame->getSnr();
-  length += 4;  // frame->getTimestamp();
+  length += 8;  // frame->getTimestamp();
   length += 4;  // frame->getDataLength();
-  length += frame->getDataLength();
+  length += frame->dataLength;
 
   uint8_t *message = (uint8_t *)malloc(sizeof(uint8_t) * length);
   if (message == NULL) {
     return;
   }
 
-  log_i("size_t %d long %d", sizeof(size_t), sizeof(long));
-
-  float frequencyError = frame->getFrequencyError();
+  float frequencyError = frame->frequencyError;
   size_t offset = 0;
   memcpy(message + offset, &frequencyError, sizeof(float));
-  float rssi = frame->getRssi();
+  float rssi = frame->rssi;
   offset += 4;
   memcpy(message + offset, &rssi, sizeof(float));
-  float snr = frame->getSnr();
+  float snr = frame->snr;
   offset += 4;
   memcpy(message + offset, &snr, sizeof(float));
-  long timestamp = frame->getTimestamp();
+  long timestamp = frame->timestamp;
   offset += 4;
   memcpy(message + offset, &timestamp, sizeof(long));
-  size_t dataLength = frame->getDataLength();
-  offset += 4;
+  size_t dataLength = frame->dataLength;
+  offset += 8;
   memcpy(message + offset, &dataLength, sizeof(size_t));
   offset += 4;
-  memcpy(message + offset, frame->getData(), frame->getDataLength());
+  memcpy(message + offset, frame->data, frame->dataLength);
 
   req->writeValue(message, length, false);
 }

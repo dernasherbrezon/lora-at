@@ -390,24 +390,27 @@ LoRaFrame *LoRaModule::loop() {
 }
 
 LoRaFrame *LoRaModule::readFrame() {
-  LoRaFrame *result = new LoRaFrame();
-  result->setDataLength(this->phys->getPacketLength());
-  uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * result->getDataLength());
-  if (data == NULL) {
-    free(result);
+  LoRaFrame *result = (LoRaFrame *)malloc(sizeof(LoRaFrame_t));
+  if (result == NULL) {
     return NULL;
   }
-  result->setData(data);
+  result->dataLength = this->phys->getPacketLength();
+  uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * result->dataLength);
+  if (data == NULL) {
+    LoRaFrame_destroy(result);
+    return NULL;
+  }
+  result->data = data;
 
-  int16_t status = this->phys->readData(data, result->getDataLength());
+  int16_t status = this->phys->readData(data, result->dataLength);
   if (status != ERR_NONE) {
-    delete result;
+    LoRaFrame_destroy(result);
     log_e("unable to read the frame: %d", status);
     return NULL;
   }
   time_t now;
   time(&now);
-  result->setTimestamp(now);
+  result->timestamp = now;
   /**
     do not correct frequency error
     doppler correction should be more sophisticated, i.e.
@@ -419,16 +422,16 @@ LoRaFrame *LoRaModule::readFrame() {
   **/
   if (isSX1278()) {
     SX1278 *sx = (SX1278 *)this->phys;
-    result->setRssi(sx->getRSSI());
-    result->setSnr(sx->getSNR());
-    result->setFrequencyError(sx->getFrequencyError(false));
+    result->rssi = sx->getRSSI();
+    result->snr = sx->getSNR();
+    result->frequencyError = sx->getFrequencyError(false);
   } else if (isSX1276()) {
     SX1276 *sx = (SX1276 *)this->phys;
-    result->setRssi(sx->getRSSI());
-    result->setSnr(sx->getSNR());
-    result->setFrequencyError(sx->getFrequencyError(false));
+    result->rssi = sx->getRSSI();
+    result->snr = sx->getSNR();
+    result->frequencyError = sx->getFrequencyError(false);
   }
-  log_i("frame received: %d bytes RSSI: %f SNR: %f Timestamp: %ld", result->getDataLength(), result->getRssi(), result->getSnr(), result->getTimestamp());
+  log_i("frame received: %d bytes RSSI: %f SNR: %f Timestamp: %ld", result->dataLength, result->rssi, result->snr, result->timestamp);
   return result;
 }
 

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <inttypes.h>
 
 // reading states
 #define READING_CHARS 2
@@ -129,15 +130,15 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
   for (size_t i = 0; i < this->receivedFrames.size(); i++) {
     LoRaFrame *curFrame = this->receivedFrames[i];
     char *data = NULL;
-    int code = convertHexToString(curFrame->getData(), curFrame->getDataLength(), &data);
+    int code = convertHexToString(curFrame->data, curFrame->dataLength, &data);
     if (code != 0) {
       out->print("unable to convert hex\r\n");
       out->print("ERROR\r\n");
       return;
     }
-    out->printf("%s,%g,%g,%g,%ld\r\n", data, curFrame->getRssi(), curFrame->getSnr(), curFrame->getFrequencyError(), curFrame->getTimestamp());
+    out->printf("%s,%g,%g,%g,%" PRIu64 "\r\n", data, curFrame->rssi, curFrame->snr, curFrame->frequencyError, curFrame->timestamp);
     free(data);
-    delete curFrame;
+    LoRaFrame_destroy(curFrame);
   }
   this->receivedFrames.clear();
   out->print("OK\r\n");

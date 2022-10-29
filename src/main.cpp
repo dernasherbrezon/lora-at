@@ -5,7 +5,7 @@
 #include <LoRaShadowClient.h>
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include "Display.h"
 
@@ -85,6 +85,7 @@ void loop() {
   if (lora->isReceivingData()) {
     LoRaFrame *frame = lora->loop();
     if (frame != NULL) {
+      //FIXME destroy frames?
       client->sendData(frame);
       handler->addFrame(frame);
     }
