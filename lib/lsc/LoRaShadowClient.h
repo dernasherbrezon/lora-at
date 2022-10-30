@@ -20,6 +20,9 @@ class LoRaShadowClient {
   BLERemoteCharacteristic *req = NULL;
   BLEAddress *address = NULL;
   Preferences preferences;
+
+  uint64_t htonll(uint64_t x);
+  uint64_t ntohll(uint64_t x);
 };
 
 #endif

@@ -2,6 +2,7 @@
 
 #include <BLEDevice.h>
 #include <esp32-hal-log.h>
+#include <lwip/sockets.h>
 
 #define SERVICE_UUID "3f5f0b4d-e311-4921-b29d-936afb8734cc"
 #define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
@@ -80,7 +81,60 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
     memset(state, 0, sizeof(ObservationRequest));
     return;
   }
-  memcpy(state, raw, raw_length);
+  if (sizeof(ObservationRequest) != raw_length) {
+    log_i("corrupted message received. expected: %zu", sizeof(ObservationRequest));
+    memset(state, 0, sizeof(ObservationRequest));
+    return;
+  }
+
+  size_t offset = 0;
+
+  memcpy(&(state->startTimeMillis), raw + offset, sizeof(state->startTimeMillis));
+  state->startTimeMillis = ntohll(state->startTimeMillis);
+  offset += sizeof(state->startTimeMillis);
+
+  memcpy(&(state->endTimeMillis), raw + offset, sizeof(state->endTimeMillis));
+  state->endTimeMillis = ntohll(state->endTimeMillis);
+  offset += sizeof(state->endTimeMillis);
+
+  memcpy(&(state->currentTimeMillis), raw + offset, sizeof(state->currentTimeMillis));
+  state->currentTimeMillis = ntohll(state->currentTimeMillis);
+  offset += sizeof(state->currentTimeMillis);
+
+  uint32_t freq;
+  memcpy(&freq, raw + offset, sizeof(freq));
+  freq = ntohl(freq);
+  memcpy(&(state->freq), &freq, sizeof(freq));
+  offset += sizeof(freq);
+      
+  uint32_t bw;
+  memcpy(&bw, raw + offset, sizeof(bw));
+  bw = ntohl(bw);
+  memcpy(&(state->bw), &bw, sizeof(bw));
+  offset += sizeof(bw);
+
+  memcpy(&(state->sf), raw + offset, sizeof(state->sf));
+  offset += sizeof(state->sf);
+
+  memcpy(&(state->cr), raw + offset, sizeof(state->cr));
+  offset += sizeof(state->cr);
+
+  memcpy(&(state->syncWord), raw + offset, sizeof(state->syncWord));
+  offset += sizeof(state->syncWord);
+
+  memcpy(&(state->power), raw + offset, sizeof(state->power));
+  offset += sizeof(state->power);
+
+  memcpy(&(state->preambleLength), raw + offset, sizeof(state->preambleLength));
+  state->preambleLength = ntohs(state->preambleLength);
+  offset += sizeof(state->preambleLength);
+
+  memcpy(&(state->gain), raw + offset, sizeof(state->gain));
+  offset += sizeof(state->gain);
+
+  memcpy(&(state->ldro), raw + offset, sizeof(state->ldro));
+  offset += sizeof(state->ldro);
+
   log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldro);
 }
 
@@ -109,11 +163,11 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
   }
 
   size_t length = 0;
-  length += 4;  // frame->getFrequencyError();
-  length += 4;  // frame->getRssi();
-  length += 4;  // frame->getSnr();
-  length += 8;  // frame->getTimestamp();
-  length += 4;  // frame->getDataLength();
+  length += sizeof(frame->frequencyError);
+  length += sizeof(frame->rssi);
+  length += sizeof(frame->snr);
+  length += sizeof(frame->timestamp);
+  length += sizeof(frame->dataLength);
   length += frame->dataLength;
 
   uint8_t *message = (uint8_t *)malloc(sizeof(uint8_t) * length);
@@ -121,23 +175,53 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
     return;
   }
 
-  float frequencyError = frame->frequencyError;
   size_t offset = 0;
-  memcpy(message + offset, &frequencyError, sizeof(float));
-  float rssi = frame->rssi;
-  offset += 4;
-  memcpy(message + offset, &rssi, sizeof(float));
-  float snr = frame->snr;
-  offset += 4;
-  memcpy(message + offset, &snr, sizeof(float));
-  long timestamp = frame->timestamp;
-  offset += 4;
-  memcpy(message + offset, &timestamp, sizeof(long));
-  size_t dataLength = frame->dataLength;
-  offset += 8;
-  memcpy(message + offset, &dataLength, sizeof(size_t));
-  offset += 4;
+
+  uint32_t frequencyError;
+  memcpy(&frequencyError, &(frame->frequencyError), sizeof(frame->frequencyError));
+  frequencyError = htonl(frequencyError);
+  memcpy(message + offset, &frequencyError, sizeof(frequencyError));
+  offset += sizeof(frequencyError);
+
+  uint32_t rssi;
+  memcpy(&rssi, &(frame->rssi), sizeof(frame->rssi));
+  rssi = htonl(rssi);
+  memcpy(message + offset, &rssi, sizeof(rssi));
+  offset += sizeof(rssi);
+
+  uint32_t snr;
+  memcpy(&snr, &(frame->snr), sizeof(frame->snr));
+  snr = htonl(snr);
+  memcpy(message + offset, &snr, sizeof(snr));
+  offset += sizeof(snr);
+
+  uint64_t timestamp = htonll(frame->timestamp);
+  memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
+  offset += sizeof(frame->timestamp);
+
+  uint32_t dataLength = htonl(frame->dataLength);
+  memcpy(message + offset, &dataLength, sizeof(frame->dataLength));
+  offset += sizeof(frame->dataLength);
+
   memcpy(message + offset, frame->data, frame->dataLength);
+  offset += frame->dataLength;
 
   req->writeValue(message, length, false);
+  free(message);
+}
+
+uint64_t LoRaShadowClient::htonll(uint64_t x) {
+#if __BIG_ENDIAN__
+  return x;
+#else
+  return ((uint64_t)htonl((x)&0xFFFFFFFFLL) << 32) | htonl((x) >> 32);
+#endif
+}
+
+uint64_t LoRaShadowClient::ntohll(uint64_t x) {
+#if __BIG_ENDIAN__
+  return x;
+#else
+  return ((uint64_t)ntohl((x)&0xFFFFFFFFLL) << 32) | ntohl((x) >> 32);
+#endif
 }
