@@ -9,29 +9,35 @@ from configuration import ObservationRequest
 class ScheduleHandler(BaseHTTPRequestHandler):
 
     config = None
+    filename = None
 
     def do_POST(self):
         parsed = urlparse(self.path)
-        if parsed.path != '/api/v1/schedule':
+        params = parse_qs(parsed.query)
+        if parsed.path == '/api/v1/schedule':
+            if 'client' not in params:
+                self.sendStatus(400, "'client' parameter is missing")
+                return
+            if self.config.hasClient(params['client']) == False:
+                self.sendStatus(400, "unknown client address")
+                return
+
+            content_len = int(self.headers.get('Content-Length'))
+            parsed = json.load(self.rfile.read(content_len))
+            schedule = set()
+            for cur in parsed:
+                schedule.add(ObservationRequest(cur))
+
+            self.config.setSchedule(params['client'], schedule)
+            self.sendStatus(200)
+        elif parsed.path == '/api/v1/client':
+            self.config.addClient(params['client'])
+            with open(self.filename, "w") as outfile:
+                outfile.write(json.dumps(self.config, default=lambda x: x.__dict__))
+            self.sendStatus(200)
+        else:
             self.sendStatus(404)
             return
-
-        params = parse_qs(parsed.query)
-        if 'client' not in params:
-            self.sendStatus(400, "'client' parameter is missing")
-            return
-        if self.config.hasClient(params['client']) == False:
-            self.sendStatus(400, "unknown client address")
-            return
-
-        content_len = int(self.headers.get('Content-Length'))
-        parsed = json.load(self.rfile.read(content_len))
-        schedule = set()
-        for cur in parsed:
-            schedule.add(ObservationRequest(cur))
-
-        self.config.setSchedule(params['client'], schedule)
-        self.sendStatus()
 
     def do_GET(self):
         parsed = urlparse(self.path)

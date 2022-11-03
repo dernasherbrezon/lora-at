@@ -1,0 +1,12 @@
+[Unit]
+Description=Lora-AT Service
+After=time-sync.target
+
+[Service]
+ExecStart=/usr/bin/python main.py configuration.json
+Restart=always
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target

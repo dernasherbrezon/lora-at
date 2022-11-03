@@ -101,3 +101,6 @@ class Configuration:
 
     def getClients(self):
         return self.clients
+
+    def addClient(self, btaddress):
+        self.clients[btaddress] = ClientConfiguration([])

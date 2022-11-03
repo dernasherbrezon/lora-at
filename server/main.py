@@ -15,6 +15,7 @@ def main():
     gattServer.start()
 
     web.ScheduleHandler.config = config
+    web.ScheduleHandler.filename = sys.argv[1]
     webServer = HTTPServer((config.getHostname(), config.getPort()), web.ScheduleHandler)
     print('starting web server on %s:%s' % (config.getHostname(), config.getPort()))
     try:
