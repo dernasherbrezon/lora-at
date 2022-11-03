@@ -31,6 +31,12 @@ class ObservationRequest:
 
 class ClientConfiguration:
 
+    def __init__(self, btaddress, minFrequency, maxFrequency):
+        self.btaddress = btaddress
+        self.minFrequency = minFrequency
+        self.maxFrequency = maxFrequency
+        self.frames = []
+
     def __init__(self, json):
         self.btaddress = json["btaddress"]
         self.minFrequency = json["minFrequency"]
@@ -102,5 +108,5 @@ class Configuration:
     def getClients(self):
         return self.clients
 
-    def addClient(self, btaddress):
-        self.clients[btaddress] = ClientConfiguration([])
+    def addClient(self, btaddress, minFreq, maxFreq):
+        self.clients[btaddress] = ClientConfiguration(btaddress, minFreq, maxFreq)

@@ -31,7 +31,16 @@ class ScheduleHandler(BaseHTTPRequestHandler):
             self.config.setSchedule(params['client'], schedule)
             self.sendStatus(200)
         elif parsed.path == '/api/v1/client':
-            self.config.addClient(params['client'])
+            if 'client' not in params:
+                self.sendStatus(400, "'client' parameter is missing")
+                return
+            if 'minFreq' not in params:
+                self.sendStatus(400, "'minFreq' parameter is missing")
+                return
+            if 'maxFreq' not in params:
+                self.sendStatus(400, "'maxFreq' parameter is missing")
+                return
+            self.config.addClient(params['client'], params['minFreq'], params['maxFreq'])
             with open(self.filename, "w") as outfile:
                 outfile.write(json.dumps(self.config, default=lambda x: x.__dict__))
             self.sendStatus(200)

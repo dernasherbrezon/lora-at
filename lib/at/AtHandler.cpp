@@ -3,10 +3,10 @@
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <Util.h>
+#include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#include <inttypes.h>
 
 // reading states
 #define READING_CHARS 2
@@ -327,6 +327,11 @@ void AtHandler::handleSetTime(unsigned long time, Stream *out) {
 }
 
 void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out) {
+  if (this->config_chip == NULL) {
+    out->print("lora chip is not configured\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
   if (!client->init(address, address_len)) {
     out->printf("unable to connect to lora-shadow: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
     out->print("ERROR\r\n");
@@ -340,7 +345,6 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
 
   this->display->setEnabled(false);
 
-  out->print(BLEDevice::getAddress().toString().c_str());
-  out->print("\r\n");
+  out->printf("%s,%g,%g\r\n", BLEDevice::getAddress().toString().c_str(), this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
   out->print("OK\r\n");
 }

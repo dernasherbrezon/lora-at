@@ -31,7 +31,7 @@ COMMAND="AT+DSCONFIG=${SERVER_BT_ADDRESS},${INACTIVITY_TIMEOUT},${DEEP_SLEEP_PER
 
 echo -e ${COMMAND} > ${SERIAL_PORT}
 
-CLIENT_BT_ADDRESS=""
+DEVICE_INFO=""
 
 while true
 do
@@ -42,15 +42,16 @@ do
     elif [[ ${REPLY} eq "ERROR" ]]; then
         break
     elif [[ ${REPLY} =~ ([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}) ]]; then
-        CLIENT_BT_ADDRESS=${REPLY}
+        DEVICE_INFO=${REPLY}
     fi
 done
 
-if [[ ${CLIENT_BT_ADDRESS} eq "" ]]; then
+if [[ ${DEVICE_INFO} eq "" ]]; then
     exit 1
 fi
 
-#FIXME read min max freq via AT?
-curl -X POST "http://localhost:8080/api/v1/client?client=${CLIENT_BT_ADDRESS}"
+DEVICE_INFO_ARR=(${DEVICE_INFO//,/ })
 
-echo "client with address ${CLIENT_BT_ADDRESS} configured"
+curl -X POST "http://localhost:8080/api/v1/client?client=${DEVICE_INFO_ARR[0]}&minFreq=${DEVICE_INFO_ARR[1]}&maxFreq=${DEVICE_INFO_ARR[2]}"
+
+echo "client with address ${DEVICE_INFO_ARR[0]} configured. Min frequency: ${DEVICE_INFO_ARR[1]} Max frequency: ${DEVICE_INFO_ARR[2]}"
