@@ -1,16 +1,25 @@
 #/bin/bash
 
-SERIAL_PORT=$1
+echo "this is helper interactive script to configure connection between ESP32 and bluetooth server on the targer host"
+echo "if ESP32 board already configured for deep sleep mode, then simply curl web proxy with pre-configured values"
+
+SERIAL_PORT=""
+echo "enter serial device:"
+read SERIAL_PORT
+if [[ ${SERIAL_PORT} eq "" ]]; then
+    echo "serial port must be non-empty"
+    exit 1
+fi
 
 INACTIVITY_TIMEOUT_DEFAULT=30000
-echo "inactivity timeout (default=${INACTIVITY_TIMEOUT_DEFAULT}):"
+echo "enter 'inactivity timeout' (default=${INACTIVITY_TIMEOUT_DEFAULT}):"
 read INACTIVITY_TIMEOUT
 if [[ ${INACTIVITY_TIMEOUT} eq "" ]]; then
     INACTIVITY_TIMEOUT = ${INACTIVITY_TIMEOUT_DEFAULT}
 fi
 
 DEEP_SLEEP_PERIOD_DEFAULT=30000
-echo "deep sleep period (default=${DEEP_SLEEP_PERIOD_DEFAULT}):"
+echo "enter 'deep sleep period' (default=${DEEP_SLEEP_PERIOD_DEFAULT}):"
 read DEEP_SLEEP_PERIOD
 if [[ ${DEEP_SLEEP_PERIOD} eq "" ]]; then
     DEEP_SLEEP_PERIOD = ${DEEP_SLEEP_PERIOD_DEFAULT}
