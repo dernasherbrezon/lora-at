@@ -37,11 +37,9 @@ class ClientConfiguration:
         self.maxFrequency = maxFrequency
         self.frames = []
 
-    def __init__(self, json):
-        self.btaddress = json["btaddress"]
-        self.minFrequency = json["minFrequency"]
-        self.maxFrequency = json["maxFrequency"]
-        self.frames = []
+    @classmethod
+    def fromJson(cls, json):
+        return cls(json["btaddress"], json["minFrequency"], json["maxFrequency"])
 
     def setSchedule(self, schedule):
         logging.info('new schedule for ' + self.btaddress + ' ' + schedule)
@@ -84,7 +82,7 @@ class Configuration:
         self.clients = {}
         if "clients" in data:
             for i in data["clients"]:
-                self.clients[i["btaddress"]] = ClientConfiguration(i)
+                self.clients[i] = ClientConfiguration.fromJson(data["clients"][i])
 
     def getHostname(self):
         return self.hostname

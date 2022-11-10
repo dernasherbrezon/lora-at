@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
-from urllib.parse import parse_qs
+from urllib.parse import parse_qsl
 import json
 import logging
 from configuration import ObservationRequest
@@ -13,7 +13,7 @@ class ScheduleHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
-        params = parse_qs(parsed.query)
+        params = dict(parse_qsl(parsed.query))
         if parsed.path == '/api/v1/schedule':
             if 'client' not in params:
                 self.sendStatus(400, "'client' parameter is missing")
@@ -59,7 +59,7 @@ class ScheduleHandler(BaseHTTPRequestHandler):
                 clients.append(self.config.getClients()[key].__dict__)
             self.wfile.write(bytes(json.dumps(clients), "utf-8"))
         elif parsed.path == '/api/v1/data':
-            params = parse_qs(parsed.query)
+            params = dict(parse_qsl(parsed.query))
             if 'client' not in params:
                 self.sendStatus(400, "'client' parameter is missing")
                 return
