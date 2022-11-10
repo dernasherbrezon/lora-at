@@ -15,14 +15,14 @@ INACTIVITY_TIMEOUT_DEFAULT=30000
 echo "enter 'inactivity timeout' (default=${INACTIVITY_TIMEOUT_DEFAULT}):"
 read INACTIVITY_TIMEOUT
 if [[ ${INACTIVITY_TIMEOUT} == "" ]]; then
-    INACTIVITY_TIMEOUT = ${INACTIVITY_TIMEOUT_DEFAULT}
+    INACTIVITY_TIMEOUT=${INACTIVITY_TIMEOUT_DEFAULT}
 fi
 
 DEEP_SLEEP_PERIOD_DEFAULT=30000
 echo "enter 'deep sleep period' (default=${DEEP_SLEEP_PERIOD_DEFAULT}):"
 read DEEP_SLEEP_PERIOD
 if [[ ${DEEP_SLEEP_PERIOD} == "" ]]; then
-    DEEP_SLEEP_PERIOD = ${DEEP_SLEEP_PERIOD_DEFAULT}
+    DEEP_SLEEP_PERIOD=${DEEP_SLEEP_PERIOD_DEFAULT}
 fi
 
 SERVER_BT_ADDRESS="$(hcitool dev | awk '$0=$2')"
@@ -43,13 +43,18 @@ DEVICE_INFO=""
 
 while true
 do
-    REPLY=$(cat ${SERIAL_PORT})
+    read -d $'\n' -r REPLY < ${SERIAL_PORT}
+    REPLY=${REPLY//[$'\t\r\n']}
+    if [[ ${REPLY} == "" ]]; then
+        sleep 1
+        continue
+    fi
     echo "reply: ${REPLY}"
     if [[ ${REPLY} == "OK" ]]; then
         break
     elif [[ ${REPLY} == "ERROR" ]]; then
         break
-    elif [[ ${REPLY} =~ ([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}) ]]; then
+    elif [[ ${REPLY} =~ ([0-9A-Fa-f]{2}):([0-9A-Fa-f]{2}):([0-9A-Fa-f]{2}):([0-9A-Fa-f]{2}):([0-9A-Fa-f]{2}):([0-9A-Fa-f]{2}) ]]; then
         DEVICE_INFO=${REPLY}
     fi
 done
