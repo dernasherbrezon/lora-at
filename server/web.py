@@ -18,7 +18,7 @@ class ScheduleHandler(BaseHTTPRequestHandler):
             if 'client' not in params:
                 self.sendStatus(400, "'client' parameter is missing")
                 return
-            if self.config.hasClient(params['client']) == False:
+            if self.config.hasClient(params['client'].lower()) == False:
                 self.sendStatus(400, "unknown client address")
                 return
 
@@ -27,12 +27,12 @@ class ScheduleHandler(BaseHTTPRequestHandler):
                 self.sendStatus(400, "no schedule provided")
                 return
 
-            parsed = json.load(self.rfile.read(content_len))
+            parsed = json.loads(self.rfile.read(content_len))
             schedule = set()
             for cur in parsed:
                 schedule.add(ObservationRequest(cur))
 
-            self.config.setSchedule(params['client'], schedule)
+            self.config.setSchedule(params['client'].lower(), schedule)
             with open(self.filename, "w") as outfile:
                 outfile.write(json.dumps(self.config, default=lambda x: x.__dict__))
             self.sendStatus(200)
@@ -46,7 +46,7 @@ class ScheduleHandler(BaseHTTPRequestHandler):
             if 'maxFreq' not in params:
                 self.sendStatus(400, "'maxFreq' parameter is missing")
                 return
-            self.config.addClient(params['client'], params['minFreq'], params['maxFreq'])
+            self.config.addClient(params['client'].lower(), params['minFreq'], params['maxFreq'])
             with open(self.filename, "w") as outfile:
                 outfile.write(json.dumps(self.config, default=lambda x: x.__dict__))
             self.sendStatus(200)
@@ -73,7 +73,7 @@ class ScheduleHandler(BaseHTTPRequestHandler):
                 self.sendStatus(400, "unknown client address")
                 return
             frames = []
-            client = self.config.getClients()[params['client']]
+            client = self.config.getClients()[params['client'].lower()]
             if client != None and client.getFrames() != None:
                 for cur in client.getFrames():
                     frames.append(cur.__dict__)

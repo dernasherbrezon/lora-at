@@ -8,6 +8,7 @@ import threading
 import logging
 import struct
 import time
+import traceback
 
 try:
   from gi.repository import GObject
@@ -77,38 +78,45 @@ class ScheduleCharacteristic(bluez.Characteristic):
         self.add_descriptor(ScheduleDescriptor(bus, 0, self))
 
     def ReadValue(self, options):
-        client = self.parseClient(options)
-        if client == None:
-            logging.info("unknown client")
-            return []
-        observationReq = client.findNextObservation()
-        if observationReq == None:
-            logging.info("[" + client + "] no schedule")
-            return []
+        try:
+            client = self.parseClient(options)
+            if client == None:
+                return []
 
-        logging.info("[" + client + "] observation: " + observationReq)
-        # network byte order
-        packed = struct.pack("!QQQffBBBbHHB", observationReq.startTimeMillis, observationReq.endTimeMillis, int(time.time() * 1000), observationReq.freq, observationReq.bw, observationReq.sf, observationReq.cr, observationReq.syncWord, observationReq.power, observationReq.preambleLength, observationReq.gain, observationReq.ldro)
-        return dbus.Array(packed, signature=dbus.Signature('y'))
+            observationReq = client.findNextObservation()
+            if observationReq == None:
+                logging.info("[" + client + "] no schedule")
+                return []
+
+            logging.info("[" + client + "] observation: " + observationReq)
+            # network byte order
+            packed = struct.pack("!QQQffBBBbHHB", observationReq.startTimeMillis, observationReq.endTimeMillis, int(time.time() * 1000), observationReq.freq, observationReq.bw, observationReq.sf, observationReq.cr, observationReq.syncWord, observationReq.power, observationReq.preambleLength, observationReq.gain, observationReq.ldro)
+            return dbus.Array(packed, signature=dbus.Signature('y'))
+        except:
+            logging.error(traceback.format_exc())
+            return []
     
     def WriteValue(self, value, options):
-        client = self.parseClient(options)
-        if client == None:
-            logging.info("unknown client")
-            return
+        try:
+            client = self.parseClient(options)
+            if client == None:
+                return
 
-        headerFormat = "!fffQL"
-        headerSize = struct.calcsize(headerFormat)
-        frame = {}
-        frame.frequencyError, frame.rssi, frame.snr, frame.timestamp, frame.dataLength = struct.unpack(headerFormat, value[:headerSize])
-        frame.data = struct.unpack("%ds" % frame.dataLength, value[headerSize:])
-        logging.info("[" + client + "] received frame: " + frame)
-        client.addFrame(frame)
-    
+            headerFormat = "!fffQL"
+            headerSize = struct.calcsize(headerFormat)
+            frame = {}
+            frame.frequencyError, frame.rssi, frame.snr, frame.timestamp, frame.dataLength = struct.unpack(headerFormat, value[:headerSize])
+            frame.data = struct.unpack("%ds" % frame.dataLength, value[headerSize:])
+            logging.info("[" + client + "] received frame: " + frame)
+            client.addFrame(frame)
+        except:
+            logging.error(traceback.format_exc())
+            return []
+            
     def parseClient(self, options):
         lastPart = '/dev_'
         index = options['device'].rfind(lastPart)
-        btaddress = options['device'][index + len(lastPart):].replace('_',':')
+        btaddress = options['device'][index + len(lastPart):].replace('_',':').lower()
         if self.config.hasClient(btaddress) == False:
             logging.info('client is not configured %s' % btaddress)
             return None

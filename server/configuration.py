@@ -31,19 +31,20 @@ class ObservationRequest:
 
 class ClientConfiguration:
 
-    def __init__(self, btaddress, minFrequency, maxFrequency):
+    def __init__(self, btaddress, minFrequency, maxFrequency, schedule):
         self.btaddress = btaddress
         self.minFrequency = minFrequency
         self.maxFrequency = maxFrequency
+        self.schedule = schedule
         self.frames = []
 
     @classmethod
     def fromJson(cls, json):
-        return cls(json["btaddress"], json["minFrequency"], json["maxFrequency"])
+        return cls(json["btaddress"], json["minFrequency"], json["maxFrequency"], json["schedule"])
 
     def setSchedule(self, schedule):
         logging.info('new schedule for ' + self.btaddress)
-        self.schedule = schedule.sort(key=lambda x: x.startTimeMillis)
+        self.schedule = sorted(schedule, key=lambda x: x.startTimeMillis)
     
     def getFrames(self):
         return self.frames
@@ -67,6 +68,8 @@ class ClientConfiguration:
     def addFrame(self, frame):
         self.frame.append(frame)
 
+    def __str__(self):
+        return self.btaddress
 
 
 class Configuration:
@@ -107,4 +110,4 @@ class Configuration:
         return self.clients
 
     def addClient(self, btaddress, minFreq, maxFreq):
-        self.clients[btaddress] = ClientConfiguration(btaddress, minFreq, maxFreq)
+        self.clients[btaddress] = ClientConfiguration(btaddress, minFreq, maxFreq, [])
