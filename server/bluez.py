@@ -5,6 +5,7 @@ import dbus
 import dbus.exceptions
 import dbus.mainloop.glib
 import dbus.service
+import logging
 
 BLUEZ_SERVICE_NAME = 'org.bluez'
 GATT_MANAGER_IFACE = 'org.bluez.GattManager1'
@@ -120,7 +121,7 @@ class Advertisement(dbus.service.Object):
                          in_signature='',
                          out_signature='')
     def Release(self):
-        print('%s: Released!' % self.path)
+        logging.info('%s: Released!' % self.path)
 
 class Service(dbus.service.Object):
     """
@@ -225,22 +226,22 @@ class Characteristic(dbus.service.Object):
                         in_signature='a{sv}',
                         out_signature='ay')
     def ReadValue(self, options):
-        print('Default ReadValue called, returning error')
+        logging.info('Default ReadValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE, in_signature='aya{sv}')
     def WriteValue(self, value, options):
-        print('Default WriteValue called, returning error')
+        logging.info('Default WriteValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE)
     def StartNotify(self):
-        print('Default StartNotify called, returning error')
+        logging.info('Default StartNotify called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_CHRC_IFACE)
     def StopNotify(self):
-        print('Default StopNotify called, returning error')
+        logging.info('Default StopNotify called, returning error')
         raise NotSupportedException()
 
     @dbus.service.signal(DBUS_PROP_IFACE,
@@ -286,10 +287,10 @@ class Descriptor(dbus.service.Object):
                         in_signature='a{sv}',
                         out_signature='ay')
     def ReadValue(self, options):
-        print ('Default ReadValue called, returning error')
+        logging.info('Default ReadValue called, returning error')
         raise NotSupportedException()
 
     @dbus.service.method(GATT_DESC_IFACE, in_signature='aya{sv}')
     def WriteValue(self, value, options):
-        print('Default WriteValue called, returning error')
+        logging.info('Default WriteValue called, returning error')
         raise NotSupportedException()

@@ -110,7 +110,7 @@ class ScheduleCharacteristic(bluez.Characteristic):
         index = options['device'].rfind(lastPart)
         btaddress = options['device'][index + len(lastPart):].replace('_',':')
         if self.config.hasClient(btaddress) == False:
-            print('client was not configured %s' % btaddress)
+            logging.info('client is not configured %s' % btaddress)
             return None
         return self.config.getClients()[btaddress]
 
@@ -129,17 +129,17 @@ class ScheduleDescriptor(bluez.Descriptor):
         return [dbus.String('Schedule for LoRa module')]
 
 def register_app_cb():
-    print('GATT application registered')
+    logging.info('GATT application registered')
 
 def register_app_error_cb(error):
-    print('failed to register application: ' + str(error))
+    logging.error('failed to register application: ' + str(error))
     mainloop.quit()
 
 def register_ad_cb():
-    print('advertisement registered')
+    logging.info('advertisement registered')
 
 def register_ad_error_cb(error):
-    print('failed to register advertisement: ' + str(error))
+    logging.error('failed to register advertisement: ' + str(error))
     mainloop.quit()
 
 def find_adapter(bus):
@@ -163,7 +163,7 @@ class GattServer(threading.Thread):
 
         adapter = find_adapter(bus)
         if not adapter:
-            print('GattManager1 interface not found')
+            logging.error('GattManager1 interface not found')
             return
 
         service_manager = dbus.Interface(
@@ -177,7 +177,7 @@ class GattServer(threading.Thread):
 
         mainloop = GObject.MainLoop()
 
-        print('registering GATT application')
+        logging.info('registering GATT application')
 
         service_manager.RegisterApplication(app.get_path(), {},
                                         reply_handler=register_app_cb,
@@ -195,5 +195,5 @@ class GattServer(threading.Thread):
         mainloop.run()
 
         self.ad_manager.UnregisterAdvertisement(self.advertisement)
-        print('advertisement unregistered')
+        logging.info('advertisement unregistered')
         dbus.service.Object.remove_from_connection(self.advertisement)

@@ -42,7 +42,7 @@ class ClientConfiguration:
         return cls(json["btaddress"], json["minFrequency"], json["maxFrequency"])
 
     def setSchedule(self, schedule):
-        logging.info('new schedule for ' + self.btaddress + ' ' + schedule)
+        logging.info('new schedule for ' + self.btaddress)
         self.schedule = schedule.sort(key=lambda x: x.startTimeMillis)
     
     def getFrames(self):

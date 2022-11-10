@@ -23,12 +23,18 @@ class ScheduleHandler(BaseHTTPRequestHandler):
                 return
 
             content_len = int(self.headers.get('Content-Length'))
+            if content_len == 0:
+                self.sendStatus(400, "no schedule provided")
+                return
+
             parsed = json.load(self.rfile.read(content_len))
             schedule = set()
             for cur in parsed:
                 schedule.add(ObservationRequest(cur))
 
             self.config.setSchedule(params['client'], schedule)
+            with open(self.filename, "w") as outfile:
+                outfile.write(json.dumps(self.config, default=lambda x: x.__dict__))
             self.sendStatus(200)
         elif parsed.path == '/api/v1/client':
             if 'client' not in params:
