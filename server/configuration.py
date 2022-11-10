@@ -55,12 +55,12 @@ class ClientConfiguration:
     def findNextObservation(self):
         if self.schedule == None:
             return None
-        currentTime = datetime.now()
+        currentTime = int(datetime.utcnow().timestamp() * 1000)
         # requests are sorted startTimeMillis asc
         # return first found
         for cur in self.schedule:
-            if cur.startTimeMillis > currentTime:
-                cur.currentTimeMillis = currentTime
+            if cur["startTimeMillis"] > currentTime:
+                cur["currentTimeMillis"] = currentTime
                 return cur
 
         return None
