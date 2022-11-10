@@ -38,7 +38,6 @@ class Application(dbus.service.Object):
     @dbus.service.method(bluez.DBUS_OM_IFACE, out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         response = {}
-        print('GetManagedObjects')
 
         for service in self.services:
             response[service.get_path()] = service.get_properties()
@@ -133,14 +132,14 @@ def register_app_cb():
     print('GATT application registered')
 
 def register_app_error_cb(error):
-    print('Failed to register application: ' + str(error))
+    print('failed to register application: ' + str(error))
     mainloop.quit()
 
 def register_ad_cb():
     print('advertisement registered')
 
 def register_ad_error_cb(error):
-    print('Failed to register advertisement: ' + str(error))
+    print('failed to register advertisement: ' + str(error))
     mainloop.quit()
 
 def find_adapter(bus):
@@ -178,7 +177,7 @@ class GattServer(threading.Thread):
 
         mainloop = GObject.MainLoop()
 
-        print('registering GATT application...')
+        print('registering GATT application')
 
         service_manager.RegisterApplication(app.get_path(), {},
                                         reply_handler=register_app_cb,
