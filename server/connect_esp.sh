@@ -6,7 +6,7 @@ echo "if ESP32 board already configured for deep sleep mode, then simply curl we
 SERIAL_PORT=""
 echo "enter serial device:"
 read SERIAL_PORT
-if [[ ${SERIAL_PORT} eq "" ]]; then
+if [[ ${SERIAL_PORT} == "" ]]; then
     echo "serial port must be non-empty"
     exit 1
 fi
@@ -14,25 +14,24 @@ fi
 INACTIVITY_TIMEOUT_DEFAULT=30000
 echo "enter 'inactivity timeout' (default=${INACTIVITY_TIMEOUT_DEFAULT}):"
 read INACTIVITY_TIMEOUT
-if [[ ${INACTIVITY_TIMEOUT} eq "" ]]; then
+if [[ ${INACTIVITY_TIMEOUT} == "" ]]; then
     INACTIVITY_TIMEOUT = ${INACTIVITY_TIMEOUT_DEFAULT}
 fi
 
 DEEP_SLEEP_PERIOD_DEFAULT=30000
 echo "enter 'deep sleep period' (default=${DEEP_SLEEP_PERIOD_DEFAULT}):"
 read DEEP_SLEEP_PERIOD
-if [[ ${DEEP_SLEEP_PERIOD} eq "" ]]; then
+if [[ ${DEEP_SLEEP_PERIOD} == "" ]]; then
     DEEP_SLEEP_PERIOD = ${DEEP_SLEEP_PERIOD_DEFAULT}
 fi
 
-# FIXME
-SERVER_BT_ADDRESS="FIXME"
+SERVER_BT_ADDRESS="$(hcitool dev | awk '$0=$2')"
 
 echo "Server BT address is: ${SERVER_BT_ADDRESS}"
 echo "Ready for ESP configuration"
 echo "Proceed? (y/n)"
 read PROCEED
-if [[ ${PROCEED} ne "y" ]]; then
+if [[ ${PROCEED} != "y" ]]; then
     exit 0
 fi
 
@@ -46,16 +45,16 @@ while true
 do
     REPLY=$(cat ${SERIAL_PORT})
     echo "reply: ${REPLY}"
-    if [[ ${REPLY} eq "OK" ]]; then
+    if [[ ${REPLY} == "OK" ]]; then
         break
-    elif [[ ${REPLY} eq "ERROR" ]]; then
+    elif [[ ${REPLY} == "ERROR" ]]; then
         break
     elif [[ ${REPLY} =~ ([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}):([0-9A-F]{2}) ]]; then
         DEVICE_INFO=${REPLY}
     fi
 done
 
-if [[ ${DEVICE_INFO} eq "" ]]; then
+if [[ ${DEVICE_INFO} == "" ]]; then
     exit 1
 fi
 
