@@ -1,4 +1,4 @@
-#include "LoraFrame.h"
+#include "LoRaFrame.h"
 #include <stdlib.h>
 
 void LoRaFrame_destroy(LoRaFrame *frame) {
