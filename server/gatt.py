@@ -90,7 +90,7 @@ class ScheduleCharacteristic(bluez.Characteristic):
 
             logging.info("[" + client + "] observation: " + observationReq)
             # network byte order
-            packed = struct.pack("!QQQffBBBbHHB", observationReq["startTimeMillis"], observationReq["endTimeMillis"], observationReq["currentTimeMillis"], observationReq["freq"], observationReq["bw"], observationReq["sf"], observationReq["cr"], observationReq["syncWord"], observationReq["power"], observationReq["preambleLength"], observationReq["gain"], observationReq["ldro"])
+            packed = struct.pack("!QQQffBBBbHBB", observationReq["startTimeMillis"], observationReq["endTimeMillis"], observationReq["currentTimeMillis"], observationReq["freq"], observationReq["bw"], observationReq["sf"], observationReq["cr"], observationReq["syncWord"], observationReq["power"], observationReq["preambleLength"], observationReq["gain"], observationReq["ldro"])
             return dbus.Array(packed, signature=dbus.Signature('y'))
         except:
             logging.error(traceback.format_exc())

@@ -6,6 +6,7 @@
 
 #define SERVICE_UUID "3f5f0b4d-e311-4921-b29d-936afb8734cc"
 #define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
+#define OBSERVATION_SIZE 40
 
 LoRaShadowClient::LoRaShadowClient() {
   if (!preferences.begin("lora-at", true)) {
@@ -81,8 +82,8 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
     memset(state, 0, sizeof(ObservationRequest));
     return;
   }
-  if (sizeof(ObservationRequest) != raw_length) {
-    log_i("corrupted message received. expected: %zu", sizeof(ObservationRequest));
+  if (raw_length < OBSERVATION_SIZE) {
+    log_i("corrupted message received. expected: %zu", OBSERVATION_SIZE);
     memset(state, 0, sizeof(ObservationRequest));
     return;
   }
@@ -132,8 +133,10 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   memcpy(&(state->gain), raw + offset, sizeof(state->gain));
   offset += sizeof(state->gain);
 
-  memcpy(&(state->ldro), raw + offset, sizeof(state->ldro));
-  offset += sizeof(state->ldro);
+  uint8_t ldro;
+  memcpy(&ldro, raw + offset, sizeof(ldro));
+  state->ldro = (LdroType)ldro;
+  offset += sizeof(ldro);
 
   log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldro);
 }

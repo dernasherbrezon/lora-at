@@ -29,6 +29,9 @@ class ObservationRequest:
         self.gain = json["gain"]
         self.ldro = json["ldro"]
 
+    def __str__(self):
+        return str(self.__dict__)
+
 class ClientConfiguration:
 
     def __init__(self, btaddress, minFrequency, maxFrequency, schedule):
