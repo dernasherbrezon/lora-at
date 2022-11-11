@@ -88,7 +88,7 @@ class ScheduleCharacteristic(bluez.Characteristic):
                 logging.info("[%s] no schedule" % client)
                 return []
 
-            logging.info("[%s] observation: %s" % client, observationReq)
+            logging.info("[%s] observation: %s" % (client, observationReq))
             # network byte order
             packed = struct.pack("!QQQffBBBbHBB", observationReq["startTimeMillis"], observationReq["endTimeMillis"], observationReq["currentTimeMillis"], observationReq["freq"], observationReq["bw"], observationReq["sf"], observationReq["cr"], observationReq["syncWord"], observationReq["power"], observationReq["preambleLength"], observationReq["gain"], observationReq["ldro"])
             return dbus.Array(packed, signature=dbus.Signature('y'))
@@ -107,7 +107,7 @@ class ScheduleCharacteristic(bluez.Characteristic):
             frame = {}
             frame["frequencyError"], frame["rssi"], frame["snr"], frame["timestamp"], frame["dataLength"] = struct.unpack(headerFormat, value[:headerSize])
             frame["data"] = struct.unpack("%ds" % frame["dataLength"], value[headerSize:])
-            logging.info("[%s] received frame: %s" % client, str(frame.__dict__))
+            logging.info("[%s] received frame: %s" % (client, str(frame.__dict__)))
             client.addFrame(frame)
         except:
             logging.error(traceback.format_exc())
