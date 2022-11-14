@@ -12,12 +12,14 @@ class LoRaShadowClient {
   LoRaShadowClient();
   bool init(uint8_t *address, size_t address_len);
   void loadRequest(ObservationRequest *state);
+  void sendBatteryLevel(uint16_t level);
   void sendData(LoRaFrame *frame);
 
  private:
   BLEClient *client = NULL;
   BLERemoteService *service = NULL;
   BLERemoteCharacteristic *req = NULL;
+  BLERemoteCharacteristic *battery = NULL;
   BLEAddress *address = NULL;
   Preferences preferences;
 

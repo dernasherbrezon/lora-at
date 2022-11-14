@@ -17,6 +17,10 @@
 #define ARDUINO_VARIANT "native"
 #endif
 
+#ifndef PIN_BATTERY_VOLTAGE
+#define PIN_BATTERY_VOLTAGE 0
+#endif
+
 LoRaModule *lora = NULL;
 AtHandler *handler;
 Display *display = NULL;
@@ -29,6 +33,11 @@ uint64_t stopObservationMicros = 0;
 void scheduleObservation() {
   // always attempt to load fresh config
   client->loadRequest(&scheduledObservation);
+  if (PIN_BATTERY_VOLTAGE != 0) {
+    //TODO should it be configured? Any timeout needed?
+    pinMode(PIN_BATTERY_VOLTAGE, INPUT);
+    client->sendBatteryLevel(analogRead(PIN_BATTERY_VOLTAGE));
+  }
   if (scheduledObservation.startTimeMillis != 0) {
     if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
@@ -41,7 +50,7 @@ void scheduleObservation() {
       now.tv_sec = scheduledObservation.currentTimeMillis / 1000;
       now.tv_usec = 0;
       int code = settimeofday(&now, NULL);
-      if( code != 0 ) {
+      if (code != 0) {
         log_e("unable to set current time. LoRa frame timestamp will be incorrect");
       }
       lora->startLoraRx(&scheduledObservation);
@@ -85,7 +94,7 @@ void loop() {
   if (lora->isReceivingData()) {
     LoRaFrame *frame = lora->loop();
     if (frame != NULL) {
-      //FIXME destroy frames?
+      // FIXME destroy frames?
       client->sendData(frame);
       handler->addFrame(frame);
     }

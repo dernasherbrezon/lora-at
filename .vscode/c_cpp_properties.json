@@ -231,6 +231,7 @@
                 "PIN_RST=23",
                 "PIN_OLED_SDA=21",
                 "PIN_OLED_SCL=22",
+                "PIN_BATTERY_VOLTAGE=0",
                 "ESP32",
                 "ESP_PLATFORM",
                 "F_CPU=240000000L",

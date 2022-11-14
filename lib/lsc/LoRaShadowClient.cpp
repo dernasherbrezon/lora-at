@@ -6,6 +6,7 @@
 
 #define SERVICE_UUID "3f5f0b4d-e311-4921-b29d-936afb8734cc"
 #define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
+#define BATTERY_UUID "00000000"
 #define OBSERVATION_SIZE 40
 
 LoRaShadowClient::LoRaShadowClient() {
@@ -48,6 +49,34 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
   preferences.putBytes("address", address, address_len);
   preferences.end();
   return true;
+}
+
+void LoRaShadowClient::sendBatteryLevel(uint16_t level) {
+  if (this->client == NULL) {
+    BLEDevice::init("lora-at");
+    BLEClient *tempClient = BLEDevice::createClient();
+    if (!tempClient->connect(*this->address)) {
+      return;
+    }
+    this->client = tempClient;
+  }
+  if (this->service == NULL) {
+    this->service = this->client->getService(SERVICE_UUID);
+    if (this->service == NULL) {
+      log_i("can't find lora-at BLE service");
+      return;
+    }
+  }
+  if (this->battery == NULL) {
+    this->battery = this->service->getCharacteristic(BATTERY_UUID);
+    if (battery == NULL) {
+      log_i("can't find battery characteristic");
+      return;
+    }
+  }
+
+  uint16_t networkLevel = htons(level);
+  battery->writeValue((uint8_t *)&networkLevel, sizeof(networkLevel), false);
 }
 
 void LoRaShadowClient::loadRequest(ObservationRequest *state) {
