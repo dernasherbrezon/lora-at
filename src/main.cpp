@@ -6,6 +6,7 @@
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
 #include <sys/time.h>
+#include "BatteryVoltage.h"
 
 #include "Display.h"
 
@@ -15,10 +16,6 @@
 
 #ifndef ARDUINO_VARIANT
 #define ARDUINO_VARIANT "native"
-#endif
-
-#ifndef PIN_BATTERY_VOLTAGE
-#define PIN_BATTERY_VOLTAGE 0
 #endif
 
 LoRaModule *lora = NULL;
@@ -33,10 +30,10 @@ uint64_t stopObservationMicros = 0;
 void scheduleObservation() {
   // always attempt to load fresh config
   client->loadRequest(&scheduledObservation);
-  if (PIN_BATTERY_VOLTAGE != 0) {
-    //TODO should it be configured? Any timeout needed?
-    pinMode(PIN_BATTERY_VOLTAGE, INPUT);
-    client->sendBatteryLevel(analogRead(PIN_BATTERY_VOLTAGE));
+  uint8_t batteryVoltage;
+  int status = readVoltage(&batteryVoltage);
+  if (status == 0) {
+    client->sendBatteryLevel(batteryVoltage);
   }
   if (scheduledObservation.startTimeMillis != 0) {
     if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {

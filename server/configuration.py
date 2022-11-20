@@ -39,6 +39,7 @@ class ClientConfiguration:
         self.minFrequency = minFrequency
         self.maxFrequency = maxFrequency
         self.schedule = schedule
+        self.batteryLevel = None
         self.frames = []
 
     @classmethod
@@ -70,6 +71,9 @@ class ClientConfiguration:
 
     def addFrame(self, frame):
         self.frame.append(frame)
+
+    def setBatteryLevel(self, level):
+        self.batteryLevel = level
 
     def __str__(self):
         return self.btaddress

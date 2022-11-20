@@ -6,7 +6,7 @@
 
 #define SERVICE_UUID "3f5f0b4d-e311-4921-b29d-936afb8734cc"
 #define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
-#define BATTERY_UUID "00000000"
+#define BATTERY_UUID "00002a19-0000-1000-8000-00805f9b34fb"
 #define OBSERVATION_SIZE 40
 
 LoRaShadowClient::LoRaShadowClient() {
@@ -51,7 +51,7 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
   return true;
 }
 
-void LoRaShadowClient::sendBatteryLevel(uint16_t level) {
+void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
@@ -75,8 +75,7 @@ void LoRaShadowClient::sendBatteryLevel(uint16_t level) {
     }
   }
 
-  uint16_t networkLevel = htons(level);
-  battery->writeValue((uint8_t *)&networkLevel, sizeof(networkLevel), false);
+  battery->writeValue(&level, sizeof(level), false);
 }
 
 void LoRaShadowClient::loadRequest(ObservationRequest *state) {

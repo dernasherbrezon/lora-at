@@ -12,7 +12,7 @@ class LoRaShadowClient {
   LoRaShadowClient();
   bool init(uint8_t *address, size_t address_len);
   void loadRequest(ObservationRequest *state);
-  void sendBatteryLevel(uint16_t level);
+  void sendBatteryLevel(uint8_t level);
   void sendData(LoRaFrame *frame);
 
  private:

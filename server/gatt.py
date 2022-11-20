@@ -19,6 +19,9 @@ mainloop = None
 
 LORA_SERVICE_UUID = '3f5f0b4d-e311-4921-b29d-936afb8734cc'
 SCHEDULE_CHARACTERISTIC_UUID = '40d6f70c-5e28-4da4-a99e-c5298d1613fe'
+## Keep battery characteristic under lora service to simplify ESP32 client
+## It should not be normally read so no point having it under the standard battery service
+BATTERY_CHARACTERISTIC_UUID = '00002a19-0000-1000-8000-00805f9b34fb'
 
 class Application(dbus.service.Object):
     """
@@ -64,7 +67,7 @@ class LoraService(bluez.Service):
     def __init__(self, config, bus, index):
         bluez.Service.__init__(self, bus, index, LORA_SERVICE_UUID, True)
         self.add_characteristic(ScheduleCharacteristic(config, bus, 0, self))
-
+        self.add_characteristic(BatteryLevelCharacteristic(config, bus, 1, self))
 
 class ScheduleCharacteristic(bluez.Characteristic):
 
@@ -135,6 +138,55 @@ class ScheduleDescriptor(bluez.Descriptor):
 
     def ReadValue(self, options):
         return [dbus.String('Schedule for LoRa module')]
+
+class BatteryLevelCharacteristic(bluez.Characteristic):
+
+    def __init__(self, config, bus, index, service):
+        self.config = config
+        bluez.Characteristic.__init__(
+                self, bus, index,
+                BATTERY_CHARACTERISTIC_UUID,
+                ['write'],
+                service)
+        self.add_descriptor(BatteryLevelDescriptor(bus, 0, self))
+
+    def ReadValue(self, options):
+        return []
+    
+    def WriteValue(self, value, options):
+        try:
+            client = self.parseClient(options)
+            if client == None:
+                return
+
+            logging.info("[%s] received battery level: %s" % (client, str(value[0])))
+            client.setBatteryLevel(value[0])
+        except:
+            logging.error(traceback.format_exc())
+            return []
+            
+    def parseClient(self, options):
+        lastPart = '/dev_'
+        index = options['device'].rfind(lastPart)
+        btaddress = options['device'][index + len(lastPart):].replace('_',':').lower()
+        if self.config.hasClient(btaddress) == False:
+            logging.info('client is not configured %s' % btaddress)
+            return None
+        return self.config.getClients()[btaddress]
+
+class BatteryLevelDescriptor(bluez.Descriptor):
+    
+    BATTERY_LEVEL_DESCRIPTION_UUID = '5604f205-0c14-4926-9d7d-21dbab315f2f'
+
+    def __init__(self, bus, index, characteristic):
+        bluez.Descriptor.__init__(
+                self, bus, index,
+                self.BATTERY_LEVEL_DESCRIPTION_UUID,
+                ['read'],
+                characteristic)
+
+    def ReadValue(self, options):
+        return [dbus.String('Battery level for each connected ESP32')]
 
 def register_app_cb():
     logging.info('GATT application registered')
