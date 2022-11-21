@@ -108,8 +108,9 @@ class ScheduleCharacteristic(bluez.Characteristic):
             headerFormat = "!fffQL"
             headerSize = struct.calcsize(headerFormat)
             frame = {}
-            frame["frequencyError"], frame["rssi"], frame["snr"], frame["timestamp"], frame["dataLength"] = struct.unpack(headerFormat, value[:headerSize])
-            frame["data"] = struct.unpack("%ds" % frame["dataLength"], value[headerSize:])
+            frame["frequencyError"], frame["rssi"], frame["snr"], frame["timestamp"], dataLength = struct.unpack(headerFormat, value[:headerSize])
+            byteArray = struct.unpack("%ds" % dataLength, value[headerSize:])
+            frame["data"] = ''.join(format(x, '02x') for x in byteArray)
             logging.info("[%s] received frame: %s" % (client, str(frame.__dict__)))
             client.addFrame(frame)
         except:

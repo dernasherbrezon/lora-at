@@ -10,7 +10,6 @@ class LoraFrame:
         self.rssi = 0.0
         self.snr = 0.0
         self.timestamp = 0
-        self.dataLength = 0
         self.data = []
 
 class ObservationRequest:

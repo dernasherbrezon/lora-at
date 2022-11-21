@@ -75,7 +75,7 @@ void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
     }
   }
 
-  battery->writeValue(&level, sizeof(level), false);
+  battery->writeValue(level, false);
 }
 
 void LoRaShadowClient::loadRequest(ObservationRequest *state) {
