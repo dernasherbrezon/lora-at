@@ -39,7 +39,6 @@ void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
     deepSleepTime = deepSleepRequestedMicros;
   }
   log_i("entering deep sleep mode for %d seconds", deepSleepTime / 1000000);
-  Serial.print("OK\r\n");
   Serial.flush();
   esp_sleep_enable_timer_wakeup(deepSleepTime);
   esp_deep_sleep_start();
