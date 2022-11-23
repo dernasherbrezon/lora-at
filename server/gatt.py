@@ -19,9 +19,7 @@ mainloop = None
 
 LORA_SERVICE_UUID = '3f5f0b4d-e311-4921-b29d-936afb8734cc'
 SCHEDULE_CHARACTERISTIC_UUID = '40d6f70c-5e28-4da4-a99e-c5298d1613fe'
-## Keep battery characteristic under lora service to simplify ESP32 client
-## It should not be normally read so no point having it under the standard battery service
-BATTERY_CHARACTERISTIC_UUID = '00002a19-0000-1000-8000-00805f9b34fb'
+BATTERY_CHARACTERISTIC_UUID = '5b53256e-76d2-4259-b3aa-15b5b4cfdd32'
 
 class Application(dbus.service.Object):
     """
@@ -160,7 +158,7 @@ class BatteryLevelCharacteristic(bluez.Characteristic):
             if client == None:
                 return
 
-            logging.info("[%s] received battery level: %s" % (client, str(value[0])))
+            logging.info("[%s] received battery level: %s" % (client, [int(v) for v in value]))
             client.setBatteryLevel(value[0])
         except:
             logging.error(traceback.format_exc())

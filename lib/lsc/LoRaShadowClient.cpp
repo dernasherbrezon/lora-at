@@ -6,7 +6,7 @@
 
 #define SERVICE_UUID "3f5f0b4d-e311-4921-b29d-936afb8734cc"
 #define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
-#define BATTERY_UUID "00002a19-0000-1000-8000-00805f9b34fb"
+#define BATTERY_UUID "5b53256e-76d2-4259-b3aa-15b5b4cfdd32"
 #define OBSERVATION_SIZE 40
 
 LoRaShadowClient::LoRaShadowClient() {
@@ -75,7 +75,7 @@ void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
     }
   }
 
-  battery->writeValue(level, false);
+  battery->writeValue(level, true);
 }
 
 void LoRaShadowClient::loadRequest(ObservationRequest *state) {
@@ -237,7 +237,7 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
   memcpy(message + offset, frame->data, frame->dataLength);
   offset += frame->dataLength;
 
-  req->writeValue(message, length, false);
+  req->writeValue(message, length, true);
   free(message);
 }
 
