@@ -72,16 +72,16 @@ void setup() {
   });
 
   client = new LoRaShadowClient();
+  display = new Display();
+  handler = new AtHandler(lora, display, client, dsHandler);
 
   dsHandler = new DeepSleepHandler();
   if (dsHandler->isDeepSleepWakeup()) {
     scheduleObservation();
   }
 
-  display = new Display();
   display->init();
 
-  handler = new AtHandler(lora, display, client, dsHandler);
   display->setStatus("IDLE");
   display->update();
   log_i("setup completed");

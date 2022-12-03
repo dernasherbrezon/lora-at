@@ -150,7 +150,7 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   freq = ntohl(freq);
   memcpy(&(state->freq), &freq, sizeof(freq));
   offset += sizeof(freq);
-      
+
   uint32_t bw;
   memcpy(&bw, raw + offset, sizeof(bw));
   bw = ntohl(bw);
@@ -181,6 +181,21 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   state->ldro = (LdroType)ldro;
   offset += sizeof(ldro);
 
+  char buf[80];
+  struct tm *ts;
+  const char *format = "%Y-%m-%d %H:%M:%S";
+  uint64_t timeSeconds = state->currentTimeMillis / 1000;
+  ts = localtime((const time_t *)(&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  log_i("current time: %s", buf);
+  timeSeconds = state->startTimeMillis / 1000;
+  ts = localtime((const time_t *)(&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  log_i("start time:   %s", buf);
+  timeSeconds = state->endTimeMillis / 1000;
+  ts = localtime((const time_t *)(&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  log_i("end time:     %s", buf);
   log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldro);
 }
 
