@@ -34,7 +34,8 @@ int readVoltage(uint8_t *result) {
   // not connected
   if( voltageDividerIn < MIN_BATTERY_VOLTAGE ) {
     *result = 0xFF;
+  } else {
+    *result = (uint8_t)((voltageDividerIn - MIN_BATTERY_VOLTAGE) / (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100);
   }
-  *result = (uint8_t)((voltageDividerIn - MIN_BATTERY_VOLTAGE) / (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100);
   return 0;
 }
