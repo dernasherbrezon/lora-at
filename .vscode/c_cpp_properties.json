@@ -228,7 +228,7 @@
                 "FIRMWARE_VERSION=\"1.0\"",
                 "MAX_BATTERY_VOLTAGE=4.2",
                 "MIN_BATTERY_VOLTAGE=3.1",
-                "BATTERY_R1=3000",
+                "BATTERY_R1=4700",
                 "BATTERY_R2=10000",
                 "PIN_CS=18",
                 "PIN_DI0=26",
