@@ -6,8 +6,8 @@
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
 #include <sys/time.h>
-#include "BatteryVoltage.h"
 
+#include "BatteryVoltage.h"
 #include "Display.h"
 
 #ifndef FIRMWARE_VERSION
@@ -36,7 +36,10 @@ void scheduleObservation() {
     client->sendBatteryLevel(batteryVoltage);
   }
   if (scheduledObservation.startTimeMillis != 0) {
-    if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
+    if (scheduledObservation.currentTimeMillis > scheduledObservation.endTimeMillis || scheduledObservation.startTimeMillis > scheduledObservation.endTimeMillis) {
+      log_i("incorrect schedule returned from server");
+      dsHandler->enterDeepSleep(0);
+    } else if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
       // use server-side millis
@@ -91,7 +94,6 @@ void loop() {
   if (lora->isReceivingData()) {
     LoRaFrame *frame = lora->loop();
     if (frame != NULL) {
-      // FIXME destroy frames?
       client->sendData(frame);
       handler->addFrame(frame);
     }
@@ -102,6 +104,7 @@ void loop() {
 
   if (stopObservationMicros != 0 && stopObservationMicros < esp_timer_get_time()) {
     lora->stopRx();
+    // read next observation and go to deep sleep
     scheduleObservation();
     return;
   }
