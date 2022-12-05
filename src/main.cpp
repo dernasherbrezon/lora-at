@@ -76,9 +76,9 @@ void setup() {
 
   client = new LoRaShadowClient();
   display = new Display();
-  handler = new AtHandler(lora, display, client, dsHandler);
-
   dsHandler = new DeepSleepHandler();
+  handler = new AtHandler(lora, display, client, dsHandler);
+  
   if (dsHandler->isDeepSleepWakeup()) {
     scheduleObservation();
   }

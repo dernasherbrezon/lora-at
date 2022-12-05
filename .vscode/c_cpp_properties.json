@@ -238,7 +238,7 @@
                 "PIN_BATTERY_VOLTAGE=0",
                 "ESP32",
                 "ESP_PLATFORM",
-                "F_CPU=240000000L",
+                "F_CPU=80000000L",
                 "HAVE_CONFIG_H",
                 "MBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\"",
                 "ARDUINO=10805",
