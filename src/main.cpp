@@ -97,10 +97,7 @@ void loop() {
       client->sendData(frame);
       handler->addFrame(frame);
     }
-    return;
   }
-
-  // FIXME thread sleep 1sec? Or some task based thing?
 
   if (stopObservationMicros != 0 && stopObservationMicros < esp_timer_get_time()) {
     lora->stopRx();
@@ -110,5 +107,5 @@ void loop() {
   }
 
   bool someActivityHappened = handler->handle(&Serial, &Serial);
-  dsHandler->handleInactive(someActivityHappened);
+  dsHandler->handleInactive(someActivityHappened || lora->isReceivingData());
 }
