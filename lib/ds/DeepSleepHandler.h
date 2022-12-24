@@ -9,8 +9,8 @@ class DeepSleepHandler {
   DeepSleepHandler();
   bool init(uint64_t deepSleepPeriodMicros, uint64_t inactivityTimeoutMicros);
   void handleInactive(bool resetInactiveTimer);
-  bool isDeepSleepWakeup();
   void enterDeepSleep(uint64_t deepSleepRequestedMillis);
+  void enterRxDeepSleep(uint64_t deepSleepRequestedMicros);
 
  private:
   uint64_t deepSleepPeriodMicros = 0;

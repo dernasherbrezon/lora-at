@@ -43,7 +43,8 @@ void scheduleObservation() {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
       // use server-side millis
-      stopObservationMicros = esp_timer_get_time() + (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
+      uint64_t observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
+      stopObservationMicros = esp_timer_get_time() + observation_length_micros;
       // set current server time
       // LoRaModule will use current time for just received frame
       struct timeval now;
@@ -54,10 +55,54 @@ void scheduleObservation() {
         log_e("unable to set current time. LoRa frame timestamp will be incorrect");
       }
       lora->startLoraRx(&scheduledObservation);
+      dsHandler->enterRxDeepSleep(observation_length_micros);
     }
   } else {
     dsHandler->enterDeepSleep(0);
   }
+}
+
+void handle_packet() {
+  if (lora == NULL || lora->device == NULL) {
+    return;
+  }
+  uint8_t *data = NULL;
+  uint8_t data_length = 0;
+  esp_err_t code = sx1278_receive(lora->device, &data, &data_length);
+  if (code != ESP_OK) {
+    Serial.printf("can't read %d", code);
+    return;
+  }
+  if (data_length == 0) {
+    // no message received
+    return;
+  }
+  LoRaFrame *result = (LoRaFrame *)malloc(sizeof(LoRaFrame_t));
+  if (result == NULL) {
+    return;
+  }
+  result->dataLength = data_length;
+  result->data = (uint8_t *)malloc(sizeof(uint8_t) * result->dataLength);
+  if (result->data == NULL) {
+    LoRaFrame_destroy(result);
+    return;
+  }
+
+  memcpy(result->data, data, result->dataLength);
+  time_t now;
+  time(&now);
+  result->timestamp = now;
+  int16_t rssi = 0;
+  sx1278_get_packet_rssi(lora->device, &rssi);
+  result->rssi = rssi;
+  sx1278_get_packet_snr(lora->device, &result->snr);
+  int32_t frequency_error = 0;
+  sx1278_get_frequency_error(lora->device, &frequency_error);
+  result->frequencyError = frequency_error;
+  log_i("frame received: %d bytes RSSI: %f SNR: %f Timestamp: %ld", result->dataLength, result->rssi, result->snr, result->timestamp);
+
+  client->sendData(result);
+  handler->addFrame(result);
 }
 
 void setup() {
@@ -65,22 +110,20 @@ void setup() {
   log_i("starting. firmware version: %s", FIRMWARE_VERSION);
 
   lora = new LoRaModule();
-  lora->setOnRxStartedCallback([] {
-    display->setStatus("RECEIVING");
-    display->update();
-  });
-  lora->setOnRxStoppedCallback([] {
-    display->setStatus("IDLE");
-    display->update();
-  });
 
   client = new LoRaShadowClient();
   display = new Display();
   dsHandler = new DeepSleepHandler();
   handler = new AtHandler(lora, display, client, dsHandler);
-  
-  if (dsHandler->isDeepSleepWakeup()) {
+
+  esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  if (cause == ESP_SLEEP_WAKEUP_TIMER) {
     scheduleObservation();
+  } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
+    sx1278_handle_interrupt(lora->device);
+    handle_packet();
+    uint64_t observation_length_micros = scheduledObservation.endTimeMillis * 1000 - esp_timer_get_time();
+    dsHandler->enterRxDeepSleep(observation_length_micros);
   }
 
   display->init();
@@ -91,14 +134,6 @@ void setup() {
 }
 
 void loop() {
-  if (lora->isReceivingData()) {
-    LoRaFrame *frame = lora->loop();
-    if (frame != NULL) {
-      client->sendData(frame);
-      handler->addFrame(frame);
-    }
-  }
-
   if (stopObservationMicros != 0 && stopObservationMicros < esp_timer_get_time()) {
     lora->stopRx();
     // read next observation and go to deep sleep

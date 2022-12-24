@@ -1,7 +1,7 @@
 #ifndef LoRaModule_h
 #define LoRaModule_h
 
-#include <RadioLib.h>
+#include <sx1278.h>
 #include <stdint.h>
 
 #include <functional>
@@ -57,7 +57,6 @@ class LoRaModule {
   virtual int16_t loraTx(uint8_t *data, size_t dataLength, ObservationRequest *request);
   virtual int16_t fskTx(uint8_t *data, size_t dataLength, FskState *request);
 
-  virtual LoRaFrame *loop();
   virtual void stopRx();
   virtual bool isReceivingData();
 
@@ -65,9 +64,9 @@ class LoRaModule {
   void setOnRxStartedCallback(std::function<void()> func);
   void setOnRxStoppedCallback(std::function<void()> func);
 
+  sx1278 *device = NULL;
+
  private:
-  Module *module = NULL;
-  PhysicalLayer *phys = NULL;
   ChipType type = ChipType::TYPE_SX1278;  // some default chip type
   bool receivingData = false;
 

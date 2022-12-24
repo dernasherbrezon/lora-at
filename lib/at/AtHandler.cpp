@@ -203,7 +203,7 @@ void AtHandler::loadConfig() {
   this->config_chip = this->chips.getAll().at(chip_index);
 
   int16_t code = this->lora->init(config_chip);
-  if (code != ERR_NONE) {
+  if (code != 0) {
     this->config_chip = NULL;
     return;
   }
@@ -218,7 +218,7 @@ void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
   this->config_chip = this->chips.getAll().at(chip_index);
 
   int16_t code = this->lora->init(config_chip);
-  if (code != ERR_NONE) {
+  if (code != 0) {
     out->printf("Unable to initialize lora: %d\r\n", code);
     out->print("ERROR\r\n");
     return;

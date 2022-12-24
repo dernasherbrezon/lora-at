@@ -1,7 +1,6 @@
 #ifndef Display_h
 #define Display_h
 
-#include <LoRaModule.h>
 #include <Preferences.h>
 #include <SSD1306Wire.h>
 #include <Wire.h>
@@ -11,9 +10,9 @@ class Display {
   ~Display();
   void init();
   void setStatus(const char *status);
-  void setStationName(const char *stationName);
-  void setIpAddress(String ipAddress);
-  void setProgress(uint8_t progress);
+  // void setStationName(const char *stationName);
+  // void setIpAddress(String ipAddress);
+  // void setProgress(uint8_t progress);
   void update();
   void setEnabled(bool enabled);
   bool isEnabled();

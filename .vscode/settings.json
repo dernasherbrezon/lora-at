@@ -41,6 +41,13 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "cinttypes": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "spi.h": "c",
+        "spi_reg.h": "c",
+        "esp32-hal-spi.h": "c",
+        "esp32-hal.h": "c",
+        "spi_master.h": "c",
+        "spiapi_esp32.h": "c",
+        "soc.h": "c"
     }
 }
