@@ -5,7 +5,11 @@
 #include <LoRaShadowClient.h>
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
+#include <soc/rtc.h>
 #include <sys/time.h>
+extern "C" {
+#include <esp_clk.h>
+}
 
 #include "BatteryVoltage.h"
 #include "Display.h"
@@ -25,6 +29,7 @@ LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 
 RTC_DATA_ATTR ObservationRequest scheduledObservation;
+RTC_DATA_ATTR uint64_t sleepTime;
 uint64_t stopObservationMicros = 0;
 
 void scheduleObservation() {
@@ -55,6 +60,7 @@ void scheduleObservation() {
         log_e("unable to set current time. LoRa frame timestamp will be incorrect");
       }
       lora->startLoraRx(&scheduledObservation);
+      sleepTime = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
       dsHandler->enterRxDeepSleep(observation_length_micros);
     }
   } else {
@@ -122,8 +128,9 @@ void setup() {
   } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     sx1278_handle_interrupt(lora->device);
     handle_packet();
-    uint64_t observation_length_micros = scheduledObservation.endTimeMillis * 1000 - esp_timer_get_time();
-    dsHandler->enterRxDeepSleep(observation_length_micros);
+    uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
+    uint64_t remaining_micros = scheduledObservation.endTimeMillis * 1000 - scheduledObservation.currentTimeMillis * 1000 - (timeNow - sleepTime);
+    dsHandler->enterRxDeepSleep(remaining_micros);
   }
 
   display->init();
