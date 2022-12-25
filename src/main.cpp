@@ -30,7 +30,6 @@ DeepSleepHandler *dsHandler = NULL;
 
 RTC_DATA_ATTR uint64_t sleepTime;
 RTC_DATA_ATTR uint64_t observation_length_micros;
-uint64_t stopObservationMicros = 0;
 
 void scheduleObservation() {
   ObservationRequest scheduledObservation;
@@ -50,7 +49,6 @@ void scheduleObservation() {
     } else {
       // use server-side millis
       observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
-      stopObservationMicros = esp_timer_get_time() + observation_length_micros;
       // set current server time
       // LoRaModule will use current time for just received frame
       struct timeval now;
@@ -125,6 +123,7 @@ void setup() {
 
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
+    lora->stopRx();
     scheduleObservation();
   } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     sx1278_handle_interrupt(lora->device);
@@ -142,13 +141,6 @@ void setup() {
 }
 
 void loop() {
-  if (stopObservationMicros != 0 && stopObservationMicros < esp_timer_get_time()) {
-    lora->stopRx();
-    // read next observation and go to deep sleep
-    scheduleObservation();
-    return;
-  }
-
   bool someActivityHappened = handler->handle(&Serial, &Serial);
   dsHandler->handleInactive(someActivityHappened || lora->isReceivingData());
 }
