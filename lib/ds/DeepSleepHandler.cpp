@@ -41,7 +41,7 @@ void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
   } else {
     deepSleepTime = deepSleepRequestedMicros;
   }
-  log_i("entering deep sleep mode for %d seconds", deepSleepTime / 1000000);
+  log_i("entering deep sleep mode for %" PRIu64 " seconds", deepSleepTime / 1000000);
   Serial.flush();
   esp_sleep_enable_timer_wakeup(deepSleepTime);
   esp_deep_sleep_start();
@@ -50,7 +50,7 @@ void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
 void DeepSleepHandler::enterRxDeepSleep(uint64_t deepSleepRequestedMicros) {
   rtc_gpio_set_direction((gpio_num_t)DIO0, RTC_GPIO_MODE_INPUT_ONLY);
   rtc_gpio_pulldown_en((gpio_num_t)DIO0);
-  log_i("entering rx deep sleep for %d seconds or first packet", deepSleepRequestedMicros / 1000000);
+  log_i("entering rx deep sleep for %" PRIu64 " seconds or first packet", deepSleepRequestedMicros / 1000000);
   Serial.flush();
   esp_sleep_enable_timer_wakeup(deepSleepRequestedMicros);
   esp_sleep_enable_ext0_wakeup((gpio_num_t)DIO0, RISING);

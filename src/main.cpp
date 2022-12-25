@@ -28,11 +28,12 @@ Display *display = NULL;
 LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 
-RTC_DATA_ATTR ObservationRequest scheduledObservation;
 RTC_DATA_ATTR uint64_t sleepTime;
+RTC_DATA_ATTR uint64_t observation_length_micros;
 uint64_t stopObservationMicros = 0;
 
 void scheduleObservation() {
+  ObservationRequest scheduledObservation;
   // always attempt to load fresh config
   client->loadRequest(&scheduledObservation);
   uint8_t batteryVoltage;
@@ -48,7 +49,7 @@ void scheduleObservation() {
       dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
     } else {
       // use server-side millis
-      uint64_t observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
+      observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
       stopObservationMicros = esp_timer_get_time() + observation_length_micros;
       // set current server time
       // LoRaModule will use current time for just received frame
@@ -129,7 +130,7 @@ void setup() {
     sx1278_handle_interrupt(lora->device);
     handle_packet();
     uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-    uint64_t remaining_micros = scheduledObservation.endTimeMillis * 1000 - scheduledObservation.currentTimeMillis * 1000 - (timeNow - sleepTime);
+    uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
     dsHandler->enterRxDeepSleep(remaining_micros);
   }
 
