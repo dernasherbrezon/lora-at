@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <AtHandler.h>
 #include <DeepSleepHandler.h>
-#include <LoRaModule.h>
 #include <LoRaShadowClient.h>
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
+#include <lora_util.h>
 #include <soc/rtc.h>
 #include <sys/time.h>
 extern "C" {
@@ -22,7 +22,7 @@ extern "C" {
 #define ARDUINO_VARIANT "native"
 #endif
 
-LoRaModule *lora = NULL;
+sx127x *device = NULL;
 AtHandler *handler;
 Display *display = NULL;
 LoRaShadowClient *client = NULL;
@@ -32,7 +32,7 @@ RTC_DATA_ATTR uint64_t sleepTime;
 RTC_DATA_ATTR uint64_t observation_length_micros;
 
 void scheduleObservation() {
-  ObservationRequest scheduledObservation;
+  rx_request scheduledObservation;
   // always attempt to load fresh config
   client->loadRequest(&scheduledObservation);
   uint8_t batteryVoltage;
@@ -58,7 +58,11 @@ void scheduleObservation() {
       if (code != 0) {
         log_e("unable to set current time. LoRa frame timestamp will be incorrect");
       }
-      lora->startLoraRx(&scheduledObservation);
+      esp_err_t rx_code = lora_util_start_rx(&scheduledObservation, device);
+      if (rx_code != ESP_OK) {
+        log_e("unable to start rx: %d", rx_code);
+        return;
+      }
       sleepTime = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
       dsHandler->enterRxDeepSleep(observation_length_micros);
     }
@@ -67,70 +71,54 @@ void scheduleObservation() {
   }
 }
 
-void handle_packet() {
-  if (lora == NULL || lora->device == NULL) {
-    return;
-  }
-  uint8_t *data = NULL;
-  uint8_t data_length = 0;
-  esp_err_t code = sx1278_receive(lora->device, &data, &data_length);
+void rx_callback(sx127x *callback_device) {
+  lora_frame *frame = NULL;
+  esp_err_t code = lora_util_read_frame(callback_device, &frame);
   if (code != ESP_OK) {
-    Serial.printf("can't read %d", code);
+    log_e("unable to read frame: %d", code);
     return;
   }
-  if (data_length == 0) {
-    // no message received
+  if (frame == NULL) {
+    log_i("frame wasn't received");
     return;
   }
-  LoRaFrame *result = (LoRaFrame *)malloc(sizeof(LoRaFrame_t));
-  if (result == NULL) {
-    return;
-  }
-  result->dataLength = data_length;
-  result->data = (uint8_t *)malloc(sizeof(uint8_t) * result->dataLength);
-  if (result->data == NULL) {
-    LoRaFrame_destroy(result);
-    return;
-  }
-
-  memcpy(result->data, data, result->dataLength);
   time_t now;
   time(&now);
-  result->timestamp = now;
-  int16_t rssi = 0;
-  sx1278_get_packet_rssi(lora->device, &rssi);
-  result->rssi = rssi;
-  sx1278_get_packet_snr(lora->device, &result->snr);
-  int32_t frequency_error = 0;
-  sx1278_get_frequency_error(lora->device, &frequency_error);
-  result->frequencyError = frequency_error;
-  log_i("frame received: %d bytes RSSI: %f SNR: %f Timestamp: %ld", result->dataLength, result->rssi, result->snr, result->timestamp);
+  frame->timestamp = now;
+  log_i("frame received: %d bytes RSSI: %d SNR: %f Timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
 
-  client->sendData(result);
-  handler->addFrame(result);
+  client->sendData(frame);
+  handler->addFrame(frame);
+
+  uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
+  uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
+  dsHandler->enterRxDeepSleep(remaining_micros);
 }
 
 void setup() {
   Serial.begin(115200);
   log_i("starting. firmware version: %s", FIRMWARE_VERSION);
 
-  lora = new LoRaModule();
+  esp_err_t code = lora_util_init(&device);
+  if (code != ESP_OK) {
+    log_e("unable to start lora: %d", code);
+  }
 
   client = new LoRaShadowClient();
   display = new Display();
   dsHandler = new DeepSleepHandler();
-  handler = new AtHandler(lora, display, client, dsHandler);
+  handler = new AtHandler(device, display, client, dsHandler);
 
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-    lora->stopRx();
+    code = sx127x_set_opmod(SX127x_MODE_SLEEP, device);
+    if (code != ESP_OK) {
+      log_e("unable to stop lora: %d", code);
+    }
     scheduleObservation();
   } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
-    sx1278_handle_interrupt(lora->device);
-    handle_packet();
-    uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-    uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
-    dsHandler->enterRxDeepSleep(remaining_micros);
+    sx127x_set_rx_callback(rx_callback, device);
+    sx127x_handle_interrupt(device);
   }
 
   display->init();
@@ -142,5 +130,5 @@ void setup() {
 
 void loop() {
   bool someActivityHappened = handler->handle(&Serial, &Serial);
-  dsHandler->handleInactive(someActivityHappened || lora->isReceivingData());
+  dsHandler->handleInactive(someActivityHappened);
 }

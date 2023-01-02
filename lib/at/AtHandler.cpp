@@ -16,12 +16,11 @@
 #define FIRMWARE_VERSION "1.0"
 #endif
 
-AtHandler::AtHandler(LoRaModule *lora, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler) {
-  this->lora = lora;
+AtHandler::AtHandler(sx127x *device, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler) {
+  this->device = device;
   this->display = display;
   this->client = client;
   this->dsHandler = dsHandler;
-  this->loadConfig();
 }
 
 bool AtHandler::handle(Stream *in, Stream *out) {
@@ -54,30 +53,13 @@ bool AtHandler::handle(Stream *in, Stream *out) {
     return true;
   }
 
-  if (strcmp("AT+CHIPS?", this->buffer) == 0) {
-    this->handleQueryChips(out);
-    return true;
-  }
-
-  if (strcmp("AT+CHIP?", this->buffer) == 0) {
-    this->handleQueryChip(out);
-    return true;
-  }
-
   if (strcmp("AT+TIME?", this->buffer) == 0) {
     this->handleQueryTime(out);
     return true;
   }
 
-  size_t chip_index = 0;
-  int matched = sscanf(this->buffer, "AT+CHIP=%zu", &chip_index);
-  if (matched == 1) {
-    this->handleSetChip(chip_index, out);
-    return true;
-  }
-
   int enabled;
-  matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
+  int matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
   if (matched == 1) {
     this->handleSetDisplay(enabled, out);
     return true;
@@ -90,19 +72,19 @@ bool AtHandler::handle(Stream *in, Stream *out) {
     return true;
   }
 
-  ObservationRequest state;
-  uint8_t ldro;
-  matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
+  rx_request state;
+  uint8_t ldo;
+  matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo);
   if (matched == 9) {
-    state.ldro = (LdroType)ldro;
+    state.ldo = (ldo_type_t)ldo;
     this->handleLoraRx(state, out);
     return true;
   }
 
   char message[512];
-  matched = sscanf(this->buffer, "AT+LORATX=%[^,],%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldro);
+  matched = sscanf(this->buffer, "AT+LORATX=%[^,],%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo);
   if (matched == 10) {
-    state.ldro = (LdroType)ldro;
+    state.ldo = (ldo_type_t)ldo;
     this->handleLoraTx(message, state, out);
     return true;
   }
@@ -128,17 +110,17 @@ bool AtHandler::handle(Stream *in, Stream *out) {
 
 void AtHandler::handlePull(Stream *in, Stream *out) {
   for (size_t i = 0; i < this->receivedFrames.size(); i++) {
-    LoRaFrame *curFrame = this->receivedFrames[i];
+    lora_frame *curFrame = this->receivedFrames[i];
     char *data = NULL;
-    int code = convertHexToString(curFrame->data, curFrame->dataLength, &data);
+    int code = convertHexToString(curFrame->data, curFrame->data_length, &data);
     if (code != 0) {
       out->print("unable to convert hex\r\n");
       out->print("ERROR\r\n");
       return;
     }
-    out->printf("%s,%g,%g,%g,%" PRIu64 "\r\n", data, curFrame->rssi, curFrame->snr, curFrame->frequencyError, curFrame->timestamp);
+    out->printf("%s,%d,%g,%d,%" PRIu64 "\r\n", data, curFrame->rssi, curFrame->snr, curFrame->frequency_error, curFrame->timestamp);
     free(data);
-    LoRaFrame_destroy(curFrame);
+    lora_util_frame_destroy(curFrame);
   }
   this->receivedFrames.clear();
   out->print("OK\r\n");
@@ -169,67 +151,8 @@ size_t AtHandler::read_line(Stream *in) {
   return 0;
 }
 
-void AtHandler::addFrame(LoRaFrame *frame) {
+void AtHandler::addFrame(lora_frame *frame) {
   this->receivedFrames.push_back(frame);
-}
-
-void AtHandler::handleQueryChip(Stream *out) {
-  if (this->config_chip != NULL) {
-    out->printf("%s\r\n", this->config_chip->getName());
-    if (this->config_chip->loraSupported) {
-      out->printf("LORA,%g,%g\r\n", this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
-    }
-    if (this->config_chip->fskSupported) {
-      out->printf("FSK,%g,%g\r\n", this->config_chip->minFskFrequency, this->config_chip->maxFskFrequency);
-    }
-  }
-  out->print("OK\r\n");
-}
-
-void AtHandler::loadConfig() {
-  if (!preferences.begin("lora-at", true)) {
-    return;
-  }
-  if (!preferences.getBool("initialized")) {
-    preferences.end();
-    return;
-  }
-  size_t chip_index = preferences.getUChar("chip_index");
-  preferences.end();
-  // just invalid chip
-  if (chip_index >= this->chips.getAll().size()) {
-    return;
-  }
-  this->config_chip = this->chips.getAll().at(chip_index);
-
-  int16_t code = this->lora->init(config_chip);
-  if (code != 0) {
-    this->config_chip = NULL;
-    return;
-  }
-}
-
-void AtHandler::handleSetChip(size_t chip_index, Stream *out) {
-  if (chip_index >= this->chips.getAll().size()) {
-    out->printf("Unable to find chip index: %zu\r\n", chip_index);
-    out->print("ERROR\r\n");
-    return;
-  }
-  this->config_chip = this->chips.getAll().at(chip_index);
-
-  int16_t code = this->lora->init(config_chip);
-  if (code != 0) {
-    out->printf("Unable to initialize lora: %d\r\n", code);
-    out->print("ERROR\r\n");
-    return;
-  }
-
-  preferences.begin("lora-at", false);
-  preferences.putBool("initialized", true);
-  preferences.putUChar("chip_index", (uint8_t)chip_index);
-  preferences.end();
-
-  out->print("OK\r\n");
 }
 
 void AtHandler::handleStopRx(Stream *in, Stream *out) {
@@ -238,25 +161,18 @@ void AtHandler::handleStopRx(Stream *in, Stream *out) {
     return;
   }
   this->receiving = false;
-  this->lora->stopRx();
+  sx127x_set_opmod(SX127x_MODE_SLEEP, device);
   this->handlePull(in, out);
 }
 
-void AtHandler::handleQueryChips(Stream *out) {
-  for (size_t i = 0; i < this->chips.getAll().size(); i++) {
-    out->printf("%zu,%s\r\n", i, this->chips.getAll().at(i)->getName());
-  }
-  out->print("OK\r\n");
-}
-
-void AtHandler::handleLoraRx(ObservationRequest state, Stream *out) {
+void AtHandler::handleLoraRx(rx_request state, Stream *out) {
   if (this->receiving) {
     out->printf("already receiving\r\n");
     out->print("ERROR\r\n");
     return;
   }
-  int16_t code = this->lora->startLoraRx(&state);
-  if (code == 0) {
+  esp_err_t code = lora_util_start_rx(&state, device);
+  if (code == ESP_OK) {
     out->print("OK\r\n");
     this->receiving = true;
   } else {
@@ -265,8 +181,8 @@ void AtHandler::handleLoraRx(ObservationRequest state, Stream *out) {
   }
 }
 
-void AtHandler::handleLoraTx(char *message, ObservationRequest state, Stream *out) {
-  if (this->lora->isReceivingData()) {
+void AtHandler::handleLoraTx(char *message, rx_request state, Stream *out) {
+  if (this->receiving) {
     out->print("cannot transmit during receive\r\n");
     out->print("ERROR\r\n");
     return;
@@ -279,7 +195,7 @@ void AtHandler::handleLoraTx(char *message, ObservationRequest state, Stream *ou
     out->print("ERROR\r\n");
     return;
   }
-  code = lora->loraTx(binaryData, binaryDataLength, &state);
+  code = lora_util_tx(binaryData, binaryDataLength, &state, this->device);
   free(binaryData);
   if (code != 0) {
     out->printf("unable to send data: %d\r\n", code);
@@ -327,11 +243,6 @@ void AtHandler::handleSetTime(unsigned long time, Stream *out) {
 }
 
 void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out) {
-  if (this->config_chip == NULL) {
-    out->print("lora chip is not configured\r\n");
-    out->print("ERROR\r\n");
-    return;
-  }
   if (!client->init(address, address_len)) {
     out->printf("unable to connect to lora-shadow: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
     out->print("ERROR\r\n");
@@ -345,6 +256,7 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
 
   this->display->setEnabled(false);
 
-  out->printf("%s,%g,%g\r\n", BLEDevice::getAddress().toString().c_str(), this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
+  // FIXME
+  //  out->printf("%s,%g,%g\r\n", BLEDevice::getAddress().toString().c_str(), this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
   out->print("OK\r\n");
 }

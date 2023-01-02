@@ -2,18 +2,17 @@
 #define LoRaShadowClient_h
 
 #include <BLEDevice.h>
-#include <LoRaFrame.h>
-#include <LoRaModule.h>
 #include <Preferences.h>
+#include <lora_util.h>
 #include <stdint.h>
 
 class LoRaShadowClient {
  public:
   LoRaShadowClient();
   bool init(uint8_t *address, size_t address_len);
-  void loadRequest(ObservationRequest *state);
+  void loadRequest(rx_request *state);
   void sendBatteryLevel(uint8_t level);
-  void sendData(LoRaFrame *frame);
+  void sendData(lora_frame *frame);
 
  private:
   BLEClient *client = NULL;

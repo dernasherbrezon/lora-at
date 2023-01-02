@@ -93,7 +93,7 @@ void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
   free(message);
 }
 
-void LoRaShadowClient::loadRequest(ObservationRequest *state) {
+void LoRaShadowClient::loadRequest(rx_request *state) {
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
@@ -122,12 +122,12 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   size_t raw_length = value.size();
   if (raw_length == 0) {
     log_i("no observation scheduled");
-    memset(state, 0, sizeof(ObservationRequest));
+    memset(state, 0, sizeof(rx_request_t));
     return;
   }
   if (raw_length < OBSERVATION_SIZE) {
     log_i("corrupted message received. expected: %zu", OBSERVATION_SIZE);
-    memset(state, 0, sizeof(ObservationRequest));
+    memset(state, 0, sizeof(rx_request_t));
     return;
   }
 
@@ -176,10 +176,10 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   memcpy(&(state->gain), raw + offset, sizeof(state->gain));
   offset += sizeof(state->gain);
 
-  uint8_t ldro;
-  memcpy(&ldro, raw + offset, sizeof(ldro));
-  state->ldro = (LdroType)ldro;
-  offset += sizeof(ldro);
+  uint8_t ldo;
+  memcpy(&ldo, raw + offset, sizeof(ldo));
+  state->ldo = (ldo_type_t)ldo;
+  offset += sizeof(ldo);
 
   char buf[80];
   struct tm *ts;
@@ -196,10 +196,10 @@ void LoRaShadowClient::loadRequest(ObservationRequest *state) {
   ts = localtime((const time_t *)(&timeSeconds));
   strftime(buf, sizeof(buf), format, ts);
   log_i("end time:     %s", buf);
-  log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldro);
+  log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldo);
 }
 
-void LoRaShadowClient::sendData(LoRaFrame *frame) {
+void LoRaShadowClient::sendData(lora_frame *frame) {
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
@@ -224,12 +224,12 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
   }
 
   size_t length = 0;
-  length += sizeof(frame->frequencyError);
+  length += sizeof(frame->frequency_error);
   length += sizeof(frame->rssi);
   length += sizeof(frame->snr);
   length += sizeof(frame->timestamp);
-  length += sizeof(frame->dataLength);
-  length += frame->dataLength;
+  length += sizeof(frame->data_length);
+  length += frame->data_length;
 
   uint8_t *message = (uint8_t *)malloc(sizeof(uint8_t) * length);
   if (message == NULL) {
@@ -238,15 +238,11 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
 
   size_t offset = 0;
 
-  uint32_t frequencyError;
-  memcpy(&frequencyError, &(frame->frequencyError), sizeof(frame->frequencyError));
-  frequencyError = htonl(frequencyError);
-  memcpy(message + offset, &frequencyError, sizeof(frequencyError));
-  offset += sizeof(frequencyError);
+  int32_t frequency_error = htonl(frame->frequency_error);
+  memcpy(message + offset, &frequency_error, sizeof(frequency_error));
+  offset += sizeof(frequency_error);
 
-  uint32_t rssi;
-  memcpy(&rssi, &(frame->rssi), sizeof(frame->rssi));
-  rssi = htonl(rssi);
+  int16_t rssi = htonl(frame->rssi);
   memcpy(message + offset, &rssi, sizeof(rssi));
   offset += sizeof(rssi);
 
@@ -260,12 +256,12 @@ void LoRaShadowClient::sendData(LoRaFrame *frame) {
   memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
   offset += sizeof(frame->timestamp);
 
-  uint32_t dataLength = htonl(frame->dataLength);
-  memcpy(message + offset, &dataLength, sizeof(frame->dataLength));
-  offset += sizeof(frame->dataLength);
+  uint32_t data_length = htonl(frame->data_length);
+  memcpy(message + offset, &data_length, sizeof(frame->data_length));
+  offset += sizeof(frame->data_length);
 
-  memcpy(message + offset, frame->data, frame->dataLength);
-  offset += frame->dataLength;
+  memcpy(message + offset, frame->data, frame->data_length);
+  offset += frame->data_length;
 
   req->writeValue(message, length, true);
   free(message);
