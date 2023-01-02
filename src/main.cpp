@@ -35,6 +35,8 @@ TaskHandle_t handle_interrupt;
 
 RTC_DATA_ATTR uint64_t sleepTime;
 RTC_DATA_ATTR uint64_t observation_length_micros;
+RTC_DATA_ATTR uint64_t deepSleepPeriodMicros;
+RTC_DATA_ATTR uint64_t inactivityTimeoutMicros;
 
 void scheduleObservation() {
   rx_request scheduledObservation;
@@ -147,10 +149,9 @@ void setup() {
     log_e("unable to start lora: %d", code);
   }
 
-  dsHandler = new DeepSleepHandler();
-
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
+    dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
     code = sx127x_set_opmod(SX127x_MODE_SLEEP, device);
     if (code != ESP_OK) {
       log_e("unable to stop lora: %d", code);
@@ -159,9 +160,18 @@ void setup() {
     return;
   }
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
+    dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
     sx127x_set_rx_callback(rx_callback_deep_sleep, device);
     sx127x_handle_interrupt(device);
     return;
+  }
+
+  dsHandler = new DeepSleepHandler();
+  if (dsHandler->deepSleepPeriodMicros != 0) {
+    deepSleepPeriodMicros = dsHandler->deepSleepPeriodMicros;
+  }
+  if (dsHandler->inactivityTimeoutMicros != 0) {
+    inactivityTimeoutMicros = dsHandler->inactivityTimeoutMicros;
   }
 
   client = new LoRaShadowClient();
@@ -191,5 +201,7 @@ void setup() {
 
 void loop() {
   bool someActivityHappened = handler->handle(&Serial, &Serial);
-  dsHandler->handleInactive(someActivityHappened || handler->isReceiving());
+  if (dsHandler->isDeepSleepRequired(someActivityHappened || handler->isReceiving())) {
+    scheduleObservation();
+  }
 }

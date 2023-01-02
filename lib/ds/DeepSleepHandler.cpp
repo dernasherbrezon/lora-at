@@ -17,6 +17,11 @@ DeepSleepHandler::DeepSleepHandler() {
   preferences.end();
 }
 
+DeepSleepHandler::DeepSleepHandler(uint64_t deepSleepPeriodMicros, uint64_t inactivityTimeoutMicros) {
+  this->deepSleepPeriodMicros = deepSleepPeriodMicros;
+  this->inactivityTimeoutMicros = inactivityTimeoutMicros;
+}
+
 bool DeepSleepHandler::init(uint64_t deepSleepPeriodMicros, uint64_t inactivityTimeoutMicros) {
   if (!preferences.begin("lora-at", false)) {
     return false;
@@ -56,10 +61,10 @@ void DeepSleepHandler::enterRxDeepSleep(uint64_t deepSleepRequestedMicros) {
   esp_deep_sleep_start();
 }
 
-void DeepSleepHandler::handleInactive(bool resetInactiveTimer) {
+bool DeepSleepHandler::isDeepSleepRequired(bool resetInactiveTimer) {
   if (this->deepSleepPeriodMicros == 0) {
     // not configured
-    return;
+    return false;
   }
   uint64_t currentTime = esp_timer_get_time();
 
@@ -68,9 +73,9 @@ void DeepSleepHandler::handleInactive(bool resetInactiveTimer) {
   }
 
   if (currentTime - this->lastActiveTimeMicros < this->inactivityTimeoutMicros) {
-    return;
+    return false;
   }
 
   log_i("not active for %d seconds. going into deep sleep", this->inactivityTimeoutMicros / 1000000);
-  this->enterDeepSleep(0);
+  return true;
 }

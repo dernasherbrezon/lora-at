@@ -137,7 +137,7 @@ esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request *requ
   }
   sx127x_tx_header_t header;
   header.crc = SX127x_RX_PAYLOAD_CRC_ON;
-  header.coding_rate = (sx127x_cr_t)(request->cr - 4);
+  header.coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1;
   code = sx127x_set_tx_explicit_header(&header, device);
   if (code != ESP_OK) {
     return code;
