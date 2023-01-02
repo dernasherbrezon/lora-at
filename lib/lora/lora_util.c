@@ -8,21 +8,26 @@
 
 // defined in platformio.ini
 #ifndef PIN_CS
-#define PIN_CS 0
+#define PIN_CS 18
 #endif
 #ifndef PIN_DI0
-#define PIN_DI0 0
+#define PIN_DI0 26
 #endif
-
-#define SCK 5
-#define MISO 19
-#define MOSI 27
+#ifndef PIN_MOSI
+#define PIN_MOSI 27
+#endif
+#ifndef PIN_MISO
+#define PIN_MISO 19
+#endif
+#ifndef PIN_SCK
+#define PIN_SCK 5
+#endif
 
 esp_err_t lora_util_init(sx127x **device) {
   spi_bus_config_t config = {
-      .mosi_io_num = MOSI,
-      .miso_io_num = MISO,
-      .sclk_io_num = SCK,
+      .mosi_io_num = PIN_MOSI,
+      .miso_io_num = PIN_MISO,
+      .sclk_io_num = PIN_SCK,
       .quadwp_io_num = -1,
       .quadhd_io_num = -1,
       .max_transfer_sz = 0,
