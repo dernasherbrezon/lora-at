@@ -130,6 +130,10 @@ boolean AtHandler::isReceiving() {
   return this->receiving;
 }
 
+void AtHandler::setTransmitting(boolean value) {
+  this->transmitting = value;
+}
+
 size_t AtHandler::read_line(Stream *in) {
   // Check to see if anything is available in the serial receive buffer
   while (in->available() > 0) {
@@ -175,6 +179,11 @@ void AtHandler::handleLoraRx(rx_request state, Stream *out) {
     out->print("ERROR\r\n");
     return;
   }
+  if (this->transmitting) {
+    out->print("still transmitting previous message\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
   esp_err_t code = lora_util_start_rx(&state, device);
   if (code == ESP_OK) {
     out->print("OK\r\n");
@@ -191,6 +200,11 @@ void AtHandler::handleLoraTx(char *message, rx_request state, Stream *out) {
     out->print("ERROR\r\n");
     return;
   }
+  if (this->transmitting) {
+    out->print("still transmitting previous message\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
   uint8_t *binaryData = NULL;
   size_t binaryDataLength = 0;
   int code = convertStringToHex(message, &binaryData, &binaryDataLength);
@@ -199,13 +213,14 @@ void AtHandler::handleLoraTx(char *message, rx_request state, Stream *out) {
     out->print("ERROR\r\n");
     return;
   }
-  code = lora_util_tx(binaryData, binaryDataLength, &state, this->device);
+  code = lora_util_start_tx(binaryData, binaryDataLength, &state, this->device);
   free(binaryData);
   if (code != 0) {
     out->printf("unable to send data: %d\r\n", code);
     out->print("ERROR\r\n");
     return;
   }
+  this->transmitting = true;
   out->print("OK\r\n");
 }
 

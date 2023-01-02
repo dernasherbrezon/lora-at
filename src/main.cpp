@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 sx127x *device = NULL;
-AtHandler *handler;
+AtHandler *handler = NULL;
 Display *display = NULL;
 LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
@@ -55,6 +55,7 @@ void scheduleObservation() {
       // use server-side millis
       observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
       // set current server time
+      // FIXME most likely won't be used
       struct timeval now;
       now.tv_sec = scheduledObservation.currentTimeMillis / 1000;
       now.tv_usec = 0;
@@ -75,7 +76,12 @@ void scheduleObservation() {
   }
 }
 
-void rx_callback(sx127x *callback_device) {
+void tx_callback(sx127x *callback_device) {
+  log_i("transmitted");
+  handler->setTransmitting(false);
+}
+
+void rx_callback_deep_sleep(sx127x *callback_device) {
   uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
   uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
 
@@ -91,15 +97,34 @@ void rx_callback(sx127x *callback_device) {
     dsHandler->enterRxDeepSleep(remaining_micros);
     return;
   }
+  // FIXME check if now contains the actual millis after awake from deep sleep
   time_t now;
   time(&now);
   frame->timestamp = now;
   log_i("frame received: %d bytes RSSI: %d SNR: %f Timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
 
   client->sendData(frame);
-  handler->addFrame(frame);
 
   dsHandler->enterRxDeepSleep(remaining_micros);
+}
+
+void rx_callback(sx127x *callback_device) {
+  lora_frame *frame = NULL;
+  esp_err_t code = lora_util_read_frame(callback_device, &frame);
+  if (code != ESP_OK) {
+    log_e("unable to read frame: %d", code);
+    return;
+  }
+  if (frame == NULL) {
+    log_i("frame wasn't received");
+    return;
+  }
+  // FIXME check if now contains the actual millis after awake from deep sleep
+  time_t now;
+  time(&now);
+  frame->timestamp = now;
+  log_i("frame received: %d bytes RSSI: %d SNR: %f Timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
+  handler->addFrame(frame);
 }
 
 void IRAM_ATTR handle_interrupt_fromisr(void *arg) {
@@ -122,10 +147,7 @@ void setup() {
     log_e("unable to start lora: %d", code);
   }
 
-  client = new LoRaShadowClient();
-  display = new Display();
   dsHandler = new DeepSleepHandler();
-  handler = new AtHandler(device, display, client, dsHandler);
 
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
@@ -134,27 +156,34 @@ void setup() {
       log_e("unable to stop lora: %d", code);
     }
     scheduleObservation();
-  } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
-    sx127x_set_rx_callback(rx_callback, device);
+    return;
+  }
+  if (cause == ESP_SLEEP_WAKEUP_EXT0) {
+    sx127x_set_rx_callback(rx_callback_deep_sleep, device);
     sx127x_handle_interrupt(device);
-  } else {
-    // normal start
-    sx127x_set_rx_callback(rx_callback, device);
-    BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
-    if (task_code != pdPASS) {
-      log_e("can't create task %d", task_code);
-    }
-
-    gpio_set_direction((gpio_num_t)PIN_DI0, GPIO_MODE_INPUT);
-    gpio_pulldown_en((gpio_num_t)PIN_DI0);
-    gpio_pullup_dis((gpio_num_t)PIN_DI0);
-    gpio_set_intr_type((gpio_num_t)PIN_DI0, GPIO_INTR_POSEDGE);
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add((gpio_num_t)PIN_DI0, handle_interrupt_fromisr, (void *)device);
+    return;
   }
 
-  display->init();
+  client = new LoRaShadowClient();
+  display = new Display();
+  handler = new AtHandler(device, display, client, dsHandler);
 
+  // normal start
+  sx127x_set_rx_callback(rx_callback, device);
+  sx127x_set_tx_callback(tx_callback, device);
+  BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
+  if (task_code != pdPASS) {
+    log_e("can't create task %d", task_code);
+  }
+
+  gpio_set_direction((gpio_num_t)PIN_DI0, GPIO_MODE_INPUT);
+  gpio_pulldown_en((gpio_num_t)PIN_DI0);
+  gpio_pullup_dis((gpio_num_t)PIN_DI0);
+  gpio_set_intr_type((gpio_num_t)PIN_DI0, GPIO_INTR_POSEDGE);
+  gpio_install_isr_service(0);
+  gpio_isr_handler_add((gpio_num_t)PIN_DI0, handle_interrupt_fromisr, (void *)device);
+
+  display->init();
   display->setStatus("IDLE");
   display->update();
   log_i("setup completed");

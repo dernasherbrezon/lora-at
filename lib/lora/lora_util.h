@@ -49,7 +49,7 @@ esp_err_t lora_util_read_frame(sx127x *device, lora_frame **result);
 
 esp_err_t lora_util_start_rx(rx_request *req, sx127x *device);
 
-esp_err_t lora_util_tx(uint8_t *data, size_t data_length, rx_request *req, sx127x *device);
+esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request *req, sx127x *device);
 
 void lora_util_frame_destroy(lora_frame *frame);
 

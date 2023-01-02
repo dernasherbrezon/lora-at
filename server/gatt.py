@@ -103,7 +103,7 @@ class ScheduleCharacteristic(bluez.Characteristic):
             if client == None:
                 return
 
-            headerFormat = "!fffQL"
+            headerFormat = "!lhfQL"
             headerSize = struct.calcsize(headerFormat)
             frame = {}
             frame["frequencyError"], frame["rssi"], frame["snr"], frame["timestamp"], dataLength = struct.unpack(headerFormat, value[:headerSize])

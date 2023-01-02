@@ -16,6 +16,7 @@ class AtHandler {
   bool handle(Stream *in, Stream *out);
   void addFrame(lora_frame *frame);
   boolean isReceiving();
+  void setTransmitting(boolean value);
 
  private:
   void handlePull(Stream *in, Stream *out);
@@ -34,6 +35,7 @@ class AtHandler {
   LoRaShadowClient *client;
   DeepSleepHandler *dsHandler;
   bool receiving = false;
+  bool transmitting = false;
   std::vector<lora_frame *> receivedFrames;
   Preferences preferences;
   uint8_t config_version = 1;

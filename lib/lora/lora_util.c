@@ -40,7 +40,7 @@ esp_err_t lora_util_init(sx127x **device) {
   return ESP_OK;
 }
 
-esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
+esp_err_t lora_util_start_common(rx_request *request, sx127x *device) {
   esp_err_t code = sx127x_set_opmod(SX127x_MODE_SLEEP, device);
   if (code != ESP_OK) {
     return code;
@@ -58,10 +58,6 @@ esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
     return code;
   }
   code = sx127x_set_opmod(SX127x_MODE_STANDBY, device);
-  if (code != ESP_OK) {
-    return code;
-  }
-  code = sx127x_set_lna_gain((sx127x_gain_t)(request->gain << 5), device);
   if (code != ESP_OK) {
     return code;
   }
@@ -109,25 +105,48 @@ esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
   if (code != ESP_OK) {
     return code;
   }
-  code = sx127x_set_opmod(SX127x_MODE_RX_CONT, device);
-  if (code != ESP_OK) {
-    return code;
-  }
   // force ldo settings
   if (request->ldo == LDO_ON) {
     code = sx127x_set_low_datarate_optimization(SX127x_LOW_DATARATE_OPTIMIZATION_ON, device);
   } else if (request->ldo == LDO_OFF) {
     code = sx127x_set_low_datarate_optimization(SX127x_LOW_DATARATE_OPTIMIZATION_OFF, device);
   }
+  return code;
+}
+
+esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
+  esp_err_t code = lora_util_start_common(request, device);
   if (code != ESP_OK) {
     return code;
   }
-  return ESP_OK;
+  code = sx127x_set_lna_gain((sx127x_gain_t)(request->gain << 5), device);
+  if (code != ESP_OK) {
+    return code;
+  }
+  return sx127x_set_opmod(SX127x_MODE_RX_CONT, device);
 }
 
-esp_err_t lora_util_tx(uint8_t *data, size_t data_length, rx_request *req, sx127x *device) {
-  //FIXME
-  return ESP_OK;
+esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request *request, sx127x *device) {
+  esp_err_t code = lora_util_start_common(request, device);
+  if (code != ESP_OK) {
+    return code;
+  }
+  code = sx127x_set_pa_config(SX127x_PA_PIN_BOOST, request->power, device);
+  if (code != ESP_OK) {
+    return code;
+  }
+  sx127x_tx_header_t header;
+  header.crc = SX127x_RX_PAYLOAD_CRC_ON;
+  header.coding_rate = (sx127x_cr_t)(request->cr - 4);
+  code = sx127x_set_tx_explicit_header(&header, device);
+  if (code != ESP_OK) {
+    return code;
+  }
+  code = sx127x_set_for_transmission(data, data_length, device);
+  if (code != ESP_OK) {
+    return code;
+  }
+  return sx127x_set_opmod(SX127x_MODE_TX, device);
 }
 
 esp_err_t lora_util_read_frame(sx127x *device, lora_frame **frame) {
