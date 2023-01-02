@@ -10,9 +10,6 @@
 #ifndef PIN_CS
 #define PIN_CS 18
 #endif
-#ifndef PIN_DI0
-#define PIN_DI0 26
-#endif
 #ifndef PIN_MOSI
 #define PIN_MOSI 27
 #endif

@@ -4,7 +4,9 @@
 #include <esp32-hal-log.h>
 #include <esp_timer.h>
 
-#define DIO0 26
+#ifndef PIN_DI0
+#define PIN_DI0 26
+#endif
 
 DeepSleepHandler::DeepSleepHandler() {
   if (!preferences.begin("lora-at", true)) {
@@ -45,12 +47,12 @@ void DeepSleepHandler::enterDeepSleep(uint64_t deepSleepRequestedMicros) {
 }
 
 void DeepSleepHandler::enterRxDeepSleep(uint64_t deepSleepRequestedMicros) {
-  rtc_gpio_set_direction((gpio_num_t)DIO0, RTC_GPIO_MODE_INPUT_ONLY);
-  rtc_gpio_pulldown_en((gpio_num_t)DIO0);
+  rtc_gpio_set_direction((gpio_num_t)PIN_DI0, RTC_GPIO_MODE_INPUT_ONLY);
+  rtc_gpio_pulldown_en((gpio_num_t)PIN_DI0);
   log_i("entering rx deep sleep for %" PRIu64 " seconds or first packet", deepSleepRequestedMicros / 1000000);
   Serial.flush();
   esp_sleep_enable_timer_wakeup(deepSleepRequestedMicros);
-  esp_sleep_enable_ext0_wakeup((gpio_num_t)DIO0, RISING);
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_DI0, RISING);
   esp_deep_sleep_start();
 }
 

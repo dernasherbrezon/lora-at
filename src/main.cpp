@@ -22,11 +22,16 @@ extern "C" {
 #define ARDUINO_VARIANT "native"
 #endif
 
+#ifndef PIN_DI0
+#define PIN_DI0 26
+#endif
+
 sx127x *device = NULL;
 AtHandler *handler;
 Display *display = NULL;
 LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
+TaskHandle_t handle_interrupt;
 
 RTC_DATA_ATTR uint64_t sleepTime;
 RTC_DATA_ATTR uint64_t observation_length_micros;
@@ -97,6 +102,17 @@ void rx_callback(sx127x *callback_device) {
   dsHandler->enterRxDeepSleep(remaining_micros);
 }
 
+void IRAM_ATTR handle_interrupt_fromisr(void *arg) {
+  xTaskResumeFromISR(handle_interrupt);
+}
+
+void handle_interrupt_task(void *arg) {
+  while (1) {
+    vTaskSuspend(NULL);
+    sx127x_handle_interrupt((sx127x *)arg);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   log_i("starting. firmware version: %s", FIRMWARE_VERSION);
@@ -121,6 +137,20 @@ void setup() {
   } else if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     sx127x_set_rx_callback(rx_callback, device);
     sx127x_handle_interrupt(device);
+  } else {
+    // normal start
+    sx127x_set_rx_callback(rx_callback, device);
+    BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
+    if (task_code != pdPASS) {
+      log_e("can't create task %d", task_code);
+    }
+
+    gpio_set_direction((gpio_num_t)PIN_DI0, GPIO_MODE_INPUT);
+    gpio_pulldown_en((gpio_num_t)PIN_DI0);
+    gpio_pullup_dis((gpio_num_t)PIN_DI0);
+    gpio_set_intr_type((gpio_num_t)PIN_DI0, GPIO_INTR_POSEDGE);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add((gpio_num_t)PIN_DI0, handle_interrupt_fromisr, (void *)device);
   }
 
   display->init();
