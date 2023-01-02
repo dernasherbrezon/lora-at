@@ -126,6 +126,10 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
   out->print("OK\r\n");
 }
 
+boolean AtHandler::isReceiving() {
+  return this->receiving;
+}
+
 size_t AtHandler::read_line(Stream *in) {
   // Check to see if anything is available in the serial receive buffer
   while (in->available() > 0) {

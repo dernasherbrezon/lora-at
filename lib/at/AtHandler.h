@@ -15,6 +15,7 @@ class AtHandler {
   AtHandler(sx127x *device, Display *display, LoRaShadowClient *client, DeepSleepHandler *dsHandler);
   bool handle(Stream *in, Stream *out);
   void addFrame(lora_frame *frame);
+  boolean isReceiving();
 
  private:
   void handlePull(Stream *in, Stream *out);

@@ -50,7 +50,6 @@ void scheduleObservation() {
       // use server-side millis
       observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
       // set current server time
-      // LoRaModule will use current time for just received frame
       struct timeval now;
       now.tv_sec = scheduledObservation.currentTimeMillis / 1000;
       now.tv_usec = 0;
@@ -72,14 +71,19 @@ void scheduleObservation() {
 }
 
 void rx_callback(sx127x *callback_device) {
+  uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
+  uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
+
   lora_frame *frame = NULL;
   esp_err_t code = lora_util_read_frame(callback_device, &frame);
   if (code != ESP_OK) {
     log_e("unable to read frame: %d", code);
+    dsHandler->enterRxDeepSleep(remaining_micros);
     return;
   }
   if (frame == NULL) {
     log_i("frame wasn't received");
+    dsHandler->enterRxDeepSleep(remaining_micros);
     return;
   }
   time_t now;
@@ -90,8 +94,6 @@ void rx_callback(sx127x *callback_device) {
   client->sendData(frame);
   handler->addFrame(frame);
 
-  uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-  uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
   dsHandler->enterRxDeepSleep(remaining_micros);
 }
 
@@ -130,5 +132,5 @@ void setup() {
 
 void loop() {
   bool someActivityHappened = handler->handle(&Serial, &Serial);
-  dsHandler->handleInactive(someActivityHappened);
+  dsHandler->handleInactive(someActivityHappened || handler->isReceiving());
 }

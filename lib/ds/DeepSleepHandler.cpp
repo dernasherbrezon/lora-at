@@ -13,9 +13,6 @@ DeepSleepHandler::DeepSleepHandler() {
   this->deepSleepPeriodMicros = preferences.getULong64("period");
   this->inactivityTimeoutMicros = preferences.getULong64("inactivity");
   preferences.end();
-  // if (!this->isDeepSleepWakeup()) {
-  //   this->lastActiveTimeMicros = esp_timer_get_time();
-  // }
 }
 
 bool DeepSleepHandler::init(uint64_t deepSleepPeriodMicros, uint64_t inactivityTimeoutMicros) {
