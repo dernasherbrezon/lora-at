@@ -33,45 +33,38 @@ LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 TaskHandle_t handle_interrupt;
 
-RTC_DATA_ATTR uint64_t sleepTime;
-RTC_DATA_ATTR uint64_t observation_length_micros;
+RTC_DATA_ATTR uint64_t rx_start_micros;
+RTC_DATA_ATTR uint64_t rx_start_utc_millis;
+RTC_DATA_ATTR uint64_t rx_length_micros;
 RTC_DATA_ATTR uint64_t deepSleepPeriodMicros;
 RTC_DATA_ATTR uint64_t inactivityTimeoutMicros;
 
 void scheduleObservation() {
-  rx_request scheduledObservation;
+  rx_request req;
   // always attempt to load fresh config
-  client->loadRequest(&scheduledObservation);
+  client->loadRequest(&req);
   uint8_t batteryVoltage;
   int status = readVoltage(&batteryVoltage);
   if (status == 0) {
     client->sendBatteryLevel(batteryVoltage);
   }
-  if (scheduledObservation.startTimeMillis != 0) {
-    if (scheduledObservation.currentTimeMillis > scheduledObservation.endTimeMillis || scheduledObservation.startTimeMillis > scheduledObservation.endTimeMillis) {
+  if (req.startTimeMillis != 0) {
+    if (req.currentTimeMillis > req.endTimeMillis || req.startTimeMillis > req.endTimeMillis) {
       log_i("incorrect schedule returned from server");
       dsHandler->enterDeepSleep(0);
-    } else if (scheduledObservation.startTimeMillis > scheduledObservation.currentTimeMillis) {
-      dsHandler->enterDeepSleep((scheduledObservation.startTimeMillis - scheduledObservation.currentTimeMillis) * 1000);
+    } else if (req.startTimeMillis > req.currentTimeMillis) {
+      dsHandler->enterDeepSleep((req.startTimeMillis - req.currentTimeMillis) * 1000);
     } else {
       // use server-side millis
-      observation_length_micros = (scheduledObservation.endTimeMillis - scheduledObservation.currentTimeMillis) * 1000;
-      // set current server time
-      // FIXME most likely won't be used
-      struct timeval now;
-      now.tv_sec = scheduledObservation.currentTimeMillis / 1000;
-      now.tv_usec = 0;
-      int code = settimeofday(&now, NULL);
-      if (code != 0) {
-        log_e("unable to set current time. LoRa frame timestamp will be incorrect");
-      }
-      esp_err_t rx_code = lora_util_start_rx(&scheduledObservation, device);
+      rx_length_micros = (req.endTimeMillis - req.currentTimeMillis) * 1000;
+      rx_start_utc_millis = req.currentTimeMillis;
+      esp_err_t rx_code = lora_util_start_rx(&req, device);
       if (rx_code != ESP_OK) {
         log_e("unable to start rx: %d", rx_code);
         return;
       }
-      sleepTime = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-      dsHandler->enterRxDeepSleep(observation_length_micros);
+      rx_start_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
+      dsHandler->enterRxDeepSleep(rx_length_micros);
     }
   } else {
     dsHandler->enterDeepSleep(0);
@@ -84,8 +77,9 @@ void tx_callback(sx127x *callback_device) {
 }
 
 void rx_callback_deep_sleep(sx127x *callback_device) {
-  uint64_t timeNow = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-  uint64_t remaining_micros = observation_length_micros - (timeNow - sleepTime);
+  uint64_t now_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
+  uint64_t in_rx_micros = now_micros - rx_start_micros;
+  uint64_t remaining_micros = rx_length_micros - in_rx_micros;
 
   lora_frame *frame = NULL;
   esp_err_t code = lora_util_read_frame(callback_device, &frame);
@@ -99,11 +93,10 @@ void rx_callback_deep_sleep(sx127x *callback_device) {
     dsHandler->enterRxDeepSleep(remaining_micros);
     return;
   }
-  // FIXME check if now contains the actual millis after awake from deep sleep
-  time_t now;
-  time(&now);
-  frame->timestamp = now;
-  log_i("frame received: %d bytes RSSI: %d SNR: %f Timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
+  // calculate current utc millis without calling server via Bluetooth
+  // this timestamp is not precise, but for short rx requests should suffice
+  frame->timestamp = rx_start_utc_millis + in_rx_micros / 1000;
+  log_i("frame received: %d bytes RSSI: %d SNR: %f timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
 
   client->sendData(frame);
 
@@ -121,11 +114,11 @@ void rx_callback(sx127x *callback_device) {
     log_i("frame wasn't received");
     return;
   }
-  // FIXME check if now contains the actual millis after awake from deep sleep
+  // assume time is configured using AT+TIME command
   time_t now;
   time(&now);
   frame->timestamp = now;
-  log_i("frame received: %d bytes RSSI: %d SNR: %f Timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
+  log_i("frame received: %d bytes RSSI: %d SNR: %f timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
   handler->addFrame(frame);
 }
 
