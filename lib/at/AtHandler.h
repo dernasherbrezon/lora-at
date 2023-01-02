@@ -27,6 +27,10 @@ class AtHandler {
   void handleSetDisplay(bool enabled, Stream *out);
   void handleQueryTime(Stream *out);
   void handleSetTime(unsigned long time, Stream *out);
+  void handleMinimumFrequency(Stream *out);
+  void handleMaximumFrequency(Stream *out);
+  void handleSetMinimumFrequency(float freq, Stream *out);
+  void handleSetMaximumFrequency(float freq, Stream *out);
   void handleDeepSleepConfig(uint8_t *btaddress, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out);
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
@@ -39,6 +43,8 @@ class AtHandler {
   std::vector<lora_frame *> receivedFrames;
   Preferences preferences;
   uint8_t config_version = 1;
+  float minimumFrequency = 137.0f;
+  float maximumFrequency = 1020.0f;
 };
 
 #endif

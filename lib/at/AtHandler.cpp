@@ -21,6 +21,12 @@ AtHandler::AtHandler(sx127x *device, Display *display, LoRaShadowClient *client,
   this->display = display;
   this->client = client;
   this->dsHandler = dsHandler;
+  if (!preferences.begin("lora-at", true)) {
+    return;
+  }
+  this->minimumFrequency = preferences.getFloat("minFrequency");
+  this->maximumFrequency = preferences.getFloat("maxFrequency");
+  preferences.end();
 }
 
 bool AtHandler::handle(Stream *in, Stream *out) {
@@ -58,10 +64,34 @@ bool AtHandler::handle(Stream *in, Stream *out) {
     return true;
   }
 
+  if (strcmp("AT+MINFREQ?", this->buffer) == 0) {
+    this->handleMinimumFrequency(out);
+    return true;
+  }
+
+  if (strcmp("AT+MAXFREQ?", this->buffer) == 0) {
+    this->handleMaximumFrequency(out);
+    return true;
+  }
+
   int enabled;
   int matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
   if (matched == 1) {
     this->handleSetDisplay(enabled, out);
+    return true;
+  }
+
+  float minFrequency;
+  matched = sscanf(this->buffer, "AT+MINFREQ=%f", &minFrequency);
+  if (matched == 1) {
+    this->handleSetMinimumFrequency(minFrequency, out);
+    return true;
+  }
+
+  float maxFrequency;
+  matched = sscanf(this->buffer, "AT+MAXFREQ=%f", &maxFrequency);
+  if (matched == 1) {
+    this->handleSetMaximumFrequency(maxFrequency, out);
     return true;
   }
 
@@ -275,7 +305,31 @@ void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint
 
   this->display->setEnabled(false);
 
-  // FIXME
-  //  out->printf("%s,%g,%g\r\n", BLEDevice::getAddress().toString().c_str(), this->config_chip->minLoraFrequency, this->config_chip->maxLoraFrequency);
+  out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleMinimumFrequency(Stream *out) {
+  out->printf("%f\r\n", this->minimumFrequency);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleMaximumFrequency(Stream *out) {
+  out->printf("%f\r\n", this->maximumFrequency);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleSetMinimumFrequency(float freq, Stream *out) {
+  preferences.begin("lora-at", false);
+  preferences.putFloat("minFrequency", freq);
+  preferences.end();
+  this->minimumFrequency = freq;
+  out->print("OK\r\n");
+}
+void AtHandler::handleSetMaximumFrequency(float freq, Stream *out) {
+  preferences.begin("lora-at", false);
+  preferences.putFloat("maxFrequency", freq);
+  preferences.end();
+  this->maximumFrequency = freq;
   out->print("OK\r\n");
 }
