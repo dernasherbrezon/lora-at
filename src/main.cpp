@@ -28,8 +28,6 @@ extern "C" {
 
 sx127x *device = NULL;
 AtHandler *handler = NULL;
-Display *display = NULL;
-LoRaShadowClient *client = NULL;
 DeepSleepHandler *dsHandler = NULL;
 TaskHandle_t handle_interrupt;
 
@@ -42,6 +40,7 @@ RTC_DATA_ATTR uint64_t inactivityTimeoutMicros;
 void scheduleObservation() {
   rx_request req;
   // always attempt to load fresh config
+  LoRaShadowClient *client = new LoRaShadowClient();
   client->loadRequest(&req);
   uint8_t batteryVoltage;
   int status = readVoltage(&batteryVoltage);
@@ -96,8 +95,9 @@ void rx_callback_deep_sleep(sx127x *callback_device) {
   // calculate current utc millis without calling server via Bluetooth
   // this timestamp is not precise, but for short rx requests should suffice
   frame->timestamp = rx_start_utc_millis + in_rx_micros / 1000;
-  log_i("frame received: %d bytes RSSI: %d SNR: %f timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
+  log_i("frame received: %d bytes RSSI: %d SNR: %f frequency error: %d timestamp: %" PRIu64, frame->data_length, frame->rssi, frame->snr, frame->frequency_error, frame->timestamp);
 
+  LoRaShadowClient *client = new LoRaShadowClient();
   client->sendData(frame);
 
   dsHandler->enterRxDeepSleep(remaining_micros);
@@ -118,7 +118,7 @@ void rx_callback(sx127x *callback_device) {
   time_t now;
   time(&now);
   frame->timestamp = now;
-  log_i("frame received: %d bytes RSSI: %d SNR: %f timestamp: %ld", frame->data_length, frame->rssi, frame->snr, frame->timestamp);
+  log_i("frame received: %d bytes RSSI: %d SNR: %f frequency error: %d timestamp: %" PRIu64, frame->data_length, frame->rssi, frame->snr, frame->frequency_error, frame->timestamp);
   handler->addFrame(frame);
 }
 
@@ -167,8 +167,8 @@ void setup() {
     inactivityTimeoutMicros = dsHandler->inactivityTimeoutMicros;
   }
 
-  client = new LoRaShadowClient();
-  display = new Display();
+  LoRaShadowClient *client = new LoRaShadowClient();
+  Display *display = new Display();
   handler = new AtHandler(device, display, client, dsHandler);
 
   // normal start

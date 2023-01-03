@@ -9,6 +9,8 @@
 #define STATUS_UUID "5b53256e-76d2-4259-b3aa-15b5b4cfdd32"
 #define OBSERVATION_SIZE 40
 
+//FIXME load address from preferences or supplied from parameter
+// this should save nvm load during deep sleep
 LoRaShadowClient::LoRaShadowClient() {
   if (!preferences.begin("lora-at", true)) {
     return;
@@ -242,7 +244,7 @@ void LoRaShadowClient::sendData(lora_frame *frame) {
   memcpy(message + offset, &frequency_error, sizeof(frequency_error));
   offset += sizeof(frequency_error);
 
-  int16_t rssi = htonl(frame->rssi);
+  int16_t rssi = htons(frame->rssi);
   memcpy(message + offset, &rssi, sizeof(rssi));
   offset += sizeof(rssi);
 
