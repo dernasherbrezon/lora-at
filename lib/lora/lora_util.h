@@ -39,6 +39,9 @@ struct rx_request_t {
   uint16_t preambleLength;
   uint8_t gain;
   ldo_type_t ldo;
+  uint8_t useCrc;
+  uint8_t useExplicitHeader;
+  uint8_t length;
 };
 
 typedef struct rx_request_t rx_request;

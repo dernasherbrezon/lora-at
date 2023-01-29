@@ -160,6 +160,7 @@ void setup() {
   }
 
   dsHandler = new DeepSleepHandler();
+  //FIXME won't be loaded when configured using AT commands
   if (dsHandler->deepSleepPeriodMicros != 0) {
     deepSleepPeriodMicros = dsHandler->deepSleepPeriodMicros;
   }

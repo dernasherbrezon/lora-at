@@ -83,7 +83,15 @@ esp_err_t lora_util_start_common(rx_request *request, sx127x *device) {
     return -1;
   }
   ERROR_CHECK(sx127x_set_bandwidth(bw, device));
-  ERROR_CHECK(sx127x_set_implicit_header(NULL, device));
+  if (request->useExplicitHeader) {
+    ERROR_CHECK(sx127x_set_implicit_header(NULL, device));
+  } else {
+    sx127x_implicit_header_t header = {
+        .coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1,
+        .crc = (sx127x_crc_payload_t)(request->useCrc << 2),
+        .length = request->length};
+    ESP_ERROR_CHECK(sx127x_set_implicit_header(&header, device));
+  }
   ERROR_CHECK(sx127x_set_modem_config_2((sx127x_sf_t)(request->sf << 4), device));
   ERROR_CHECK(sx127x_set_syncword(request->syncWord, device));
   ERROR_CHECK(sx127x_set_preamble_length(request->preambleLength, device));
@@ -105,10 +113,12 @@ esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
 esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request *request, sx127x *device) {
   ERROR_CHECK(lora_util_start_common(request, device));
   ERROR_CHECK(sx127x_set_pa_config(SX127x_PA_PIN_BOOST, request->power, device));
-  sx127x_tx_header_t header;
-  header.crc = SX127x_RX_PAYLOAD_CRC_ON;
-  header.coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1;
-  ERROR_CHECK(sx127x_set_tx_explicit_header(&header, device));
+  if (request->useExplicitHeader) {
+    sx127x_tx_header_t header;
+    header.crc = (sx127x_crc_payload_t)(request->useCrc << 2);
+    header.coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1;
+    ERROR_CHECK(sx127x_set_tx_explicit_header(&header, device));
+  }
   ERROR_CHECK(sx127x_set_for_transmission(data, data_length, device));
   return sx127x_set_opmod(SX127x_MODE_TX, device);
 }

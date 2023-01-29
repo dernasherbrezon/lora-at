@@ -183,6 +183,15 @@ void LoRaShadowClient::loadRequest(rx_request *state) {
   state->ldo = (ldo_type_t)ldo;
   offset += sizeof(ldo);
 
+  memcpy(&state->useCrc, raw + offset, sizeof(state->useCrc));
+  offset += sizeof(state->useCrc);
+
+  memcpy(&state->useExplicitHeader, raw + offset, sizeof(state->useExplicitHeader));
+  offset += sizeof(state->useExplicitHeader);
+
+  memcpy(&state->length, raw + offset, sizeof(state->length));
+  offset += sizeof(state->length);
+
   char buf[80];
   struct tm *ts;
   const char *format = "%Y-%m-%d %H:%M:%S";
@@ -198,7 +207,7 @@ void LoRaShadowClient::loadRequest(rx_request *state) {
   ts = localtime((const time_t *)(&timeSeconds));
   strftime(buf, sizeof(buf), format, ts);
   log_i("end time:     %s", buf);
-  log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldo);
+  log_i("observation requested: %f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", state->freq, state->bw, state->sf, state->cr, state->syncWord, state->power, state->preambleLength, state->gain, state->ldo, state->useCrc, state->useExplicitHeader, state->length);
 }
 
 void LoRaShadowClient::sendData(lora_frame *frame) {

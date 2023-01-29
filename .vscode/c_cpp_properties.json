@@ -227,7 +227,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60105",
+                "PLATFORMIO=60106",
                 "ARDUINO_TTGO_LoRa32_V2",
                 "CORE_DEBUG_LEVEL=3",
                 "FIRMWARE_VERSION=\"2.0\"",

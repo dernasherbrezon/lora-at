@@ -104,7 +104,7 @@ bool AtHandler::handle(Stream *in, Stream *out) {
 
   rx_request state;
   uint8_t ldo;
-  matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo);
+  matched = sscanf(this->buffer, "AT+LORARX=%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 9) {
     state.ldo = (ldo_type_t)ldo;
     this->handleLoraRx(state, out);
@@ -112,7 +112,7 @@ bool AtHandler::handle(Stream *in, Stream *out) {
   }
 
   char message[512];
-  matched = sscanf(this->buffer, "AT+LORATX=%[^,],%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo);
+  matched = sscanf(this->buffer, "AT+LORATX=%[^,],%f,%f,%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 10) {
     state.ldo = (ldo_type_t)ldo;
     this->handleLoraTx(message, state, out);
