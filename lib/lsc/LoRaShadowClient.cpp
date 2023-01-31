@@ -267,8 +267,7 @@ void LoRaShadowClient::sendData(lora_frame *frame) {
   memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
   offset += sizeof(frame->timestamp);
 
-  uint32_t data_length = htonl(frame->data_length);
-  memcpy(message + offset, &data_length, sizeof(frame->data_length));
+  memcpy(message + offset, &frame->data_length, sizeof(frame->data_length));
   offset += sizeof(frame->data_length);
 
   memcpy(message + offset, frame->data, frame->data_length);

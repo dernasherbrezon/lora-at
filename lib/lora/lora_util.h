@@ -14,7 +14,7 @@ struct lora_frame_t {
   int16_t rssi;
   float snr;
   uint64_t timestamp;
-  uint32_t data_length;
+  uint8_t data_length;
   uint8_t *data;
 };
 
