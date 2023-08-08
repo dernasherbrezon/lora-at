@@ -34,32 +34,40 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
             <td>AT+GMR<br>1.0<br>OK</td>
         </tr>
         <tr>
-            <td rowspan="2">Get list of all supported chips</td>
-            <td>AT+CHIPS?</td>
-            <td rowspan="2">Each line contains chip information: &lt;index&gt;.&lt;chip name&gt;</td>
+            <td rowspan="2">Get minimum supported frequency</td>
+            <td>AT+MINFREQ?</td>
+            <td rowspan="2">Configured manually using the command AT+MINFREQ=%f</td>
         </tr>
         <tr>
-            <td>AT+CHIPS?<br>0,TTGO - 433/470Mhz<br>1,TTGO - 868/915Mhz<br>OK</td>
+            <td>AT+MINFREQ?<br>863<br>OK</td>
         </tr>
         <tr>
-            <td rowspan="2">Setup chip</td>
-            <td>AT+CHIP=&lt;index&gt;</td>
-            <td rowspan="2">Set the chip to use. The index can be obtained using "AT+CHIPS?" command. Selected index will be saved into persistent memory and will survive the board restart</td>
+            <td rowspan="2">Set minimum supported frequency</td>
+            <td>AT+MINFREQ=freq</td>
+            <td rowspan="2">Minimum and maximum frequencies can help with automatic scheduling</td>
         </tr>
         <tr>
-            <td>AT+CHIP=0<br>OK</td>
+            <td>AT+MINFREQ=863<br>OK</td>
         </tr>
         <tr>
-            <td rowspan="2">Get chip</td>
-            <td>AT+CHIP?</td>
-            <td rowspan="2">Get information about currently selected chip.</td>
+            <td rowspan="2">Get maximum supported frequency</td>
+            <td>AT+MAXFREQ?</td>
+            <td rowspan="2">Configured manually using the command AT+MAXFREQ=%f</td>
         </tr>
         <tr>
-            <td>AT+CHIP?<br>TTGO - 868/915Mhz<br>LORA,863,928<br>FSK,863,928<br>OK</td>
+            <td>AT+MAXFREQ?<br>928<br>OK</td>
+        </tr>
+        <tr>
+            <td rowspan="2">Set maximum supported frequency</td>
+            <td>AT+MAXFREQ=freq</td>
+            <td rowspan="2">Minimum and maximum frequencies can help with automatic scheduling</td>
+        </tr>
+        <tr>
+            <td>AT+MAXFREQ=928<br>OK</td>
         </tr>
         <tr>
             <td rowspan="2">Start LoRa RX</td>
-            <td>AT+LORARX=freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro</td>
+            <td>AT+LORARX=freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro,useCrc,useExplicitHeader,length</td>
             <td rowspan="2">Start LoRa receiver. All messages will be received asynchronously and stored in the memory. They can be retrived by a separate command AT+PULL or AT+STOPRX. ldro can be one of the following:
             <ul>
                 <li>0 - LDRO_AUTO</li>
@@ -69,7 +77,7 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
             </td>
         </tr>
         <tr>
-            <td>AT+LORARX=433.0,10.4,9,6,18,10,55,0,0<br>OK</td>
+            <td>AT+LORARX=433.0,10.4,9,6,18,10,55,0,0,1,0,0<br>OK</td>
         </tr>
         <tr>
             <td rowspan="2">Get received messages</td>
@@ -89,7 +97,7 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
         </tr>
         <tr>
             <td rowspan="2">Send data</td>
-            <td>AT+LORATX=hexadecimal string of data to send,freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro</td>
+            <td>AT+LORATX=hexadecimal string of data to send,freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro,useCrc,useExplicitHeader,length</td>
             <td rowspan="2">Send the data using LoRa</td>
         </tr>
         <tr>
