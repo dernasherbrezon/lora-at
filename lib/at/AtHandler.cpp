@@ -199,7 +199,7 @@ void AtHandler::handleStopRx(Stream *in, Stream *out) {
     return;
   }
   this->receiving = false;
-  sx127x_set_opmod(SX127x_MODE_SLEEP, device);
+  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device);
   this->handlePull(in, out);
 }
 

@@ -48,6 +48,7 @@
         "esp32-hal.h": "c",
         "spi_master.h": "c",
         "spiapi_esp32.h": "c",
-        "soc.h": "c"
+        "soc.h": "c",
+        "sx127x.h": "c"
     }
 }

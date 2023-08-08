@@ -227,7 +227,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60106",
+                "PLATFORMIO=60109",
                 "ARDUINO_TTGO_LoRa32_V2",
                 "CORE_DEBUG_LEVEL=3",
                 "FIRMWARE_VERSION=\"2.0\"",
@@ -254,8 +254,8 @@
                 "ARDUINO_BOARD=\"TTGO LoRa32-OLED V2\"",
                 ""
             ],
-            "cStandard": "c99",
-            "cppStandard": "c++11",
+            "cStandard": "gnu99",
+            "cppStandard": "gnu++11",
             "compilerPath": "/Users/dernasherbrezon/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-gcc",
             "compilerArgs": [
                 "-mlongcalls",

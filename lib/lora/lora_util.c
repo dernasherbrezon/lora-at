@@ -39,7 +39,7 @@ esp_err_t lora_util_init(sx127x **device) {
   };
   ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &config, 1));
   spi_device_interface_config_t dev_cfg = {
-      .clock_speed_hz = 8E6,
+      .clock_speed_hz = 3E6,
       .spics_io_num = PIN_CS,
       .queue_size = 16,
       .command_bits = 0,
@@ -53,11 +53,11 @@ esp_err_t lora_util_init(sx127x **device) {
 }
 
 esp_err_t lora_util_start_common(rx_request *request, sx127x *device) {
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
   ERROR_CHECK(sx127x_set_frequency(request->freq * 1E6, device));
-  ERROR_CHECK(sx127x_reset_fifo(device));
-  ERROR_CHECK(sx127x_set_lna_boost_hf(SX127x_LNA_BOOST_HF_ON, device));
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, device));
+  ERROR_CHECK(sx127x_lora_reset_fifo(device));
+  ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, device));
   sx127x_bw_t bw;
   if (request->bw == 7.8) {
     bw = SX127x_BW_7800;
@@ -82,62 +82,55 @@ esp_err_t lora_util_start_common(rx_request *request, sx127x *device) {
   } else {
     return -1;
   }
-  ERROR_CHECK(sx127x_set_bandwidth(bw, device));
+  ERROR_CHECK(sx127x_lora_set_bandwidth(bw, device));
   if (request->useExplicitHeader) {
-    ERROR_CHECK(sx127x_set_implicit_header(NULL, device));
+    ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, device));
   } else {
     sx127x_implicit_header_t header = {
         .coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1,
-        .crc = (sx127x_crc_payload_t)(request->useCrc << 2),
+        .enable_crc = request->useCrc,
         .length = request->length};
-    ESP_ERROR_CHECK(sx127x_set_implicit_header(&header, device));
+    ESP_ERROR_CHECK(sx127x_lora_set_implicit_header(&header, device));
   }
-  ERROR_CHECK(sx127x_set_modem_config_2((sx127x_sf_t)(request->sf << 4), device));
-  ERROR_CHECK(sx127x_set_syncword(request->syncWord, device));
+  ERROR_CHECK(sx127x_lora_set_modem_config_2((sx127x_sf_t)(request->sf << 4), device));
+  ERROR_CHECK(sx127x_lora_set_syncword(request->syncWord, device));
   ERROR_CHECK(sx127x_set_preamble_length(request->preambleLength, device));
   // force ldo settings
   if (request->ldo == LDO_ON) {
-    return sx127x_set_low_datarate_optimization(SX127x_LOW_DATARATE_OPTIMIZATION_ON, device);
+    return sx127x_lora_set_low_datarate_optimization(true, device);
   } else if (request->ldo == LDO_OFF) {
-    return sx127x_set_low_datarate_optimization(SX127x_LOW_DATARATE_OPTIMIZATION_OFF, device);
+    return sx127x_lora_set_low_datarate_optimization(false, device);
   }
   return SX127X_OK;
 }
 
 esp_err_t lora_util_start_rx(rx_request *request, sx127x *device) {
   ERROR_CHECK(lora_util_start_common(request, device));
-  ERROR_CHECK(sx127x_set_lna_gain((sx127x_gain_t)(request->gain << 5), device));
-  return sx127x_set_opmod(SX127x_MODE_RX_CONT, device);
+  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t)(request->gain << 5), device));
+  return sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
 }
 
 esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request *request, sx127x *device) {
   ERROR_CHECK(lora_util_start_common(request, device));
-  ERROR_CHECK(sx127x_set_pa_config(SX127x_PA_PIN_BOOST, request->power, device));
+  ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, request->power, device));
   if (request->useExplicitHeader) {
-    sx127x_tx_header_t header;
-    header.crc = (sx127x_crc_payload_t)(request->useCrc << 2);
-    header.coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1;
-    ERROR_CHECK(sx127x_set_tx_explicit_header(&header, device));
+    sx127x_tx_header_t header = {
+      .enable_crc = request->useCrc,
+      .coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1
+    };
+    ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, device));
   }
-  ERROR_CHECK(sx127x_set_for_transmission(data, data_length, device));
-  return sx127x_set_opmod(SX127x_MODE_TX, device);
+  ERROR_CHECK(sx127x_lora_tx_set_for_transmission(data, data_length, device));
+  return sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
 }
 
-esp_err_t lora_util_read_frame(sx127x *device, lora_frame **frame) {
-  uint8_t *data = NULL;
-  uint8_t data_length = 0;
-  ERROR_CHECK(sx127x_read_payload(device, &data, &data_length));
-  if (data_length == 0) {
-    // no message received
-    *frame = NULL;
-    return ESP_OK;
-  }
+esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame **frame) {
   int16_t rssi;
-  ERROR_CHECK(sx127x_get_packet_rssi(device, &rssi));
+  ERROR_CHECK(sx127x_rx_get_packet_rssi(device, &rssi));
   float snr;
-  ERROR_CHECK(sx127x_get_packet_snr(device, &snr));
+  ERROR_CHECK(sx127x_lora_rx_get_packet_snr(device, &snr));
   int32_t frequency_error;
-  ERROR_CHECK(sx127x_get_frequency_error(device, &frequency_error));
+  ERROR_CHECK(sx127x_rx_get_frequency_error(device, &frequency_error));
   uint8_t *payload = malloc(sizeof(uint8_t) * data_length);
   if (payload == NULL) {
     return ESP_ERR_NO_MEM;

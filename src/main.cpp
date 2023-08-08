@@ -75,13 +75,13 @@ void tx_callback(sx127x *callback_device) {
   handler->setTransmitting(false);
 }
 
-void rx_callback_deep_sleep(sx127x *callback_device) {
+void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length) {
   uint64_t now_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
   uint64_t in_rx_micros = now_micros - rx_start_micros;
   uint64_t remaining_micros = rx_length_micros - in_rx_micros;
 
   lora_frame *frame = NULL;
-  esp_err_t code = lora_util_read_frame(callback_device, &frame);
+  esp_err_t code = lora_util_read_frame(device, data, data_length, &frame);
   if (code != ESP_OK) {
     log_e("unable to read frame: %d", code);
     dsHandler->enterRxDeepSleep(remaining_micros);
@@ -103,9 +103,9 @@ void rx_callback_deep_sleep(sx127x *callback_device) {
   dsHandler->enterRxDeepSleep(remaining_micros);
 }
 
-void rx_callback(sx127x *callback_device) {
+void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   lora_frame *frame = NULL;
-  esp_err_t code = lora_util_read_frame(callback_device, &frame);
+  esp_err_t code = lora_util_read_frame(device, data, data_length, &frame);
   if (code != ESP_OK) {
     log_e("unable to read frame: %d", code);
     return;
@@ -145,7 +145,7 @@ void setup() {
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
     dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
-    code = sx127x_set_opmod(SX127x_MODE_SLEEP, device);
+    code = sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device);
     if (code != ESP_OK) {
       log_e("unable to stop lora: %d", code);
     }
@@ -154,7 +154,7 @@ void setup() {
   }
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
-    sx127x_set_rx_callback(rx_callback_deep_sleep, device);
+    sx127x_rx_set_callback(rx_callback_deep_sleep, device);
     sx127x_handle_interrupt(device);
     return;
   }
@@ -173,8 +173,8 @@ void setup() {
   handler = new AtHandler(device, display, client, dsHandler);
 
   // normal start
-  sx127x_set_rx_callback(rx_callback, device);
-  sx127x_set_tx_callback(tx_callback, device);
+  sx127x_rx_set_callback(rx_callback, device);
+  sx127x_tx_set_callback(tx_callback, device);
   BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
   if (task_code != pdPASS) {
     log_e("can't create task %d", task_code);

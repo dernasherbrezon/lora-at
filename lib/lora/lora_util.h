@@ -48,7 +48,7 @@ typedef struct rx_request_t rx_request;
 
 esp_err_t lora_util_init(sx127x **device);
 
-esp_err_t lora_util_read_frame(sx127x *device, lora_frame **result);
+esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame **result);
 
 esp_err_t lora_util_start_rx(rx_request *req, sx127x *device);
 
