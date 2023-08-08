@@ -99,6 +99,7 @@ void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length)
 
   LoRaShadowClient *client = new LoRaShadowClient();
   client->sendData(frame);
+  lora_util_frame_destroy(frame);
 
   dsHandler->enterRxDeepSleep(remaining_micros);
 }
@@ -119,6 +120,10 @@ void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   time(&now);
   frame->timestamp = now;
   log_i("frame received: %d bytes RSSI: %d SNR: %f frequency error: %d timestamp: %" PRIu64, frame->data_length, frame->rssi, frame->snr, frame->frequency_error, frame->timestamp);
+
+  LoRaShadowClient *client = new LoRaShadowClient();
+  client->sendData(frame);
+
   handler->addFrame(frame);
 }
 

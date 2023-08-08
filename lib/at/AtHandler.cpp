@@ -74,6 +74,16 @@ bool AtHandler::handle(Stream *in, Stream *out) {
     return true;
   }
 
+  if (strcmp("AT+BTCONFIG?", this->buffer) == 0) {
+    this->handleGetBluetoothConfig(out);
+    return true;
+  }
+
+  if (strcmp("AT+DSCONFIG?", this->buffer) == 0) {
+    this->handleGetDeepSleepConfig(out);
+    return true;
+  }
+
   int enabled;
   int matched = sscanf(this->buffer, "AT+DISPLAY=%d", &enabled);
   if (matched == 1) {
@@ -120,11 +130,17 @@ bool AtHandler::handle(Stream *in, Stream *out) {
   }
 
   uint8_t address[6];
+  matched = sscanf(this->buffer, "AT+BTCONFIG=%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5]);
+  if (matched == 6) {
+    this->handleBluetoothConfig(address, sizeof(address), out);
+    return true;
+  }
+
   uint64_t deepSleepPeriod = 0L;
   uint64_t inactivityTimeout = 0L;
-  matched = sscanf(this->buffer, "AT+DSCONFIG=%hhx:%hhx:%hhx:%hhx:%hhx:%hhx,%" SCNu64 ",%" SCNu64 "", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5], &deepSleepPeriod, &inactivityTimeout);
-  if (matched == 8) {
-    this->handleDeepSleepConfig(address, sizeof(address), deepSleepPeriod, inactivityTimeout, out);
+  matched = sscanf(this->buffer, "AT+DSCONFIG=%" SCNu64 ",%" SCNu64 "", &deepSleepPeriod, &inactivityTimeout);
+  if (matched == 2) {
+    this->handleDeepSleepConfig(deepSleepPeriod, inactivityTimeout, out);
     return true;
   }
 
@@ -296,20 +312,26 @@ void AtHandler::handleSetTime(unsigned long time, Stream *out) {
   }
 }
 
-void AtHandler::handleDeepSleepConfig(uint8_t *address, size_t address_len, uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out) {
-  if (!client->init(address, address_len)) {
-    out->printf("unable to connect to lora-shadow: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
-    out->print("ERROR\r\n");
-    return;
-  }
+void AtHandler::handleDeepSleepConfig(uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out) {
   if (!dsHandler->init(deepSleepPeriod * 1000, inactivityTimeout * 1000)) {
     out->printf("unable to configure deep sleep\r\n");
     out->print("ERROR\r\n");
     return;
   }
 
+  // auto-disable display for low-power mode
   this->display->setEnabled(false);
 
+  out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleBluetoothConfig(uint8_t *address, size_t address_len, Stream *out) {
+  if (!client->init(address, address_len)) {
+    out->printf("unable to connect to bluetooth server: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
+    out->print("ERROR\r\n");
+    return;
+  }
   out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
   out->print("OK\r\n");
 }
@@ -336,5 +358,26 @@ void AtHandler::handleSetMaximumFrequency(float freq, Stream *out) {
   preferences.putFloat("maxFrequency", freq);
   preferences.end();
   this->maximumFrequency = freq;
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleGetBluetoothConfig(Stream *out) {
+  uint8_t *address;
+  size_t address_length = 0;
+  client->getAddress(&address, &address_length);
+  if (address_length != 6) {
+    out->printf("unable to get server bluetooth address\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
+  out->printf("client: %s\r\n", BLEDevice::getAddress().toString().c_str());
+  out->printf("server: %02x:%02x:%02x:%02x:%02x:%02x\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
+  out->print("OK\r\n");
+  free(address);
+}
+
+void AtHandler::handleGetDeepSleepConfig(Stream *out) {
+  out->printf("period:%" SCNu64 "\r\n", dsHandler->deepSleepPeriodMicros / 1000);
+  out->printf("inactivity:%" SCNu64 "\r\n", dsHandler->inactivityTimeoutMicros / 1000);
   out->print("OK\r\n");
 }

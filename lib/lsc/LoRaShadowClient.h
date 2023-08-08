@@ -13,6 +13,7 @@ class LoRaShadowClient {
   void loadRequest(rx_request *state);
   void sendBatteryLevel(uint8_t level);
   void sendData(lora_frame *frame);
+  void getAddress(uint8_t **address, size_t *address_len);
 
  private:
   BLEClient *client = NULL;

@@ -9,22 +9,41 @@
 #define STATUS_UUID "5b53256e-76d2-4259-b3aa-15b5b4cfdd32"
 #define OBSERVATION_SIZE 40
 
-//FIXME load address from preferences or supplied from parameter
-// this should save nvm load during deep sleep
+// FIXME load address from preferences or supplied from parameter
+//  this should save nvm load during deep sleep
 LoRaShadowClient::LoRaShadowClient() {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
   uint8_t addressBytes[6];
-  preferences.getBytes("address", addressBytes, sizeof(addressBytes));
-  // FIXME at some point
-  auto size = 18;
-  char *res = (char *)malloc(size);
-  snprintf(res, size, "%02x:%02x:%02x:%02x:%02x:%02x", addressBytes[0], addressBytes[1], addressBytes[2], addressBytes[3], addressBytes[4], addressBytes[5]);
-  std::string ret(res);
-  free(res);
-  this->address = new BLEAddress(res);
+  size_t actualBytes = preferences.getBytes("address", addressBytes, sizeof(addressBytes));
   preferences.end();
+  if (actualBytes == sizeof(addressBytes)) {
+    // FIXME at some point
+    auto size = 18;
+    char *res = (char *)malloc(size);
+    snprintf(res, size, "%02x:%02x:%02x:%02x:%02x:%02x", addressBytes[0], addressBytes[1], addressBytes[2], addressBytes[3], addressBytes[4], addressBytes[5]);
+    std::string ret(res);
+    free(res);
+    this->address = new BLEAddress(res);
+  }
+}
+
+void LoRaShadowClient::getAddress(uint8_t **address, size_t *address_len) {
+  size_t addressBytes_len = 6;
+  uint8_t *addressBytes = (uint8_t *)malloc(sizeof(uint8_t) * addressBytes_len);
+  if (addressBytes == NULL) {
+    *address = NULL;
+    *address_len = 0;
+    return;
+  }
+  if (!preferences.begin("lora-at", true)) {
+    return;
+  }
+  preferences.getBytes("address", addressBytes, sizeof(uint8_t) * addressBytes_len);
+  preferences.end();
+  *address = addressBytes;
+  *address_len = addressBytes_len;
 }
 
 bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
@@ -54,6 +73,9 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
 }
 
 void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
+  if (this->address == NULL) {
+    return;
+  }
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
@@ -96,6 +118,9 @@ void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
 }
 
 void LoRaShadowClient::loadRequest(rx_request *state) {
+  if (this->address == NULL) {
+    return;
+  }
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
@@ -211,6 +236,9 @@ void LoRaShadowClient::loadRequest(rx_request *state) {
 }
 
 void LoRaShadowClient::sendData(lora_frame *frame) {
+  if (this->address == NULL) {
+    return;
+  }
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
