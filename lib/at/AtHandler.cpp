@@ -133,6 +133,11 @@ bool AtHandler::handle(Stream *in, Stream *out) {
     return true;
   }
 
+  if (strcmp("AT+RXDS", this->buffer) == 0) {
+    this->dsHandler->enterRxDeepSleep(0);
+    return true;
+  }
+
   out->print("unknown command\r\n");
   out->print("ERROR\r\n");
   return true;
