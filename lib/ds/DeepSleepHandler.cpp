@@ -31,6 +31,11 @@ bool DeepSleepHandler::init(uint64_t deepSleepPeriodMicros, uint64_t inactivityT
   preferences.putULong64("period", deepSleepPeriodMicros);
   preferences.putULong64("inactivity", inactivityTimeoutMicros);
   preferences.end();
+  if (deepSleepPeriodMicros != 0) {
+    log_i("deep sleep enabled. period: %" PRIu64 "s inactivity: %" PRIu64 "s", deepSleepPeriodMicros / 1000000, inactivityTimeoutMicros / 1000000);
+  } else {
+    log_i("deep sleep was disabled");
+  }
   return true;
 }
 

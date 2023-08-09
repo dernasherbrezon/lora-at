@@ -34,7 +34,8 @@ class AtHandler {
   void handleSetMinimumFrequency(float freq, Stream *out);
   void handleSetMaximumFrequency(float freq, Stream *out);
   void handleDeepSleepConfig(uint64_t deepSleepPeriod, uint64_t inactivityTimeout, Stream *out);
-  void handleBluetoothConfig(uint8_t *btaddress, size_t address_len, Stream *out);
+  void handleEnableBluetooth(uint8_t *btaddress, size_t address_len, Stream *out);
+  void handleDisableBluetooth(Stream *out);
   size_t read_line(Stream *in);
   char buffer[BUFFER_LENGTH];
   sx127x *device;

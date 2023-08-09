@@ -2,11 +2,11 @@
 
 #include <Arduino.h>
 #include <BLEDevice.h>
-#include <util.h>
 #include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <util.h>
 
 // reading states
 #define READING_CHARS 2
@@ -132,7 +132,12 @@ bool AtHandler::handle(Stream *in, Stream *out) {
   uint8_t address[6];
   matched = sscanf(this->buffer, "AT+BTCONFIG=%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &address[0], &address[1], &address[2], &address[3], &address[4], &address[5]);
   if (matched == 6) {
-    this->handleBluetoothConfig(address, sizeof(address), out);
+    this->handleEnableBluetooth(address, sizeof(address), out);
+    return true;
+  }
+
+  if (strcmp("AT+BTCONFIG=", this->buffer) == 0) {
+    this->handleDisableBluetooth(out);
     return true;
   }
 
@@ -319,20 +324,30 @@ void AtHandler::handleDeepSleepConfig(uint64_t deepSleepPeriod, uint64_t inactiv
     return;
   }
 
-  // auto-disable display for low-power mode
-  this->display->setEnabled(false);
+  if (deepSleepPeriod != 0) {
+    // auto-disable display for low-power mode
+    this->display->setEnabled(false);
+  }
 
-  out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
   out->print("OK\r\n");
 }
 
-void AtHandler::handleBluetoothConfig(uint8_t *address, size_t address_len, Stream *out) {
+void AtHandler::handleEnableBluetooth(uint8_t *address, size_t address_len, Stream *out) {
   if (!client->init(address, address_len)) {
     out->printf("unable to connect to bluetooth server: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
     out->print("ERROR\r\n");
     return;
   }
   out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
+  out->print("OK\r\n");
+}
+
+void AtHandler::handleDisableBluetooth(Stream *out) {
+  if (!client->init(NULL, 0)) {
+    out->printf("unable to disable bluetooth\r\n");
+    out->print("ERROR\r\n");
+    return;
+  }
   out->print("OK\r\n");
 }
 
@@ -370,6 +385,7 @@ void AtHandler::handleGetBluetoothConfig(Stream *out) {
     out->print("ERROR\r\n");
     return;
   }
+  BLEDevice::init("lora-at");
   out->printf("client: %s\r\n", BLEDevice::getAddress().toString().c_str());
   out->printf("server: %02x:%02x:%02x:%02x:%02x:%02x\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
   out->print("OK\r\n");

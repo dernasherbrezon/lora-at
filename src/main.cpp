@@ -134,7 +134,7 @@ void handle_interrupt_task(void *arg) {
 
 void setup() {
   Serial.begin(115200);
-  log_i("starting. firmware version: %s", FIRMWARE_VERSION);
+  log_i("firmware version: %s", FIRMWARE_VERSION);
 
   esp_err_t code = lora_util_init(&device);
   if (code != ESP_OK) {

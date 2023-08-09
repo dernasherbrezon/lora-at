@@ -47,6 +47,16 @@ void LoRaShadowClient::getAddress(uint8_t **address, size_t *address_len) {
 }
 
 bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
+  if (address == NULL || address_len == 0) {
+    if (!preferences.begin("lora-at", false)) {
+      return false;
+    }
+    preferences.remove("address");
+    preferences.end();
+    this->address = NULL;
+    this->client = NULL;
+    return true;
+  }
   this->address = new BLEAddress(address);
   if (this->client == NULL) {
     BLEDevice::init("lora-at");
