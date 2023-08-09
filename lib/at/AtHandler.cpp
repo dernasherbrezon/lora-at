@@ -377,19 +377,18 @@ void AtHandler::handleSetMaximumFrequency(float freq, Stream *out) {
 }
 
 void AtHandler::handleGetBluetoothConfig(Stream *out) {
+  BLEDevice::init("lora-at");
+  out->printf("client: %s\r\n", BLEDevice::getAddress().toString().c_str());
   uint8_t *address;
   size_t address_length = 0;
   client->getAddress(&address, &address_length);
-  if (address_length != 6) {
-    out->printf("unable to get server bluetooth address\r\n");
-    out->print("ERROR\r\n");
-    return;
+  if (address_length == 0) {
+    out->printf("server: not configured\r\n");
+  } else if (address_length == 6) {
+    out->printf("server: %02x:%02x:%02x:%02x:%02x:%02x\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
+    free(address);
   }
-  BLEDevice::init("lora-at");
-  out->printf("client: %s\r\n", BLEDevice::getAddress().toString().c_str());
-  out->printf("server: %02x:%02x:%02x:%02x:%02x:%02x\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
   out->print("OK\r\n");
-  free(address);
 }
 
 void AtHandler::handleGetDeepSleepConfig(Stream *out) {

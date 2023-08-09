@@ -15,21 +15,28 @@ LoRaShadowClient::LoRaShadowClient() {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
-  uint8_t addressBytes[6];
-  size_t actualBytes = preferences.getBytes("address", addressBytes, sizeof(addressBytes));
-  preferences.end();
-  if (actualBytes == sizeof(addressBytes)) {
-    // FIXME at some point
-    auto size = 18;
-    char *res = (char *)malloc(size);
-    snprintf(res, size, "%02x:%02x:%02x:%02x:%02x:%02x", addressBytes[0], addressBytes[1], addressBytes[2], addressBytes[3], addressBytes[4], addressBytes[5]);
-    std::string ret(res);
-    free(res);
-    this->address = new BLEAddress(res);
+  if (preferences.isKey("address")) {
+    uint8_t addressBytes[6];
+    size_t actualBytes = preferences.getBytes("address", addressBytes, sizeof(addressBytes));
+    preferences.end();
+    if (actualBytes == sizeof(addressBytes)) {
+      // FIXME at some point
+      auto size = 18;
+      char *res = (char *)malloc(size);
+      snprintf(res, size, "%02x:%02x:%02x:%02x:%02x:%02x", addressBytes[0], addressBytes[1], addressBytes[2], addressBytes[3], addressBytes[4], addressBytes[5]);
+      std::string ret(res);
+      free(res);
+      this->address = new BLEAddress(res);
+    }
   }
 }
 
 void LoRaShadowClient::getAddress(uint8_t **address, size_t *address_len) {
+  if (this->address == NULL) {
+    *address = NULL;
+    *address_len = 0;
+    return;
+  }
   size_t addressBytes_len = 6;
   uint8_t *addressBytes = (uint8_t *)malloc(sizeof(uint8_t) * addressBytes_len);
   if (addressBytes == NULL) {
@@ -40,6 +47,7 @@ void LoRaShadowClient::getAddress(uint8_t **address, size_t *address_len) {
   if (!preferences.begin("lora-at", true)) {
     return;
   }
+  preferences.isKey("address");
   preferences.getBytes("address", addressBytes, sizeof(uint8_t) * addressBytes_len);
   preferences.end();
   *address = addressBytes;
