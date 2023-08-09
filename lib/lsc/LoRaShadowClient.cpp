@@ -72,51 +72,6 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
   return true;
 }
 
-void LoRaShadowClient::sendBatteryLevel(uint8_t level) {
-  if (this->address == NULL) {
-    return;
-  }
-  if (this->client == NULL) {
-    BLEDevice::init("lora-at");
-    BLEClient *tempClient = BLEDevice::createClient();
-    if (!tempClient->connect(*this->address)) {
-      return;
-    }
-    this->client = tempClient;
-  }
-  if (this->service == NULL) {
-    this->service = this->client->getService(SERVICE_UUID);
-    if (this->service == NULL) {
-      log_i("can't find lora-at BLE service");
-      return;
-    }
-  }
-  if (this->battery == NULL) {
-    this->battery = this->service->getCharacteristic(STATUS_UUID);
-    if (battery == NULL) {
-      log_i("can't find battery characteristic");
-      return;
-    }
-  }
-
-  int8_t rssi = (int8_t)this->client->getRssi();
-
-  size_t messageLength = (sizeof(rssi) + sizeof(level));
-  uint8_t *message = (uint8_t *)malloc(sizeof(uint8_t) * messageLength);
-  if (message == NULL) {
-    return;
-  }
-  size_t offset = 0;
-  memcpy(message + offset, &level, sizeof(level));
-  offset += sizeof(level);
-
-  memcpy(message + offset, &rssi, sizeof(rssi));
-  offset += sizeof(rssi);
-
-  battery->writeValue(message, messageLength, true);
-  free(message);
-}
-
 void LoRaShadowClient::loadRequest(rx_request *state) {
   if (this->address == NULL) {
     return;

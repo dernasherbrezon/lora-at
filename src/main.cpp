@@ -11,7 +11,6 @@ extern "C" {
 #include <esp_clk.h>
 }
 
-#include "BatteryVoltage.h"
 #include "Display.h"
 
 #ifndef FIRMWARE_VERSION
@@ -28,7 +27,7 @@ extern "C" {
 
 sx127x *device = NULL;
 AtHandler *handler = NULL;
-DeepSleepHandler *dsHandler = NULL;
+DeepSleepHandler *ds_handler = NULL;
 TaskHandle_t handle_interrupt;
 
 RTC_DATA_ATTR uint64_t rx_start_micros;
@@ -42,17 +41,12 @@ void scheduleObservation() {
   // always attempt to load fresh config
   LoRaShadowClient *client = new LoRaShadowClient();
   client->loadRequest(&req);
-  uint8_t batteryVoltage;
-  int status = readVoltage(&batteryVoltage);
-  if (status == 0) {
-    client->sendBatteryLevel(batteryVoltage);
-  }
   if (req.startTimeMillis != 0) {
     if (req.currentTimeMillis > req.endTimeMillis || req.startTimeMillis > req.endTimeMillis) {
       log_i("incorrect schedule returned from server");
-      dsHandler->enterDeepSleep(0);
+      ds_handler->enterDeepSleep(0);
     } else if (req.startTimeMillis > req.currentTimeMillis) {
-      dsHandler->enterDeepSleep((req.startTimeMillis - req.currentTimeMillis) * 1000);
+      ds_handler->enterDeepSleep((req.startTimeMillis - req.currentTimeMillis) * 1000);
     } else {
       // use server-side millis
       rx_length_micros = (req.endTimeMillis - req.currentTimeMillis) * 1000;
@@ -63,10 +57,10 @@ void scheduleObservation() {
         return;
       }
       rx_start_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-      dsHandler->enterRxDeepSleep(rx_length_micros);
+      ds_handler->enterRxDeepSleep(rx_length_micros);
     }
   } else {
-    dsHandler->enterDeepSleep(0);
+    ds_handler->enterDeepSleep(0);
   }
 }
 
@@ -84,12 +78,12 @@ void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length)
   esp_err_t code = lora_util_read_frame(device, data, data_length, &frame);
   if (code != ESP_OK) {
     log_e("unable to read frame: %d", code);
-    dsHandler->enterRxDeepSleep(remaining_micros);
+    ds_handler->enterRxDeepSleep(remaining_micros);
     return;
   }
   if (frame == NULL) {
     log_i("frame wasn't received");
-    dsHandler->enterRxDeepSleep(remaining_micros);
+    ds_handler->enterRxDeepSleep(remaining_micros);
     return;
   }
   // calculate current utc millis without calling server via Bluetooth
@@ -101,7 +95,7 @@ void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length)
   client->sendData(frame);
   lora_util_frame_destroy(frame);
 
-  dsHandler->enterRxDeepSleep(remaining_micros);
+  ds_handler->enterRxDeepSleep(remaining_micros);
 }
 
 void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
@@ -149,7 +143,7 @@ void setup() {
 
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-    dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
+    ds_handler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
     code = sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device);
     if (code != ESP_OK) {
       log_e("unable to stop lora: %d", code);
@@ -158,24 +152,24 @@ void setup() {
     return;
   }
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
-    dsHandler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
+    ds_handler = new DeepSleepHandler(deepSleepPeriodMicros, inactivityTimeoutMicros);
     sx127x_rx_set_callback(rx_callback_deep_sleep, device);
     sx127x_handle_interrupt(device);
     return;
   }
 
-  dsHandler = new DeepSleepHandler();
+  ds_handler = new DeepSleepHandler();
   //FIXME won't be loaded when configured using AT commands
-  if (dsHandler->deepSleepPeriodMicros != 0) {
-    deepSleepPeriodMicros = dsHandler->deepSleepPeriodMicros;
+  if (ds_handler->deepSleepPeriodMicros != 0) {
+    deepSleepPeriodMicros = ds_handler->deepSleepPeriodMicros;
   }
-  if (dsHandler->inactivityTimeoutMicros != 0) {
-    inactivityTimeoutMicros = dsHandler->inactivityTimeoutMicros;
+  if (ds_handler->inactivityTimeoutMicros != 0) {
+    inactivityTimeoutMicros = ds_handler->inactivityTimeoutMicros;
   }
 
   LoRaShadowClient *client = new LoRaShadowClient();
   Display *display = new Display();
-  handler = new AtHandler(device, display, client, dsHandler);
+  handler = new AtHandler(device, display, client, ds_handler);
 
   // normal start
   sx127x_rx_set_callback(rx_callback, device);
@@ -200,7 +194,7 @@ void setup() {
 
 void loop() {
   bool someActivityHappened = handler->handle(&Serial, &Serial);
-  if (dsHandler->isDeepSleepRequired(someActivityHappened || handler->isReceiving())) {
+  if (ds_handler->isDeepSleepRequired(someActivityHappened || handler->isReceiving())) {
     scheduleObservation();
   }
 }
