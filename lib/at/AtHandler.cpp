@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <BLEDevice.h>
-#include <Util.h>
+#include <util.h>
 #include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
@@ -163,7 +163,7 @@ void AtHandler::handlePull(Stream *in, Stream *out) {
   for (size_t i = 0; i < this->receivedFrames.size(); i++) {
     lora_frame *curFrame = this->receivedFrames[i];
     char *data = NULL;
-    int code = convertHexToString(curFrame->data, curFrame->data_length, &data);
+    int code = util_hex2string(curFrame->data, curFrame->data_length, &data);
     if (code != 0) {
       out->print("unable to convert hex\r\n");
       out->print("ERROR\r\n");
@@ -258,7 +258,7 @@ void AtHandler::handleLoraTx(char *message, rx_request state, Stream *out) {
   }
   uint8_t *binaryData = NULL;
   size_t binaryDataLength = 0;
-  int code = convertStringToHex(message, &binaryData, &binaryDataLength);
+  int code = util_string2hex(message, &binaryData, &binaryDataLength);
   if (code != 0) {
     out->printf("unable to convert HEX to byte array: %d\r\n", code);
     out->print("ERROR\r\n");

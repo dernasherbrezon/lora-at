@@ -1,4 +1,4 @@
-#include <Util.h>
+#include <util.h>
 #include <stdlib.h>
 #include <unity.h>
 #include <string.h>
@@ -7,7 +7,7 @@ uint8_t *output = NULL;
 size_t output_len = 0;
 
 void assertInput(const char *input) {
-  int code = convertStringToHex(input, &output, &output_len);
+  int code = util_string2hex(input, &output, &output_len);
   TEST_ASSERT_EQUAL_INT(0, code);
   uint8_t expected[] = {0xca, 0xfe};
   size_t expected_len = sizeof(expected) / sizeof(uint8_t);
@@ -17,7 +17,7 @@ void assertInput(const char *input) {
 }
 
 void assertInvalidInput(const char *input) {
-  int code = convertStringToHex(input, &output, &output_len);
+  int code = util_string2hex(input, &output, &output_len);
   TEST_ASSERT_EQUAL_INT(-1, code);
 }
 
@@ -32,7 +32,7 @@ void test_byte_to_string(void) {
   uint8_t input[] = {0xca, 0xfe};
   size_t input_len = sizeof(input) / sizeof(uint8_t);
   char *output = NULL;
-  int code = convertHexToString(input, input_len, &output);
+  int code = util_hex2string(input, input_len, &output);
   TEST_ASSERT_EQUAL_INT(0, code);
   TEST_ASSERT_EQUAL_INT(4, strlen(output));
   TEST_ASSERT_EQUAL_STRING("CAFE", output);
