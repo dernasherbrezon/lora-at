@@ -63,6 +63,7 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
     preferences.end();
     this->address = NULL;
     this->client = NULL;
+    log_i("bluetooth disabled");
     return true;
   }
   this->address = new BLEAddress(address);
@@ -70,6 +71,7 @@ bool LoRaShadowClient::init(uint8_t *address, size_t address_len) {
     BLEDevice::init("lora-at");
     BLEClient *tempClient = BLEDevice::createClient();
     if (!tempClient->connect(*this->address)) {
+      log_i("can't connect to: %s", address);
       return false;
     }
     this->client = tempClient;

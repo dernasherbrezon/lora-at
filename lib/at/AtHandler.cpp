@@ -334,11 +334,9 @@ void AtHandler::handleDeepSleepConfig(uint64_t deepSleepPeriod, uint64_t inactiv
 
 void AtHandler::handleEnableBluetooth(uint8_t *address, size_t address_len, Stream *out) {
   if (!client->init(address, address_len)) {
-    out->printf("unable to connect to bluetooth server: %x:%x:%x:%x:%x:%x make sure process is started somewhere\r\n", address[0], address[1], address[2], address[3], address[4], address[5]);
     out->print("ERROR\r\n");
     return;
   }
-  out->printf("%s,%f,%f\r\n", BLEDevice::getAddress().toString().c_str(), this->minimumFrequency, this->maximumFrequency);
   out->print("OK\r\n");
 }
 
