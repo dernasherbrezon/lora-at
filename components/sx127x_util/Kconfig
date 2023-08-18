@@ -1,0 +1,22 @@
+menu "SX127X"
+    config PIN_CS
+        int
+        default 18
+        prompt "CS pin"
+    config PIN_MOSI
+        int
+        default 27
+        prompt "MOSI pin"
+    config PIN_MISO
+        int
+        default 19
+        prompt "MISO pin"
+    config PIN_SCK
+        int
+        default 5
+        prompt "SCK pin"
+    config PIN_DI0
+        int
+        default 26
+        prompt "DI0 pin"
+endmenu

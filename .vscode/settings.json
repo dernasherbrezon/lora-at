@@ -50,5 +50,6 @@
         "spiapi_esp32.h": "c",
         "soc.h": "c",
         "sx127x.h": "c"
-    }
+    },
+    "idf.adapterTargetName": "esp32"
 }

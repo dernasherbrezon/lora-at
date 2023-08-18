@@ -1,0 +1,21 @@
+dependencies:
+  dernasherbrezon/sx127x:
+    component_hash: dee3da69beb5d32f41d998d67177435234b0190d17edbf4bddd89cf6595528fa
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 3.0.1
+  espressif/ssd1306:
+    component_hash: bb9d18fd14ba2b11ca7ce426fc059e3ae7c44e7635e3a62eeae9e44c2ca0db46
+    source:
+      service_url: https://api.components.espressif.com/
+      type: service
+    version: 1.0.5
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 5.1.0
+manifest_hash: ed669aa3e1232fe75dd769946ab17d21cb45889a414f8b51b66e0b805cfca993
+target: esp32
+version: 1.0.0

@@ -1,0 +1,14 @@
+menu "SSD1306"
+    config PIN_OLED_SDA
+        int
+        default 21
+        prompt "SDA Pin for OLED display"
+    config PIN_OLED_SDL
+        int
+        default 22
+        prompt "SDL Pin for OLED display"
+    config PIN_OLED_RESET
+        int
+        default -1
+        prompt "Reset Pin for some OLED displays"
+endmenu

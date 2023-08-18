@@ -52,3 +52,8 @@ Mkfile.old
 dkms.conf
 
 .pio
+build
+.idea
+cmake-build-remote
+cmake-build-debug
+managed_components
