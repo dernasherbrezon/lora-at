@@ -27,9 +27,10 @@ void app_main(void) {
   lora_at_config_t *config = NULL;
   esp_err_t code = lora_at_config_create(&config);
   if (code != ESP_OK) {
-    ESP_LOGE(TAG, "unable to get display config: %d", code);
+    ESP_LOGE(TAG, "unable to initialize config: %d", code);
     return;
   }
+  ESP_LOGI(TAG, "config initialized");
   if (config->init_display) {
     code = lora_at_display_create(&main->display);
     if (code != ESP_OK) {
@@ -45,7 +46,7 @@ void app_main(void) {
 
   code = lora_util_init(&main->device);
   if (code != ESP_OK) {
-    ESP_LOGE(TAG, "unable to init lora: %d", code);
+    ESP_LOGE(TAG, "unable to initialize lora: %d", code);
     return;
   }
   ESP_LOGI(TAG, "lora initialized");

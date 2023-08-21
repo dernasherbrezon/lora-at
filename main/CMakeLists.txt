@@ -1,1 +1,1 @@
-idf_component_register(SRCS "main.c" REQUIRES display sx127x_util at_config)
+idf_component_register(SRCS "main.c" REQUIRES display sx127x_util at_config ble_client)

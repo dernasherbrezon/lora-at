@@ -57,3 +57,4 @@ build
 cmake-build-remote
 cmake-build-debug
 managed_components
+sdkconfig
