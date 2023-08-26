@@ -3,6 +3,7 @@
 #include <sx127x_util.h>
 #include <display.h>
 #include <at_config.h>
+#include <at_handler.h>
 
 #ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "1.0"
@@ -13,7 +14,13 @@ static const char *TAG = "lora-at";
 typedef struct {
   sx127x *device;
   lora_at_display_t *display;
+  at_handler_t *at_handler;
 } main_t;
+
+static void rx_task(void *arg) {
+  main_t *main = (main_t *) arg;
+  at_handler_process(main->at_handler);
+}
 
 void app_main(void) {
   ESP_LOGI(TAG, "firmware version: %s", FIRMWARE_VERSION);
@@ -50,6 +57,15 @@ void app_main(void) {
     return;
   }
   ESP_LOGI(TAG, "lora initialized");
+
+  code = at_handler_create(&main->at_handler);
+  if (code != ESP_OK) {
+    ESP_LOGE(TAG, "unable to initialize at handler: %d", code);
+    return;
+  }
+  xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
+  ESP_LOGI(TAG, "at handler initialized");
+
   ESP_LOGI(TAG, "lora-at initialized");
 
 
