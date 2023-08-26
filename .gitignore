@@ -58,3 +58,7 @@ cmake-build-remote
 cmake-build-debug
 managed_components
 sdkconfig
+/components/at_handler/host_test/cmake-build-debug-coverage/
+/cmake-build-at_handler_host_test/
+/components/at_handler/host_test/sdkconfig.old
+/sdkconfig.old

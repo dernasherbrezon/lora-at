@@ -10,7 +10,7 @@ typedef struct {
   int uart_port_num;
 } at_handler_t;
 
-esp_err_t at_handler_create(at_handler_t **handler);
+esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, at_handler_t **handler);
 
 void at_handler_process(at_handler_t *handler);
 

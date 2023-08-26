@@ -1,6 +1,9 @@
 #include "at_handler.h"
 #include <driver/uart.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdarg.h>
+#include <freertos/FreeRTOS.h>
 
 #define ERROR_CHECK(x)        \
   do {                        \
@@ -11,12 +14,13 @@
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(at_handler_t **handler) {
+esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
-  result->buffer_length = 1024;
+  result->buffer_length = buffer_length;
+  result->uart_port_num = uart_port_num;
   result->buffer = malloc(sizeof(uint8_t) * (result->buffer_length + 1)); // 1 is for \0
   if (result->buffer == NULL) {
     at_handler_destroy(result);
@@ -27,20 +31,6 @@ esp_err_t at_handler_create(at_handler_t **handler) {
     at_handler_destroy(result);
     return ESP_ERR_NO_MEM;
   }
-  const uart_config_t uart_config = {
-      .baud_rate = 115200,
-      .data_bits = UART_DATA_8_BITS,
-      .parity = UART_PARITY_DISABLE,
-      .stop_bits = UART_STOP_BITS_1,
-      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-      .source_clk = UART_SCLK_DEFAULT,
-  };
-  result->uart_port_num = UART_NUM_0;
-  // We won't use a buffer for sending data.
-  ERROR_CHECK(uart_driver_install(result->uart_port_num, result->buffer_length * 2, 0, 0, NULL, 0));
-  ERROR_CHECK(uart_param_config(result->uart_port_num, &uart_config));
-  //FIXME most likely pins were already configured
-//  uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
   *handler = result;
   return ESP_OK;
 }
@@ -70,7 +60,10 @@ void at_handler_process_message(at_handler_t *handler) {
 void at_handler_process(at_handler_t *handler) {
   size_t current_index = 0;
   while (1) {
-    const int rxBytes = uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, handler->buffer_length - current_index, 1000 / portTICK_PERIOD_MS);
+    const int rxBytes = uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, handler->buffer_length - current_index, pdMS_TO_TICKS(1000));
+    if (rxBytes < 0) {
+      break;
+    }
     size_t current_message_size = current_index + rxBytes;
     bool found = false;
     for (size_t i = current_index; i < current_message_size; i++) {

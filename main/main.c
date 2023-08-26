@@ -4,6 +4,7 @@
 #include <display.h>
 #include <at_config.h>
 #include <at_handler.h>
+#include <driver/uart.h>
 
 #ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "1.0"
@@ -58,7 +59,22 @@ void app_main(void) {
   }
   ESP_LOGI(TAG, "lora initialized");
 
-  code = at_handler_create(&main->at_handler);
+  const uart_config_t uart_config = {
+      .baud_rate = 115200,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+      .source_clk = UART_SCLK_DEFAULT,
+  };
+  size_t buffer_length = 1024;
+  // We won't use a buffer for sending data.
+  //FIXME error check
+  uart_driver_install(UART_NUM_0, buffer_length * 2, 0, 0, NULL, 0);
+  uart_param_config(UART_NUM_0, &uart_config);
+  //FIXME most likely pins were already configured
+//  uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+  code = at_handler_create(buffer_length, UART_NUM_0, &main->at_handler);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to initialize at handler: %d", code);
     return;
