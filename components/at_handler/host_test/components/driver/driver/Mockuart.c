@@ -4,6 +4,7 @@
 #include <setjmp.h>
 #include "cmock.h"
 #include "driver/Mockuart.h"
+#include "mock_helper.h"
 
 static const char* CMockString_buf = "buf";
 static const char* CMockString_length = "length";

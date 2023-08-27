@@ -7,7 +7,6 @@
 #include <freertos/FreeRTOS.h>
 
 typedef int uart_port_t;
-//typedef uint32_t TickType_t;
 
 int uart_write_bytes(uart_port_t uart_num, const void *src, size_t size);
 

@@ -1,4 +1,5 @@
 #include "display.h"
+#include <ssd1306.h>
 
 #ifndef CONFIG_PIN_OLED_SDL
 #define CONFIG_PIN_OLED_SDL 22        /*!&lt; gpio number for I2C master clock */
@@ -22,6 +23,10 @@
       return __err_rc;        \
     }                         \
   } while (0)
+
+struct lora_at_display_t {
+  ssd1306_handle_t ssd1306_dev;
+};
 
 #define logo_width 32
 #define logo_height 32
@@ -156,10 +161,19 @@ static uint8_t logo_bits[] = {
     0x00,
 };
 
-esp_err_t lora_at_display_create(lora_at_display_t **display) {
-  lora_at_display_t *result = malloc(sizeof(lora_at_display_t));
+esp_err_t lora_at_display_create(lora_at_display **display) {
+  struct lora_at_display_t *result = malloc(sizeof(struct lora_at_display_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
+  }
+  result->ssd1306_dev = NULL;
+  *display = result;
+  return ESP_OK;
+}
+
+esp_err_t lora_at_display_start(lora_at_display *result) {
+  if (result->ssd1306_dev != NULL) {
+    return ESP_OK;
   }
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
@@ -176,11 +190,20 @@ esp_err_t lora_at_display_create(lora_at_display_t **display) {
   result->ssd1306_dev = ssd1306_create(I2C_MASTER_NUM, SSD1306_I2C_ADDRESS);
   ERROR_CHECK(ssd1306_refresh_gram(result->ssd1306_dev));
   ssd1306_clear_screen(result->ssd1306_dev, 0x00);
-  *display = result;
   return ESP_OK;
 }
 
-esp_err_t lora_at_display_set_status(const char *status, lora_at_display_t *display) {
+esp_err_t lora_at_display_stop(lora_at_display *display) {
+  if (display->ssd1306_dev == NULL) {
+    return ESP_OK;
+  }
+  ssd1306_delete(display->ssd1306_dev);
+  esp_err_t result = i2c_driver_delete(I2C_MASTER_NUM);
+  display->ssd1306_dev = NULL;
+  return result;
+}
+
+esp_err_t lora_at_display_set_status(const char *status, lora_at_display *display) {
   ssd1306_clear_screen(display->ssd1306_dev, 0x00);
   ssd1306_draw_bitmap(display->ssd1306_dev, 0, 0, logo_bits, logo_width, logo_height);
   ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 5, (const uint8_t *) "lora-at", 16, 1);
@@ -188,24 +211,14 @@ esp_err_t lora_at_display_set_status(const char *status, lora_at_display_t *disp
   sprintf(status_buffer, "status: %s", status);
   ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 21, (const uint8_t *) status_buffer, 16, 1);
   return ssd1306_refresh_gram(display->ssd1306_dev);
-//  this->display->clear();
-//  this->display->drawXbm(0, 0, logo_width, logo_height, logo_bits);
-//  this->display->setFont(ArialMT_Plain_10);
-//  this->display->setTextAlignment(TEXT_ALIGN_LEFT);
-//  this->display->drawString(logo_width + 5, 5, "lora-at");
-//  if (status != NULL) {
-//    this->display->drawString(logo_width + 5, 21, "status: " + String(status));
-//  } else {
-//    this->display->drawString(logo_width + 5, 21, "status:");
-//  }
-//  this->display->display();
 }
 
-void lora_at_display_destroy(lora_at_display_t *display) {
+void lora_at_display_destroy(lora_at_display *display) {
   if (display == NULL) {
     return;
   }
-  ssd1306_delete(display->ssd1306_dev);
-  i2c_driver_delete(I2C_MASTER_NUM);
+  if (display->ssd1306_dev != NULL) {
+    lora_at_display_stop(display);
+  }
   free(display);
 }

@@ -1,7 +1,6 @@
 #include "at_config.h"
 
 #include <nvs.h>
-#include <nvs_flash.h>
 
 const char *at_config_label = "lora-at";
 
@@ -32,6 +31,14 @@ esp_err_t lora_at_config_create(lora_at_config_t **config) {
   ERROR_CHECK(nvs_get_blob(out_handle, "address", result->bt_address, &bt_address_length));
   nvs_close(out_handle);
   *config = result;
+  return ESP_OK;
+}
+
+esp_err_t lora_at_config_set_display(bool init_display, lora_at_config_t *config) {
+  nvs_handle_t out_handle;
+  ERROR_CHECK(nvs_open(at_config_label, NVS_READWRITE, &out_handle));
+  ERROR_CHECK(nvs_set_u8(out_handle, "display_init", init_display));
+  nvs_close(out_handle);
   return ESP_OK;
 }
 

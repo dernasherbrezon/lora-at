@@ -5,22 +5,25 @@
 #include <stdarg.h>
 #include <freertos/FreeRTOS.h>
 
-#define ERROR_CHECK(x)        \
+#define ERROR_CHECK(y, x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
     if (__err_rc != 0) {      \
-      at_handler_destroy(result);                        \
-      return __err_rc;        \
+      at_handler_send_data(handler, "%s: %d\r\n", y, __err_rc); \
+      at_handler_send_data(handler, "FAIL\r\n"); \
+      return;        \
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, at_handler_t **handler) {
+esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, lora_at_config_t *at_config, lora_at_display *display, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
   result->buffer_length = buffer_length;
   result->uart_port_num = uart_port_num;
+  result->at_config = at_config;
+  result->display = display;
   result->buffer = malloc(sizeof(uint8_t) * (result->buffer_length + 1)); // 1 is for \0
   if (result->buffer == NULL) {
     at_handler_destroy(result);
@@ -39,9 +42,9 @@ void at_handler_send_data(at_handler_t *handler, const char *response, ...) {
   memset(handler->output_buffer, '\0', handler->buffer_length);
   va_list args;
   va_start (args, response);
-  snprintf(handler->output_buffer, handler->buffer_length, response, args);
+  vsnprintf(handler->output_buffer, handler->buffer_length, response, args);
   va_end (args);
-  uart_write_bytes(handler->uart_port_num, response, strlen(response));
+  uart_write_bytes(handler->uart_port_num, handler->output_buffer, strlen(handler->output_buffer));
 }
 
 void at_handler_process_message(at_handler_t *handler) {
@@ -50,7 +53,19 @@ void at_handler_process_message(at_handler_t *handler) {
     return;
   }
   if (strcmp("AT+DISPLAY?", handler->buffer) == 0) {
-    at_handler_send_data(handler, "%d\t\n", 123);
+    at_handler_send_data(handler, "%d\r\n", (handler->at_config->init_display ? 1 : 0));
+    at_handler_send_data(handler, "OK\r\n");
+    return;
+  }
+  int enabled;
+  int matched = sscanf(handler->buffer, "AT+DISPLAY=%d", &enabled);
+  if (matched == 1) {
+    if (enabled) {
+      ERROR_CHECK("unable to start", lora_at_display_start(handler->display));
+    } else {
+      ERROR_CHECK("unable to stop", lora_at_display_stop(handler->display));
+    }
+    ERROR_CHECK("unable to save config", lora_at_config_set_display(enabled, handler->at_config));
     at_handler_send_data(handler, "OK\r\n");
     return;
   }

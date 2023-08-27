@@ -8,3 +8,6 @@
             - ignore_arg
             - callback
           :mock_path: .
+          :unity_helper:
+            - mock_helper.h
+

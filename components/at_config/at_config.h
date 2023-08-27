@@ -15,6 +15,8 @@ typedef struct {
 
 esp_err_t lora_at_config_create(lora_at_config_t **config);
 
+esp_err_t lora_at_config_set_display(bool init_display, lora_at_config_t *config);
+
 void lora_at_config_destroy(lora_at_config_t *config);
 
 #endif //LORA_AT_AT_CONFIG_H
