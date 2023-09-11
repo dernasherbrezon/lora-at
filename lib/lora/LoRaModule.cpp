@@ -405,7 +405,9 @@ LoRaFrame *LoRaModule::readFrame() {
   int16_t status = this->phys->readData(data, result->dataLength);
   if (status != ERR_NONE) {
     LoRaFrame_destroy(result);
-    log_e("unable to read the frame: %d", status);
+    if (status != ERR_CRC_MISMATCH) {
+      log_e("unable to read the frame: %d", status);
+    }
     return NULL;
   }
   time_t now;
