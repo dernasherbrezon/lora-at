@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <freertos/FreeRTOS.h>
+#include <time.h>
 
 #define ERROR_CHECK(y, x)        \
   do {                        \
@@ -54,6 +55,15 @@ void at_handler_process_message(at_handler_t *handler) {
   }
   if (strcmp("AT+DISPLAY?", handler->buffer) == 0) {
     at_handler_send_data(handler, "%d\r\n", (handler->at_config->init_display ? 1 : 0));
+    at_handler_send_data(handler, "OK\r\n");
+    return;
+  }
+  if (strcmp("AT+TIME?", handler->buffer) == 0) {
+    time_t timer = time(NULL);
+    struct tm *tm_info = localtime(&timer);
+    char buffer[26];
+    strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    at_handler_send_data(handler, "%s\r\n", buffer);
     at_handler_send_data(handler, "OK\r\n");
     return;
   }
