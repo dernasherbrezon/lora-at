@@ -52,6 +52,7 @@ Mkfile.old
 dkms.conf
 
 .pio
+/cmake-build-at_handler_host_test/
 build
 .idea
 cmake-build-remote

@@ -16,7 +16,7 @@ static const char *TAG = "lora-at";
   do {                        \
     esp_err_t __err_rc = (x); \
     if (__err_rc != ESP_OK) {      \
-      ESP_LOGE(TAG, "unable to initialize %s: %d", y, __err_rc);                        \
+      ESP_LOGE(TAG, "unable to initialize %s: %s", y, esp_err_to_name(__err_rc));                        \
       return;        \
     }                         \
   } while (0)
@@ -44,8 +44,10 @@ void app_main(void) {
   lora_at_config_t *config = NULL;
   ERROR_CHECK("config", lora_at_config_create(&config));
   ESP_LOGI(TAG, "config initialized");
+  ERROR_CHECK("display", lora_at_display_create(&main->display));
+  config->init_display = 1;
   if (config->init_display) {
-    ERROR_CHECK("display", lora_at_display_create(&main->display));
+    ERROR_CHECK("display", lora_at_display_start(main->display));
     ESP_LOGI(TAG, "display initialized");
     lora_at_display_set_status("IDLE", main->display);
   } else {
@@ -56,25 +58,24 @@ void app_main(void) {
   ERROR_CHECK("lora", lora_util_init(&main->device));
   ESP_LOGI(TAG, "lora initialized");
 
-  const uart_config_t uart_config = {
-      .baud_rate = 115200,
-      .data_bits = UART_DATA_8_BITS,
-      .parity = UART_PARITY_DISABLE,
-      .stop_bits = UART_STOP_BITS_1,
-      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-      .source_clk = UART_SCLK_DEFAULT,
-  };
+//  //CONFIG_ESP_CONSOLE_UART_BAUDRATE
+//  const uart_config_t uart_config = {
+//      .baud_rate = 115200,
+//      .data_bits = UART_DATA_8_BITS,
+//      .parity = UART_PARITY_DISABLE,
+//      .stop_bits = UART_STOP_BITS_1,
+//      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+//      .source_clk = UART_SCLK_DEFAULT,
+//  };
+//  uart_port_t uart_config_port = UART_NUM_0;
+//  ERROR_CHECK("uart", uart_param_config(uart_config_port, &uart_config));
+//  ERROR_CHECK("uart", uart_set_pin(uart_config_port, -1, -1, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   size_t buffer_length = 1024;
-  uart_port_t uart_config_port = UART_NUM_0;
-  // We won't use a buffer for sending data.
-  ERROR_CHECK("uart", uart_driver_install(uart_config_port, buffer_length * 2, 0, 0, NULL, 0));
-  ERROR_CHECK("uart", uart_param_config(uart_config_port, &uart_config));
-  //FIXME most likely pins were already configured
-//  uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-  ERROR_CHECK("at_handler", at_handler_create(buffer_length, uart_config_port, config, &main->display, &main->at_handler));
+//  // We won't use a buffer for sending data.
+//  ERROR_CHECK("uart", uart_driver_install(uart_config_port, buffer_length * 2, 0, 0, NULL, 0));
+  ERROR_CHECK("at_handler", at_handler_create(buffer_length, config, main->display, &main->at_handler));
   xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "at handler initialized");
-
   ESP_LOGI(TAG, "lora-at initialized");
 
 
