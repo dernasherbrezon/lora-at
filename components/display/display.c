@@ -1,5 +1,6 @@
 #include "display.h"
 #include <ssd1306.h>
+#include <esp_log.h>
 
 #ifndef CONFIG_PIN_OLED_SDL
 #define CONFIG_PIN_OLED_SDL 22        /*!&lt; gpio number for I2C master clock */
@@ -55,6 +56,7 @@ esp_err_t lora_at_display_start(lora_at_display *result) {
   if (result->ssd1306_dev != NULL) {
     return ESP_OK;
   }
+  ESP_LOGI("lora-at", "start display");
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = (gpio_num_t) CONFIG_PIN_OLED_SDA;
@@ -68,8 +70,8 @@ esp_err_t lora_at_display_start(lora_at_display *result) {
   ERROR_CHECK(i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0));
 
   result->ssd1306_dev = ssd1306_create(I2C_MASTER_NUM, SSD1306_I2C_ADDRESS);
-  ERROR_CHECK(ssd1306_refresh_gram(result->ssd1306_dev));
   ssd1306_clear_screen(result->ssd1306_dev, 0x00);
+  ERROR_CHECK(ssd1306_refresh_gram(result->ssd1306_dev));
   return ESP_OK;
 }
 
@@ -77,6 +79,9 @@ esp_err_t lora_at_display_stop(lora_at_display *display) {
   if (display->ssd1306_dev == NULL) {
     return ESP_OK;
   }
+  ESP_LOGI("lora-at", "stop display");
+  ssd1306_clear_screen(display->ssd1306_dev, 0x00);
+  ERROR_CHECK(ssd1306_refresh_gram(display->ssd1306_dev));
   ssd1306_delete(display->ssd1306_dev);
   esp_err_t result = i2c_driver_delete(I2C_MASTER_NUM);
   display->ssd1306_dev = NULL;

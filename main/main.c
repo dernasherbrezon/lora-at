@@ -4,11 +4,6 @@
 #include <display.h>
 #include <at_config.h>
 #include <at_handler.h>
-#include <driver/uart.h>
-
-#ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "1.0"
-#endif
 
 static const char *TAG = "lora-at";
 
@@ -33,8 +28,6 @@ static void rx_task(void *arg) {
 }
 
 void app_main(void) {
-  ESP_LOGI(TAG, "firmware version: %s", FIRMWARE_VERSION);
-
   main_t *main = malloc(sizeof(main_t));
   if (main == NULL) {
     ESP_LOGE(TAG, "unable to init main");
@@ -58,22 +51,7 @@ void app_main(void) {
   ERROR_CHECK("lora", lora_util_init(&main->device));
   ESP_LOGI(TAG, "lora initialized");
 
-//  //CONFIG_ESP_CONSOLE_UART_BAUDRATE
-//  const uart_config_t uart_config = {
-//      .baud_rate = 115200,
-//      .data_bits = UART_DATA_8_BITS,
-//      .parity = UART_PARITY_DISABLE,
-//      .stop_bits = UART_STOP_BITS_1,
-//      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-//      .source_clk = UART_SCLK_DEFAULT,
-//  };
-//  uart_port_t uart_config_port = UART_NUM_0;
-//  ERROR_CHECK("uart", uart_param_config(uart_config_port, &uart_config));
-//  ERROR_CHECK("uart", uart_set_pin(uart_config_port, -1, -1, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-  size_t buffer_length = 1024;
-//  // We won't use a buffer for sending data.
-//  ERROR_CHECK("uart", uart_driver_install(uart_config_port, buffer_length * 2, 0, 0, NULL, 0));
-  ERROR_CHECK("at_handler", at_handler_create(buffer_length, config, main->display, &main->at_handler));
+  ERROR_CHECK("at_handler", at_handler_create(config, main->display, &main->at_handler));
   xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "at handler initialized");
   ESP_LOGI(TAG, "lora-at initialized");

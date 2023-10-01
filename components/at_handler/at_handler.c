@@ -5,27 +5,51 @@
 #include <stdarg.h>
 #include <freertos/FreeRTOS.h>
 #include <time.h>
+#include <esp_log.h>
+#include "sdkconfig.h"
+
+#ifndef CONFIG_AT_UART_PORT_NUM
+#define CONFIG_AT_UART_PORT_NUM UART_NUM_0
+#endif
+
+#ifndef CONFIG_AT_UART_BAUD_RATE
+#define CONFIG_AT_UART_BAUD_RATE 115200
+#endif
+
+#ifndef CONFIG_AT_UART_BUFFER_LENGTH
+#define CONFIG_AT_UART_BUFFER_LENGTH 1024
+#endif
 
 #define ERROR_CHECK(y, x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
     if (__err_rc != 0) {      \
-      at_handler_send_data(handler, "%s: %d\r\n", y, __err_rc); \
+      at_handler_send_data(handler, "%s: %s\r\n", y, esp_err_to_name(__err_rc)); \
       at_handler_send_data(handler, "FAIL\r\n"); \
       return;        \
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, lora_at_config_t *at_config, lora_at_display *display, at_handler_t **handler) {
+#define ERROR_CHECK_ON_CREATE(x)        \
+  do {                        \
+    esp_err_t __err_rc = (x); \
+    if (__err_rc != 0) {                \
+      at_handler_destroy(result);                                  \
+      return __err_rc;        \
+    }                         \
+  } while (0)
+
+esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
-  result->buffer_length = buffer_length;
-  result->uart_port_num = uart_port_num;
+  result->buffer_length = CONFIG_AT_UART_BUFFER_LENGTH;
+  result->uart_port_num = CONFIG_AT_UART_PORT_NUM;
   result->at_config = at_config;
   result->display = display;
   result->buffer = malloc(sizeof(uint8_t) * (result->buffer_length + 1)); // 1 is for \0
+  memset(result->buffer, 0, (result->buffer_length + 1));
   if (result->buffer == NULL) {
     at_handler_destroy(result);
     return ESP_ERR_NO_MEM;
@@ -35,6 +59,19 @@ esp_err_t at_handler_create(size_t buffer_length, int uart_port_num, lora_at_con
     at_handler_destroy(result);
     return ESP_ERR_NO_MEM;
   }
+  uart_config_t uart_config = {
+      .baud_rate = CONFIG_AT_UART_BAUD_RATE,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+      .source_clk = UART_SCLK_DEFAULT,
+  };
+  ERROR_CHECK_ON_CREATE(uart_driver_install(result->uart_port_num, result->buffer_length * 2, result->buffer_length * 2, 20, &result->uart_queue, 0));
+  ERROR_CHECK_ON_CREATE(uart_param_config(result->uart_port_num, &uart_config));
+  ERROR_CHECK_ON_CREATE(uart_set_pin(result->uart_port_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  ERROR_CHECK_ON_CREATE(uart_enable_pattern_det_baud_intr(result->uart_port_num, '\n', 1, 9, 0, 0));
+  ERROR_CHECK_ON_CREATE(uart_pattern_queue_reset(result->uart_port_num, 20));
   *handler = result;
   return ESP_OK;
 }
@@ -83,30 +120,67 @@ void at_handler_process_message(at_handler_t *handler) {
 }
 
 void at_handler_process(at_handler_t *handler) {
+  uart_event_t event;
   size_t current_index = 0;
+  size_t buffered_size;
   while (1) {
-    const int rxBytes = uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, handler->buffer_length - current_index, pdMS_TO_TICKS(1000));
-    if (rxBytes < 0) {
-      break;
-    }
-    size_t current_message_size = current_index + rxBytes;
-    bool found = false;
-    for (size_t i = current_index; i < current_message_size; i++) {
-      if (handler->buffer[i] == '\n') {
-        if (i > 0 && handler->buffer[i - 1] == '\r') {
-          handler->buffer[i - 1] = '\0';
-        } else {
-          handler->buffer[i] = '\0';
-        }
-        found = true;
-        break;
+    if (xQueueReceive(handler->uart_queue, (void *) &event, (TickType_t) portMAX_DELAY)) {
+      switch (event.type) {
+        //Event of UART receving data
+        /*We'd better handler data event fast, there would be much more data events than
+        other types of events. If we take too much time on data event, the queue might
+        be full.*/
+        case UART_DATA:
+          uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, event.size, portMAX_DELAY);
+          current_index += event.size;
+          break;
+        case UART_PATTERN_DET:
+          uart_get_buffered_data_len(handler->uart_port_num, &buffered_size);
+          int pos = uart_pattern_pop_pos(handler->uart_port_num);
+          if (pos == -1) {
+            // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
+            // record the position. We should set a larger queue size.
+            // As an example, we directly flush the rx buffer here.
+            uart_flush_input(handler->uart_port_num);
+            current_index = 0;
+          } else {
+            // 1 is for pattern  - '\n'
+            uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, pos + 1, 100 / portTICK_PERIOD_MS);
+            current_index += pos + 1;
+          }
+          break;
+          //Event of HW FIFO overflow detected
+        case UART_FIFO_OVF:
+        case UART_BUFFER_FULL:
+          // If fifo overflow happened, you should consider adding flow control for your application.
+          // The ISR has already reset the rx FIFO,
+          // As an example, we directly flush the rx buffer here in order to read more data.
+          uart_flush_input(handler->uart_port_num);
+          xQueueReset(handler->uart_queue);
+          current_index = 0;
+          break;
+        default:
+          break;
       }
-    }
-    if (found) {
-      at_handler_process_message(handler);
-      current_index = 0;
-    } else {
-      current_index = current_message_size;
+      if (current_index == 0) {
+        continue;
+      }
+      bool found = false;
+      // support for \r, \r\n or \n terminators
+      if (handler->buffer[current_index - 1] == '\n') {
+        handler->buffer[current_index - 1] = '\0';
+        current_index--;
+        found = true;
+      }
+      if (current_index > 0 && handler->buffer[current_index - 1] == '\r') {
+        handler->buffer[current_index - 1] = '\0';
+        current_index--;
+        found = true;
+      }
+      if (found) {
+        at_handler_process_message(handler);
+        current_index = 0;
+      }
     }
   }
 }
@@ -115,6 +189,7 @@ void at_handler_destroy(at_handler_t *handler) {
   if (handler == NULL) {
     return;
   }
+  uart_driver_delete(handler->uart_port_num);
   if (handler->buffer != NULL) {
     free(handler->buffer);
   }
