@@ -70,7 +70,6 @@ esp_err_t lora_at_display_start(lora_at_display *result) {
   ERROR_CHECK(i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0));
 
   result->ssd1306_dev = ssd1306_create(I2C_MASTER_NUM, SSD1306_I2C_ADDRESS);
-  ssd1306_clear_screen(result->ssd1306_dev, 0x00);
   ERROR_CHECK(ssd1306_refresh_gram(result->ssd1306_dev));
   return ESP_OK;
 }

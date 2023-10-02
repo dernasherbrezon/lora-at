@@ -4,6 +4,7 @@
 #include <display.h>
 #include <at_config.h>
 #include <at_handler.h>
+#include <uart_at.h>
 
 static const char *TAG = "lora-at";
 
@@ -20,11 +21,12 @@ typedef struct {
   sx127x *device;
   lora_at_display *display;
   at_handler_t *at_handler;
+  uart_at_handler_t *uart_at_handler;
 } main_t;
 
 static void rx_task(void *arg) {
   main_t *main = (main_t *) arg;
-  at_handler_process(main->at_handler);
+  uart_at_handler_process(main->uart_at_handler);
 }
 
 void app_main(void) {
@@ -52,8 +54,12 @@ void app_main(void) {
   ESP_LOGI(TAG, "lora initialized");
 
   ERROR_CHECK("at_handler", at_handler_create(config, main->display, &main->at_handler));
-  xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "at handler initialized");
+
+  ERROR_CHECK("uart_at", uart_at_handler_create(main->at_handler, &main->uart_at_handler));
+  ESP_LOGI(TAG, "uart initialized");
+
+  xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
 
 

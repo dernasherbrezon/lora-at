@@ -1,3 +1,3 @@
 
 idf_component_register(SRCS "at_handler.c"
-        INCLUDE_DIRS "." REQUIRES driver at_config display)
+        INCLUDE_DIRS "." REQUIRES at_config display)
