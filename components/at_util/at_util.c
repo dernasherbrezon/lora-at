@@ -64,3 +64,52 @@ esp_err_t at_util_hex2string(const uint8_t *input, size_t input_len, char **outp
   *output = result;
   return ESP_OK;
 }
+
+esp_err_t at_util_vector_create(size_t elem_size, at_util_vector_t **vector) {
+  at_util_vector_t *result = malloc(sizeof(at_util_vector_t));
+  if (result == NULL) {
+    return ESP_ERR_NO_MEM;
+  }
+  result->elem_size = elem_size;
+  result->elems = 0;
+  result->data = NULL;
+  *vector = result;
+  return ESP_OK;
+}
+
+esp_err_t at_util_vector_add(void *data, at_util_vector_t *vector) {
+  void *new_data = realloc(vector->data, (vector->elems + 1) * vector->elem_size);
+  if (new_data == NULL) {
+    return ESP_ERR_NO_MEM;
+  }
+  vector->data = new_data;
+  memcpy(vector->data + vector->elems * vector->elem_size, data, vector->elem_size);
+  vector->elems++;
+  return ESP_OK;
+}
+
+uint16_t at_util_vector_size(at_util_vector_t *vector) {
+  return vector->elems;
+}
+
+void at_util_vector_get(uint16_t index, void **output, at_util_vector_t *vector) {
+  *output = vector->data + (vector->elem_size * index);
+}
+
+void at_util_vector_clear(at_util_vector_t *vector) {
+  if (vector->data != NULL) {
+    free(vector->data);
+    vector->data = NULL;
+  }
+  vector->elems = 0;
+}
+
+void at_util_vector_destroy(at_util_vector_t *vector) {
+  if (vector == NULL) {
+    return;
+  }
+  if (vector->data != NULL) {
+    free(vector->data);
+  }
+  free(vector);
+}

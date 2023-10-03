@@ -5,6 +5,8 @@
 #include <driver/spi_master.h>
 #include <stdlib.h>
 #include <string.h>
+#include <esp_log.h>
+#include <at_util.h>
 
 // defined in platformio.ini
 #ifndef PIN_CS
@@ -27,6 +29,8 @@
       return __err_rc;        \
     }                         \
   } while (0)
+
+static const char *TAG = "lora-at";
 
 esp_err_t lora_util_init(sx127x **device) {
   spi_bus_config_t config = {
@@ -54,7 +58,7 @@ esp_err_t lora_util_init(sx127x **device) {
 
 esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
-  ERROR_CHECK(sx127x_set_frequency(request->freq * 1E6, device));
+  ERROR_CHECK(sx127x_set_frequency(request->freq, device));
   ERROR_CHECK(sx127x_lora_reset_fifo(device));
   ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, device));
@@ -87,12 +91,12 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
     ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, device));
   } else {
     sx127x_implicit_header_t header = {
-        .coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1,
+        .coding_rate = ((sx127x_cr_t) (request->cr - 4)) << 1,
         .enable_crc = request->useCrc,
         .length = request->length};
     ESP_ERROR_CHECK(sx127x_lora_set_implicit_header(&header, device));
   }
-  ERROR_CHECK(sx127x_lora_set_modem_config_2((sx127x_sf_t)(request->sf << 4), device));
+  ERROR_CHECK(sx127x_lora_set_modem_config_2((sx127x_sf_t) (request->sf << 4), device));
   ERROR_CHECK(sx127x_lora_set_syncword(request->syncWord, device));
   ERROR_CHECK(sx127x_set_preamble_length(request->preambleLength, device));
   // force ldo settings
@@ -106,7 +110,7 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
 
 esp_err_t lora_util_start_rx(rx_request_t *request, sx127x *device) {
   ERROR_CHECK(lora_util_start_common(request, device));
-  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t)(request->gain << 5), device));
+  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (request->gain << 5), device));
   return sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
 }
 
@@ -116,7 +120,7 @@ esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *re
   if (request->useExplicitHeader) {
     sx127x_tx_header_t header = {
         .enable_crc = request->useCrc,
-        .coding_rate = ((sx127x_cr_t)(request->cr - 4)) << 1
+        .coding_rate = ((sx127x_cr_t) (request->cr - 4)) << 1
     };
     ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, device));
   }
@@ -125,28 +129,40 @@ esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *re
 }
 
 esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **frame) {
-  int16_t rssi;
-  ERROR_CHECK(sx127x_rx_get_packet_rssi(device, &rssi));
-  float snr;
-  ERROR_CHECK(sx127x_lora_rx_get_packet_snr(device, &snr));
-  int32_t frequency_error;
-  ERROR_CHECK(sx127x_rx_get_frequency_error(device, &frequency_error));
-  uint8_t *payload = malloc(sizeof(uint8_t) * data_length);
-  if (payload == NULL) {
-    return ESP_ERR_NO_MEM;
-  }
   lora_frame_t *result = malloc(sizeof(lora_frame_t));
-  if (result == NULL) {
-    free(payload);
+  if (frame == NULL) {
     return ESP_ERR_NO_MEM;
   }
-  result->data_length = data_length;
-  result->rssi = rssi;
-  result->snr = snr;
-  result->frequency_error = frequency_error;
-  memcpy(payload, data, data_length * sizeof(uint8_t));
-  result->data = payload;
-
+  esp_err_t code = at_util_hex2string(data, data_length, &result->data);
+  if (code != ESP_OK) {
+    lora_util_frame_destroy(result);
+    return code;
+  }
+  int32_t frequency_error;
+  code = sx127x_rx_get_frequency_error(device, &frequency_error);
+  if (code == ESP_OK) {
+    result->frequency_error = frequency_error;
+  } else {
+    ESP_LOGE(TAG, "unable to get frequency error: %s", esp_err_to_name(code));
+    result->frequency_error = 0;
+  }
+  int16_t rssi;
+  code = sx127x_rx_get_packet_rssi(device, &rssi);
+  if (code == ESP_OK) {
+    result->rssi = rssi;
+  } else {
+    ESP_LOGE(TAG, "unable to get rssi: %s", esp_err_to_name(code));
+    // No room for proper "NULL". -255 should look suspicious
+    result->rssi = -255;
+  }
+  float snr;
+  code = sx127x_lora_rx_get_packet_snr(device, &snr);
+  if (code == ESP_OK) {
+    result->snr = snr;
+  } else {
+    ESP_LOGE(TAG, "unable to get snr: %s", esp_err_to_name(code));
+    result->snr = -255;
+  }
   *frame = result;
   return ESP_OK;
 }

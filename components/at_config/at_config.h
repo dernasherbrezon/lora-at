@@ -7,8 +7,8 @@
 
 typedef struct {
   bool init_display;
-  float min_freq;
-  float max_freq;
+  uint64_t min_freq;
+  uint64_t max_freq;
   uint64_t bt_poll_period;
   char bt_address[6];
 } lora_at_config_t;
@@ -16,6 +16,10 @@ typedef struct {
 esp_err_t lora_at_config_create(lora_at_config_t **config);
 
 esp_err_t lora_at_config_set_display(bool init_display, lora_at_config_t *config);
+
+esp_err_t lora_at_config_set_min_freq(uint64_t min_freq, lora_at_config_t *config);
+
+esp_err_t lora_at_config_set_max_freq(uint64_t max_freq, lora_at_config_t *config);
 
 void lora_at_config_destroy(lora_at_config_t *config);
 

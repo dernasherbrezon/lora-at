@@ -11,6 +11,10 @@ static const char* CMockString_init_display = "init_display";
 static const char* CMockString_lora_at_config_create = "lora_at_config_create";
 static const char* CMockString_lora_at_config_destroy = "lora_at_config_destroy";
 static const char* CMockString_lora_at_config_set_display = "lora_at_config_set_display";
+static const char* CMockString_lora_at_config_set_max_freq = "lora_at_config_set_max_freq";
+static const char* CMockString_lora_at_config_set_min_freq = "lora_at_config_set_min_freq";
+static const char* CMockString_max_freq = "max_freq";
+static const char* CMockString_min_freq = "min_freq";
 
 typedef struct _CMOCK_lora_at_config_create_CALL_INSTANCE
 {
@@ -42,6 +46,38 @@ typedef struct _CMOCK_lora_at_config_set_display_CALL_INSTANCE
 
 } CMOCK_lora_at_config_set_display_CALL_INSTANCE;
 
+typedef struct _CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE
+{
+  UNITY_LINE_TYPE LineNumber;
+  char ExpectAnyArgsBool;
+  esp_err_t ReturnVal;
+  uint64_t Expected_min_freq;
+  lora_at_config_t* Expected_config;
+  int Expected_config_Depth;
+  char ReturnThruPtr_config_Used;
+  lora_at_config_t* ReturnThruPtr_config_Val;
+  int ReturnThruPtr_config_Size;
+  char IgnoreArg_min_freq;
+  char IgnoreArg_config;
+
+} CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE;
+
+typedef struct _CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE
+{
+  UNITY_LINE_TYPE LineNumber;
+  char ExpectAnyArgsBool;
+  esp_err_t ReturnVal;
+  uint64_t Expected_max_freq;
+  lora_at_config_t* Expected_config;
+  int Expected_config_Depth;
+  char ReturnThruPtr_config_Used;
+  lora_at_config_t* ReturnThruPtr_config_Val;
+  int ReturnThruPtr_config_Size;
+  char IgnoreArg_max_freq;
+  char IgnoreArg_config;
+
+} CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE;
+
 typedef struct _CMOCK_lora_at_config_destroy_CALL_INSTANCE
 {
   UNITY_LINE_TYPE LineNumber;
@@ -69,6 +105,18 @@ static struct Mockat_configInstance
   CMOCK_lora_at_config_set_display_CALLBACK lora_at_config_set_display_CallbackFunctionPointer;
   int lora_at_config_set_display_CallbackCalls;
   CMOCK_MEM_INDEX_TYPE lora_at_config_set_display_CallInstance;
+  char lora_at_config_set_min_freq_IgnoreBool;
+  esp_err_t lora_at_config_set_min_freq_FinalReturn;
+  char lora_at_config_set_min_freq_CallbackBool;
+  CMOCK_lora_at_config_set_min_freq_CALLBACK lora_at_config_set_min_freq_CallbackFunctionPointer;
+  int lora_at_config_set_min_freq_CallbackCalls;
+  CMOCK_MEM_INDEX_TYPE lora_at_config_set_min_freq_CallInstance;
+  char lora_at_config_set_max_freq_IgnoreBool;
+  esp_err_t lora_at_config_set_max_freq_FinalReturn;
+  char lora_at_config_set_max_freq_CallbackBool;
+  CMOCK_lora_at_config_set_max_freq_CALLBACK lora_at_config_set_max_freq_CallbackFunctionPointer;
+  int lora_at_config_set_max_freq_CallbackCalls;
+  CMOCK_MEM_INDEX_TYPE lora_at_config_set_max_freq_CallInstance;
   char lora_at_config_destroy_IgnoreBool;
   char lora_at_config_destroy_CallbackBool;
   CMOCK_lora_at_config_destroy_CALLBACK lora_at_config_destroy_CallbackFunctionPointer;
@@ -104,6 +152,32 @@ void Mockat_config_Verify(void)
     UNITY_TEST_FAIL(cmock_line, CMockStringCalledLess);
   }
   if (Mock.lora_at_config_set_display_CallbackFunctionPointer != NULL)
+  {
+    call_instance = CMOCK_GUTS_NONE;
+    (void)call_instance;
+  }
+  call_instance = Mock.lora_at_config_set_min_freq_CallInstance;
+  if (Mock.lora_at_config_set_min_freq_IgnoreBool)
+    call_instance = CMOCK_GUTS_NONE;
+  if (CMOCK_GUTS_NONE != call_instance)
+  {
+    UNITY_SET_DETAIL(CMockString_lora_at_config_set_min_freq);
+    UNITY_TEST_FAIL(cmock_line, CMockStringCalledLess);
+  }
+  if (Mock.lora_at_config_set_min_freq_CallbackFunctionPointer != NULL)
+  {
+    call_instance = CMOCK_GUTS_NONE;
+    (void)call_instance;
+  }
+  call_instance = Mock.lora_at_config_set_max_freq_CallInstance;
+  if (Mock.lora_at_config_set_max_freq_IgnoreBool)
+    call_instance = CMOCK_GUTS_NONE;
+  if (CMOCK_GUTS_NONE != call_instance)
+  {
+    UNITY_SET_DETAIL(CMockString_lora_at_config_set_max_freq);
+    UNITY_TEST_FAIL(cmock_line, CMockStringCalledLess);
+  }
+  if (Mock.lora_at_config_set_max_freq_CallbackFunctionPointer != NULL)
   {
     call_instance = CMOCK_GUTS_NONE;
     (void)call_instance;
@@ -445,6 +519,340 @@ void lora_at_config_set_display_CMockIgnoreArg_init_display(UNITY_LINE_TYPE cmoc
 void lora_at_config_set_display_CMockIgnoreArg_config(UNITY_LINE_TYPE cmock_line)
 {
   CMOCK_lora_at_config_set_display_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_display_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_display_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringIgnPreExp);
+  cmock_call_instance->IgnoreArg_config = 1;
+}
+
+esp_err_t lora_at_config_set_min_freq(uint64_t min_freq, lora_at_config_t* config)
+{
+  UNITY_LINE_TYPE cmock_line = TEST_LINE_NUM;
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance;
+  UNITY_SET_DETAIL(CMockString_lora_at_config_set_min_freq);
+  cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(Mock.lora_at_config_set_min_freq_CallInstance);
+  Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemNext(Mock.lora_at_config_set_min_freq_CallInstance);
+  if (Mock.lora_at_config_set_min_freq_IgnoreBool)
+  {
+    UNITY_CLR_DETAILS();
+    if (cmock_call_instance == NULL)
+      return Mock.lora_at_config_set_min_freq_FinalReturn;
+    memcpy((void*)(&Mock.lora_at_config_set_min_freq_FinalReturn), (void*)(&cmock_call_instance->ReturnVal),
+         sizeof(esp_err_t[sizeof(cmock_call_instance->ReturnVal) == sizeof(esp_err_t) ? 1 : -1])); /* add esp_err_t to :treat_as_array if this causes an error */
+    return cmock_call_instance->ReturnVal;
+  }
+  if (!Mock.lora_at_config_set_min_freq_CallbackBool &&
+      Mock.lora_at_config_set_min_freq_CallbackFunctionPointer != NULL)
+  {
+    esp_err_t cmock_cb_ret = Mock.lora_at_config_set_min_freq_CallbackFunctionPointer(min_freq, config, Mock.lora_at_config_set_min_freq_CallbackCalls++);
+    UNITY_CLR_DETAILS();
+    return cmock_cb_ret;
+  }
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringCalledMore);
+  cmock_line = cmock_call_instance->LineNumber;
+  if (!cmock_call_instance->ExpectAnyArgsBool)
+  {
+  if (!cmock_call_instance->IgnoreArg_min_freq)
+  {
+    UNITY_SET_DETAILS(CMockString_lora_at_config_set_min_freq,CMockString_min_freq);
+    UNITY_TEST_ASSERT_EQUAL_MEMORY((void*)(&cmock_call_instance->Expected_min_freq), (void*)(&min_freq), sizeof(uint64_t), cmock_line, CMockStringMismatch);
+  }
+  if (!cmock_call_instance->IgnoreArg_config)
+  {
+    UNITY_SET_DETAILS(CMockString_lora_at_config_set_min_freq,CMockString_config);
+    if (cmock_call_instance->Expected_config == NULL)
+      { UNITY_TEST_ASSERT_NULL(config, cmock_line, CMockStringExpNULL); }
+    else
+      { UNITY_TEST_ASSERT_EQUAL_MEMORY_ARRAY((void*)(cmock_call_instance->Expected_config), (void*)(config), sizeof(lora_at_config_t), cmock_call_instance->Expected_config_Depth, cmock_line, CMockStringMismatch); }
+  }
+  }
+  if (Mock.lora_at_config_set_min_freq_CallbackFunctionPointer != NULL)
+  {
+    cmock_call_instance->ReturnVal = Mock.lora_at_config_set_min_freq_CallbackFunctionPointer(min_freq, config, Mock.lora_at_config_set_min_freq_CallbackCalls++);
+  }
+  if (cmock_call_instance->ReturnThruPtr_config_Used)
+  {
+    UNITY_TEST_ASSERT_NOT_NULL(config, cmock_line, CMockStringPtrIsNULL);
+    memcpy((void*)config, (void*)cmock_call_instance->ReturnThruPtr_config_Val,
+      cmock_call_instance->ReturnThruPtr_config_Size);
+  }
+  UNITY_CLR_DETAILS();
+  return cmock_call_instance->ReturnVal;
+}
+
+void CMockExpectParameters_lora_at_config_set_min_freq(CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance, uint64_t min_freq, lora_at_config_t* config, int config_Depth)
+{
+  memcpy((void*)(&cmock_call_instance->Expected_min_freq), (void*)(&min_freq),
+         sizeof(uint64_t[sizeof(min_freq) == sizeof(uint64_t) ? 1 : -1])); /* add uint64_t to :treat_as_array if this causes an error */
+  cmock_call_instance->IgnoreArg_min_freq = 0;
+  cmock_call_instance->Expected_config = config;
+  cmock_call_instance->Expected_config_Depth = config_Depth;
+  cmock_call_instance->IgnoreArg_config = 0;
+  cmock_call_instance->ReturnThruPtr_config_Used = 0;
+}
+
+void lora_at_config_set_min_freq_CMockIgnoreAndReturn(UNITY_LINE_TYPE cmock_line, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_min_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  cmock_call_instance->ReturnVal = cmock_to_return;
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)1;
+}
+
+void lora_at_config_set_min_freq_CMockStopIgnore(void)
+{
+  if(Mock.lora_at_config_set_min_freq_IgnoreBool)
+    Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemNext(Mock.lora_at_config_set_min_freq_CallInstance);
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+}
+
+void lora_at_config_set_min_freq_CMockExpectAnyArgsAndReturn(UNITY_LINE_TYPE cmock_line, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_min_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  cmock_call_instance->ReturnVal = cmock_to_return;
+  cmock_call_instance->ExpectAnyArgsBool = (char)1;
+}
+
+void lora_at_config_set_min_freq_CMockExpectAndReturn(UNITY_LINE_TYPE cmock_line, uint64_t min_freq, lora_at_config_t* config, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_min_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  CMockExpectParameters_lora_at_config_set_min_freq(cmock_call_instance, min_freq, config, 1);
+  memcpy((void*)(&cmock_call_instance->ReturnVal), (void*)(&cmock_to_return),
+         sizeof(esp_err_t[sizeof(cmock_to_return) == sizeof(esp_err_t) ? 1 : -1])); /* add esp_err_t to :treat_as_array if this causes an error */
+}
+
+void lora_at_config_set_min_freq_AddCallback(CMOCK_lora_at_config_set_min_freq_CALLBACK Callback)
+{
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  Mock.lora_at_config_set_min_freq_CallbackBool = (char)1;
+  Mock.lora_at_config_set_min_freq_CallbackFunctionPointer = Callback;
+}
+
+void lora_at_config_set_min_freq_Stub(CMOCK_lora_at_config_set_min_freq_CALLBACK Callback)
+{
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  Mock.lora_at_config_set_min_freq_CallbackBool = (char)0;
+  Mock.lora_at_config_set_min_freq_CallbackFunctionPointer = Callback;
+}
+
+void lora_at_config_set_min_freq_CMockExpectWithArrayAndReturn(UNITY_LINE_TYPE cmock_line, uint64_t min_freq, lora_at_config_t* config, int config_Depth, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_min_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_min_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_min_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  CMockExpectParameters_lora_at_config_set_min_freq(cmock_call_instance, min_freq, config, config_Depth);
+  cmock_call_instance->ReturnVal = cmock_to_return;
+}
+
+void lora_at_config_set_min_freq_CMockReturnMemThruPtr_config(UNITY_LINE_TYPE cmock_line, lora_at_config_t* config, int cmock_size)
+{
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_min_freq_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringPtrPreExp);
+  cmock_call_instance->ReturnThruPtr_config_Used = 1;
+  cmock_call_instance->ReturnThruPtr_config_Val = config;
+  cmock_call_instance->ReturnThruPtr_config_Size = cmock_size;
+}
+
+void lora_at_config_set_min_freq_CMockIgnoreArg_min_freq(UNITY_LINE_TYPE cmock_line)
+{
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_min_freq_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringIgnPreExp);
+  cmock_call_instance->IgnoreArg_min_freq = 1;
+}
+
+void lora_at_config_set_min_freq_CMockIgnoreArg_config(UNITY_LINE_TYPE cmock_line)
+{
+  CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_min_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_min_freq_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringIgnPreExp);
+  cmock_call_instance->IgnoreArg_config = 1;
+}
+
+esp_err_t lora_at_config_set_max_freq(uint64_t max_freq, lora_at_config_t* config)
+{
+  UNITY_LINE_TYPE cmock_line = TEST_LINE_NUM;
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance;
+  UNITY_SET_DETAIL(CMockString_lora_at_config_set_max_freq);
+  cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(Mock.lora_at_config_set_max_freq_CallInstance);
+  Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemNext(Mock.lora_at_config_set_max_freq_CallInstance);
+  if (Mock.lora_at_config_set_max_freq_IgnoreBool)
+  {
+    UNITY_CLR_DETAILS();
+    if (cmock_call_instance == NULL)
+      return Mock.lora_at_config_set_max_freq_FinalReturn;
+    memcpy((void*)(&Mock.lora_at_config_set_max_freq_FinalReturn), (void*)(&cmock_call_instance->ReturnVal),
+         sizeof(esp_err_t[sizeof(cmock_call_instance->ReturnVal) == sizeof(esp_err_t) ? 1 : -1])); /* add esp_err_t to :treat_as_array if this causes an error */
+    return cmock_call_instance->ReturnVal;
+  }
+  if (!Mock.lora_at_config_set_max_freq_CallbackBool &&
+      Mock.lora_at_config_set_max_freq_CallbackFunctionPointer != NULL)
+  {
+    esp_err_t cmock_cb_ret = Mock.lora_at_config_set_max_freq_CallbackFunctionPointer(max_freq, config, Mock.lora_at_config_set_max_freq_CallbackCalls++);
+    UNITY_CLR_DETAILS();
+    return cmock_cb_ret;
+  }
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringCalledMore);
+  cmock_line = cmock_call_instance->LineNumber;
+  if (!cmock_call_instance->ExpectAnyArgsBool)
+  {
+  if (!cmock_call_instance->IgnoreArg_max_freq)
+  {
+    UNITY_SET_DETAILS(CMockString_lora_at_config_set_max_freq,CMockString_max_freq);
+    UNITY_TEST_ASSERT_EQUAL_MEMORY((void*)(&cmock_call_instance->Expected_max_freq), (void*)(&max_freq), sizeof(uint64_t), cmock_line, CMockStringMismatch);
+  }
+  if (!cmock_call_instance->IgnoreArg_config)
+  {
+    UNITY_SET_DETAILS(CMockString_lora_at_config_set_max_freq,CMockString_config);
+    if (cmock_call_instance->Expected_config == NULL)
+      { UNITY_TEST_ASSERT_NULL(config, cmock_line, CMockStringExpNULL); }
+    else
+      { UNITY_TEST_ASSERT_EQUAL_MEMORY_ARRAY((void*)(cmock_call_instance->Expected_config), (void*)(config), sizeof(lora_at_config_t), cmock_call_instance->Expected_config_Depth, cmock_line, CMockStringMismatch); }
+  }
+  }
+  if (Mock.lora_at_config_set_max_freq_CallbackFunctionPointer != NULL)
+  {
+    cmock_call_instance->ReturnVal = Mock.lora_at_config_set_max_freq_CallbackFunctionPointer(max_freq, config, Mock.lora_at_config_set_max_freq_CallbackCalls++);
+  }
+  if (cmock_call_instance->ReturnThruPtr_config_Used)
+  {
+    UNITY_TEST_ASSERT_NOT_NULL(config, cmock_line, CMockStringPtrIsNULL);
+    memcpy((void*)config, (void*)cmock_call_instance->ReturnThruPtr_config_Val,
+      cmock_call_instance->ReturnThruPtr_config_Size);
+  }
+  UNITY_CLR_DETAILS();
+  return cmock_call_instance->ReturnVal;
+}
+
+void CMockExpectParameters_lora_at_config_set_max_freq(CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance, uint64_t max_freq, lora_at_config_t* config, int config_Depth)
+{
+  memcpy((void*)(&cmock_call_instance->Expected_max_freq), (void*)(&max_freq),
+         sizeof(uint64_t[sizeof(max_freq) == sizeof(uint64_t) ? 1 : -1])); /* add uint64_t to :treat_as_array if this causes an error */
+  cmock_call_instance->IgnoreArg_max_freq = 0;
+  cmock_call_instance->Expected_config = config;
+  cmock_call_instance->Expected_config_Depth = config_Depth;
+  cmock_call_instance->IgnoreArg_config = 0;
+  cmock_call_instance->ReturnThruPtr_config_Used = 0;
+}
+
+void lora_at_config_set_max_freq_CMockIgnoreAndReturn(UNITY_LINE_TYPE cmock_line, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_max_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  cmock_call_instance->ReturnVal = cmock_to_return;
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)1;
+}
+
+void lora_at_config_set_max_freq_CMockStopIgnore(void)
+{
+  if(Mock.lora_at_config_set_max_freq_IgnoreBool)
+    Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemNext(Mock.lora_at_config_set_max_freq_CallInstance);
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+}
+
+void lora_at_config_set_max_freq_CMockExpectAnyArgsAndReturn(UNITY_LINE_TYPE cmock_line, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_max_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  cmock_call_instance->ReturnVal = cmock_to_return;
+  cmock_call_instance->ExpectAnyArgsBool = (char)1;
+}
+
+void lora_at_config_set_max_freq_CMockExpectAndReturn(UNITY_LINE_TYPE cmock_line, uint64_t max_freq, lora_at_config_t* config, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_max_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  CMockExpectParameters_lora_at_config_set_max_freq(cmock_call_instance, max_freq, config, 1);
+  memcpy((void*)(&cmock_call_instance->ReturnVal), (void*)(&cmock_to_return),
+         sizeof(esp_err_t[sizeof(cmock_to_return) == sizeof(esp_err_t) ? 1 : -1])); /* add esp_err_t to :treat_as_array if this causes an error */
+}
+
+void lora_at_config_set_max_freq_AddCallback(CMOCK_lora_at_config_set_max_freq_CALLBACK Callback)
+{
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  Mock.lora_at_config_set_max_freq_CallbackBool = (char)1;
+  Mock.lora_at_config_set_max_freq_CallbackFunctionPointer = Callback;
+}
+
+void lora_at_config_set_max_freq_Stub(CMOCK_lora_at_config_set_max_freq_CALLBACK Callback)
+{
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  Mock.lora_at_config_set_max_freq_CallbackBool = (char)0;
+  Mock.lora_at_config_set_max_freq_CallbackFunctionPointer = Callback;
+}
+
+void lora_at_config_set_max_freq_CMockExpectWithArrayAndReturn(UNITY_LINE_TYPE cmock_line, uint64_t max_freq, lora_at_config_t* config, int config_Depth, esp_err_t cmock_to_return)
+{
+  CMOCK_MEM_INDEX_TYPE cmock_guts_index = CMock_Guts_MemNew(sizeof(CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE));
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(cmock_guts_index);
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringOutOfMemory);
+  memset(cmock_call_instance, 0, sizeof(*cmock_call_instance));
+  Mock.lora_at_config_set_max_freq_CallInstance = CMock_Guts_MemChain(Mock.lora_at_config_set_max_freq_CallInstance, cmock_guts_index);
+  Mock.lora_at_config_set_max_freq_IgnoreBool = (char)0;
+  cmock_call_instance->LineNumber = cmock_line;
+  cmock_call_instance->ExpectAnyArgsBool = (char)0;
+  CMockExpectParameters_lora_at_config_set_max_freq(cmock_call_instance, max_freq, config, config_Depth);
+  cmock_call_instance->ReturnVal = cmock_to_return;
+}
+
+void lora_at_config_set_max_freq_CMockReturnMemThruPtr_config(UNITY_LINE_TYPE cmock_line, lora_at_config_t* config, int cmock_size)
+{
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_max_freq_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringPtrPreExp);
+  cmock_call_instance->ReturnThruPtr_config_Used = 1;
+  cmock_call_instance->ReturnThruPtr_config_Val = config;
+  cmock_call_instance->ReturnThruPtr_config_Size = cmock_size;
+}
+
+void lora_at_config_set_max_freq_CMockIgnoreArg_max_freq(UNITY_LINE_TYPE cmock_line)
+{
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_max_freq_CallInstance));
+  UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringIgnPreExp);
+  cmock_call_instance->IgnoreArg_max_freq = 1;
+}
+
+void lora_at_config_set_max_freq_CMockIgnoreArg_config(UNITY_LINE_TYPE cmock_line)
+{
+  CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE* cmock_call_instance = (CMOCK_lora_at_config_set_max_freq_CALL_INSTANCE*)CMock_Guts_GetAddressFor(CMock_Guts_MemEndOfChain(Mock.lora_at_config_set_max_freq_CallInstance));
   UNITY_TEST_ASSERT_NOT_NULL(cmock_call_instance, cmock_line, CMockStringIgnPreExp);
   cmock_call_instance->IgnoreArg_config = 1;
 }

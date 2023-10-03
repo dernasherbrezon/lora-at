@@ -10,8 +10,7 @@ typedef struct {
   int16_t rssi;
   float snr;
   uint64_t timestamp;
-  uint8_t data_length;
-  uint8_t *data;
+  char *data;
 } lora_frame_t;
 
 typedef enum {
@@ -24,7 +23,7 @@ typedef struct {
   uint64_t startTimeMillis;
   uint64_t endTimeMillis;
   uint64_t currentTimeMillis;
-  float freq;
+  uint64_t freq;
   float bw;
   uint8_t sf;
   uint8_t cr;

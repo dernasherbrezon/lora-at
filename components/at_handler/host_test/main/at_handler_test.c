@@ -32,6 +32,26 @@ TEST_CASE("AT+DISPLAY=", "[at_handler]") {
   test_request_response("AT+DISPLAY=1", "OK\r\n");
 }
 
+TEST_CASE("AT+MINFREQ?", "[at_handler]") {
+  at_config.min_freq = 465000000;
+  test_request_response("AT+MINFREQ?", "465000000\r\nOK\r\n");
+}
+
+TEST_CASE("AT+MINFREQ=", "[at_handler]") {
+  lora_at_config_set_min_freq_ExpectAndReturn(433000000, &at_config, ESP_OK);
+  test_request_response("AT+MINFREQ=433000000", "OK\r\n");
+}
+
+TEST_CASE("AT+MAXFREQ?", "[at_handler]") {
+  at_config.max_freq = 435000000;
+  test_request_response("AT+MAXFREQ?", "435000000\r\nOK\r\n");
+}
+
+TEST_CASE("AT+MAXFREQ=", "[at_handler]") {
+  lora_at_config_set_max_freq_ExpectAndReturn(433000000, &at_config, ESP_OK);
+  test_request_response("AT+MAXFREQ=433000000", "OK\r\n");
+}
+
 void setUp(void) {
   TEST_ASSERT_EQUAL_INT(ESP_OK, at_handler_create(&at_config, NULL, &handler));
 }

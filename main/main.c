@@ -4,7 +4,7 @@
 #include <display.h>
 #include <at_config.h>
 #include <at_handler.h>
-#include <uart_at.h>
+#include "uart_at.h"
 
 static const char *TAG = "lora-at";
 
@@ -24,13 +24,23 @@ typedef struct {
   uart_at_handler_t *uart_at_handler;
 } main_t;
 
-static void rx_task(void *arg) {
+main_t *main = NULL;
+
+static void uart_rx_task(void *arg) {
   main_t *main = (main_t *) arg;
   uart_at_handler_process(main->uart_at_handler);
 }
 
+static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
+  lora_frame_t *frame = NULL;
+  ERROR_CHECK("can't read the frame", lora_util_read_frame(device, data, data_length, &frame));
+  ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
+  //FIXME Push frame further
+}
+
+
 void app_main(void) {
-  main_t *main = malloc(sizeof(main_t));
+  main = malloc(sizeof(main_t));
   if (main == NULL) {
     ESP_LOGE(TAG, "unable to init main");
     return;
@@ -51,15 +61,16 @@ void app_main(void) {
   }
 
   ERROR_CHECK("lora", lora_util_init(&main->device));
+  sx127x_rx_set_callback(rx_callback, main->device);
   ESP_LOGI(TAG, "lora initialized");
 
-  ERROR_CHECK("at_handler", at_handler_create(config, main->display, &main->at_handler));
+  ERROR_CHECK("at_handler", at_handler_create(config, main->display, main->device, &main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
 
   ERROR_CHECK("uart_at", uart_at_handler_create(main->at_handler, &main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
 
-  xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
+  xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
 
 

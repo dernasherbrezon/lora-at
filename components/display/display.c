@@ -81,6 +81,7 @@ esp_err_t lora_at_display_stop(lora_at_display *display) {
   ESP_LOGI("lora-at", "stop display");
   ssd1306_clear_screen(display->ssd1306_dev, 0x00);
   ERROR_CHECK(ssd1306_refresh_gram(display->ssd1306_dev));
+  //FIXME this won't disable display power
   ssd1306_delete(display->ssd1306_dev);
   esp_err_t result = i2c_driver_delete(I2C_MASTER_NUM);
   display->ssd1306_dev = NULL;
