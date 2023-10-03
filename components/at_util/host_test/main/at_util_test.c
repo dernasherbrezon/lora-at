@@ -45,7 +45,7 @@ TEST_CASE("hex2string", "[at_util]") {
 }
 
 TEST_CASE("vector", "[at_util]") {
-  TEST_ASSERT_EQUAL(ESP_OK, at_util_vector_create(sizeof(at_util_test_t), &vector));
+  TEST_ASSERT_EQUAL(ESP_OK, at_util_vector_create(&vector));
   TEST_ASSERT_EQUAL(0, at_util_vector_size(vector));
   at_util_test_t item = {
       .data = "TEST",

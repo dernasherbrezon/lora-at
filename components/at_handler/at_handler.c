@@ -34,6 +34,11 @@ esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *displa
     at_handler_destroy(result);
     return ESP_ERR_NO_MEM;
   }
+  esp_err_t code = at_util_vector_create(sizeof(lora_frame_t), &result->frames);
+  if (code != ESP_OK) {
+    at_handler_destroy(result);
+    return code;
+  }
   *handler = result;
   return ESP_OK;
 }
@@ -155,6 +160,9 @@ void at_handler_destroy(at_handler_t *handler) {
   }
   if (handler->output_buffer != NULL) {
     free(handler->output_buffer);
+  }
+  if (handler->frames != NULL) {
+    at_util_vector_destroy(handler->frames);
   }
   free(handler);
 }

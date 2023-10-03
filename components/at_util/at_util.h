@@ -9,13 +9,12 @@ esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_l
 
 esp_err_t at_util_hex2string(const uint8_t *input, size_t input_len, char **output);
 
-typedef struct {
+typedef struct at_util_vector {
   void *data;
-  size_t elem_size;
-  uint16_t elems;
+  struct at_util_vector *next;
 } at_util_vector_t;
 
-esp_err_t at_util_vector_create(size_t elem_size, at_util_vector_t **vector);
+esp_err_t at_util_vector_create(at_util_vector_t **vector);
 
 esp_err_t at_util_vector_add(void *data, at_util_vector_t *vector);
 

@@ -24,7 +24,7 @@ typedef struct {
   uart_at_handler_t *uart_at_handler;
 } main_t;
 
-main_t *main = NULL;
+main_t *lora_at_main = NULL;
 
 static void uart_rx_task(void *arg) {
   main_t *main = (main_t *) arg;
@@ -40,8 +40,8 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
 
 
 void app_main(void) {
-  main = malloc(sizeof(main_t));
-  if (main == NULL) {
+  lora_at_main = malloc(sizeof(main_t));
+  if (lora_at_main == NULL) {
     ESP_LOGE(TAG, "unable to init main");
     return;
   }
@@ -49,28 +49,28 @@ void app_main(void) {
   lora_at_config_t *config = NULL;
   ERROR_CHECK("config", lora_at_config_create(&config));
   ESP_LOGI(TAG, "config initialized");
-  ERROR_CHECK("display", lora_at_display_create(&main->display));
+  ERROR_CHECK("display", lora_at_display_create(&lora_at_main->display));
   config->init_display = 1;
   if (config->init_display) {
-    ERROR_CHECK("display", lora_at_display_start(main->display));
+    ERROR_CHECK("display", lora_at_display_start(lora_at_main->display));
     ESP_LOGI(TAG, "display initialized");
-    lora_at_display_set_status("IDLE", main->display);
+    lora_at_display_set_status("IDLE", lora_at_main->display);
   } else {
     ESP_LOGI(TAG, "display NOT initialized");
-    main->display = NULL;
+    lora_at_main->display = NULL;
   }
 
-  ERROR_CHECK("lora", lora_util_init(&main->device));
-  sx127x_rx_set_callback(rx_callback, main->device);
+  ERROR_CHECK("lora", lora_util_init(&lora_at_main->device));
+  sx127x_rx_set_callback(rx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "lora initialized");
 
-  ERROR_CHECK("at_handler", at_handler_create(config, main->display, main->device, &main->at_handler));
+  ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, &lora_at_main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
 
-  ERROR_CHECK("uart_at", uart_at_handler_create(main->at_handler, &main->uart_at_handler));
+  ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
 
-  xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 2, main, configMAX_PRIORITIES, NULL);
+  xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 2, lora_at_main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
 
 

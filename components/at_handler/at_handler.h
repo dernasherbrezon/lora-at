@@ -5,8 +5,10 @@
 #include <at_config.h>
 #include <display.h>
 #include <sx127x_util.h>
+#include <at_util.h>
 
 typedef struct {
+  at_util_vector_t *frames;
   size_t buffer_length;
   char *output_buffer;
   lora_at_config_t *at_config;

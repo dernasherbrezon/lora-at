@@ -1,12 +1,10 @@
 #include "sx127x_util.h"
 
-#include <driver/gpio.h>
 #include <driver/spi_common.h>
 #include <driver/spi_master.h>
 #include <stdlib.h>
 #include <string.h>
 #include <esp_log.h>
-#include <at_util.h>
 
 // defined in platformio.ini
 #ifndef PIN_CS
@@ -133,13 +131,15 @@ esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_leng
   if (frame == NULL) {
     return ESP_ERR_NO_MEM;
   }
-  esp_err_t code = at_util_hex2string(data, data_length, &result->data);
-  if (code != ESP_OK) {
+  result->data_length = data_length;
+  result->data = malloc(sizeof(uint8_t) * result->data_length);
+  if (result->data == NULL) {
     lora_util_frame_destroy(result);
-    return code;
+    return ESP_ERR_NO_MEM;
   }
+  memcpy(result->data, data, sizeof(uint8_t) * result->data_length);
   int32_t frequency_error;
-  code = sx127x_rx_get_frequency_error(device, &frequency_error);
+  esp_err_t code = sx127x_rx_get_frequency_error(device, &frequency_error);
   if (code == ESP_OK) {
     result->frequency_error = frequency_error;
   } else {
