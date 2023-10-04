@@ -6,43 +6,70 @@
 #include <string.h>
 #include <esp_log.h>
 
-// defined in platformio.ini
-#ifndef PIN_CS
-#define PIN_CS 18
+#include <driver/gpio.h>
+#include <esp_intr_alloc.h>
+#include <freertos/task.h>
+#include <inttypes.h>
+
+#ifndef CONFIG_PIN_CS
+#define CONFIG_PIN_CS 18
 #endif
-#ifndef PIN_MOSI
-#define PIN_MOSI 27
+#ifndef CONFIG_PIN_MOSI
+#define CONFIG_PIN_MOSI 27
 #endif
-#ifndef PIN_MISO
-#define PIN_MISO 19
+#ifndef CONFIG_PIN_MISO
+#define CONFIG_PIN_MISO 19
 #endif
-#ifndef PIN_SCK
-#define PIN_SCK 5
+#ifndef CONFIG_PIN_SCK
+#define CONFIG_PIN_SCK 5
+#endif
+#ifndef CONFIG_PIN_DIO0
+#define CONFIG_PIN_DIO0 26
 #endif
 
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
-    if (__err_rc != 0) {      \
+    if (__err_rc != ESP_OK) {      \
       return __err_rc;        \
     }                         \
   } while (0)
 
 static const char *TAG = "lora-at";
+TaskHandle_t handle_interrupt;
+
+void IRAM_ATTR lora_util_interrupt_fromisr(void *arg) {
+  xTaskResumeFromISR(handle_interrupt);
+}
+
+void lora_util_interrupt_task(void *arg) {
+  while (1) {
+    vTaskSuspend(NULL);
+    sx127x_handle_interrupt((sx127x *) arg);
+  }
+}
+
+void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device) {
+  gpio_set_direction(gpio, GPIO_MODE_INPUT);
+  gpio_pulldown_en(gpio);
+  gpio_pullup_dis(gpio);
+  gpio_set_intr_type(gpio, GPIO_INTR_POSEDGE);
+  gpio_isr_handler_add(gpio, lora_util_interrupt_fromisr, (void *) device);
+}
 
 esp_err_t lora_util_init(sx127x **device) {
   spi_bus_config_t config = {
-      .mosi_io_num = PIN_MOSI,
-      .miso_io_num = PIN_MISO,
-      .sclk_io_num = PIN_SCK,
+      .mosi_io_num = CONFIG_PIN_MOSI,
+      .miso_io_num = CONFIG_PIN_MISO,
+      .sclk_io_num = CONFIG_PIN_SCK,
       .quadwp_io_num = -1,
       .quadhd_io_num = -1,
       .max_transfer_sz = 0,
   };
   ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &config, 1));
   spi_device_interface_config_t dev_cfg = {
-      .clock_speed_hz = 3E6,
-      .spics_io_num = PIN_CS,
+      .clock_speed_hz = 3000000,
+      .spics_io_num = CONFIG_PIN_CS,
       .queue_size = 16,
       .command_bits = 0,
       .address_bits = 8,
@@ -51,6 +78,16 @@ esp_err_t lora_util_init(sx127x **device) {
   spi_device_handle_t spi_device;
   ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_cfg, &spi_device));
   ERROR_CHECK(sx127x_create(spi_device, device));
+
+  BaseType_t task_code = xTaskCreatePinnedToCore(lora_util_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
+  if (task_code != pdPASS) {
+    ESP_LOGE(TAG, "can't create task %d", task_code);
+    sx127x_destroy(*device);
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  gpio_install_isr_service(0);
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO0, *device);
   return SX127X_OK;
 }
 
@@ -61,25 +98,25 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
   ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, device));
   sx127x_bw_t bw;
-  if (request->bw == 7.8) {
+  if (request->bw == 7800) {
     bw = SX127x_BW_7800;
-  } else if (request->bw == 10.4) {
+  } else if (request->bw == 10400) {
     bw = SX127x_BW_10400;
-  } else if (request->bw == 15.6) {
+  } else if (request->bw == 15600) {
     bw = SX127x_BW_15600;
-  } else if (request->bw == 20.8) {
+  } else if (request->bw == 20800) {
     bw = SX127x_BW_20800;
-  } else if (request->bw == 31.25) {
+  } else if (request->bw == 31250) {
     bw = SX127x_BW_31250;
-  } else if (request->bw == 41.7) {
+  } else if (request->bw == 41700) {
     bw = SX127x_BW_41700;
-  } else if (request->bw == 62.5) {
+  } else if (request->bw == 62500) {
     bw = SX127x_BW_62500;
-  } else if (request->bw == 125.0) {
+  } else if (request->bw == 125000) {
     bw = SX127x_BW_125000;
-  } else if (request->bw == 250.0) {
+  } else if (request->bw == 250000) {
     bw = SX127x_BW_250000;
-  } else if (request->bw == 500.0) {
+  } else if (request->bw == 500000) {
     bw = SX127x_BW_500000;
   } else {
     return -1;

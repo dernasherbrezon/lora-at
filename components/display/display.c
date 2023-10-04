@@ -1,6 +1,7 @@
 #include "display.h"
 #include <ssd1306.h>
 #include <esp_log.h>
+#include <string.h>
 
 #ifndef CONFIG_PIN_OLED_SDL
 #define CONFIG_PIN_OLED_SDL 22        /*!&lt; gpio number for I2C master clock */
@@ -17,6 +18,8 @@
 #define I2C_MASTER_NUM I2C_NUM_1    /*!&lt; I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 100000   /*!&lt; I2C master clock frequency */
 
+static const char *TAG = "lora-at";
+
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -26,6 +29,7 @@
   } while (0)
 
 struct lora_at_display_t {
+  char status[10];
   ssd1306_handle_t ssd1306_dev;
 };
 
@@ -56,7 +60,7 @@ esp_err_t lora_at_display_start(lora_at_display *result) {
   if (result->ssd1306_dev != NULL) {
     return ESP_OK;
   }
-  ESP_LOGI("lora-at", "start display");
+  ESP_LOGI(TAG, "start display");
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = (gpio_num_t) CONFIG_PIN_OLED_SDA;
@@ -78,7 +82,7 @@ esp_err_t lora_at_display_stop(lora_at_display *display) {
   if (display->ssd1306_dev == NULL) {
     return ESP_OK;
   }
-  ESP_LOGI("lora-at", "stop display");
+  ESP_LOGI(TAG, "stop display");
   ssd1306_clear_screen(display->ssd1306_dev, 0x00);
   ERROR_CHECK(ssd1306_refresh_gram(display->ssd1306_dev));
   //FIXME this won't disable display power
@@ -88,14 +92,23 @@ esp_err_t lora_at_display_stop(lora_at_display *display) {
   return result;
 }
 
-esp_err_t lora_at_display_set_status(const char *status, lora_at_display *display) {
+esp_err_t lora_at_display_refresh(lora_at_display *display) {
   ssd1306_clear_screen(display->ssd1306_dev, 0x00);
   ssd1306_draw_bitmap(display->ssd1306_dev, 0, 0, logo_bits, logo_width, logo_height);
   ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 5, (const uint8_t *) "lora-at", 14, 1);
   char status_buffer[20] = {0};
-  sprintf(status_buffer, "status: %s", status);
+  sprintf(status_buffer, "status: %s", display->status);
   ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 21, (const uint8_t *) status_buffer, 14, 1);
   return ssd1306_refresh_gram(display->ssd1306_dev);
+}
+
+esp_err_t lora_at_display_set_status(const char *status, lora_at_display *display) {
+  memset(display->status, '\0', sizeof(display->status));
+  memcpy(display->status, status, strlen(status));
+  if (display->ssd1306_dev == NULL) {
+    return ESP_OK;
+  }
+  return lora_at_display_refresh(display);
 }
 
 void lora_at_display_destroy(lora_at_display *display) {

@@ -19,4 +19,6 @@ void uart_at_handler_process(uart_at_handler_t *handler);
 
 void uart_at_handler_destroy(uart_at_handler_t *handler);
 
+void uart_at_handler_send(char *message, void *handler);
+
 #endif //LORA_AT_UART_AT_H

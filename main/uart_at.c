@@ -55,6 +55,11 @@ esp_err_t uart_at_handler_create(at_handler_t *at_handler, uart_at_handler_t **h
   return ESP_OK;
 }
 
+void uart_at_handler_send(char *output, void *ctx) {
+  uart_at_handler_t *handler = (uart_at_handler_t *) ctx;
+  uart_write_bytes(handler->uart_port_num, output, strlen(output));
+}
+
 void uart_at_handler_process(uart_at_handler_t *handler) {
   uart_event_t event;
   size_t current_index = 0;
@@ -114,12 +119,7 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
         found = true;
       }
       if (found) {
-        char *output = NULL;
-        size_t output_length = 0;
-        at_handler_process(handler->buffer, current_index, &output, &output_length, handler->handler);
-        if (output_length != 0) {
-          uart_write_bytes(handler->uart_port_num, output, output_length);
-        }
+        at_handler_process(handler->buffer, current_index, uart_at_handler_send, handler, handler->handler);
         current_index = 0;
       }
     }

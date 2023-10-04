@@ -7,12 +7,15 @@
 
 at_handler_t *handler = NULL;
 lora_at_config_t at_config;
+char *actual_output = NULL;
+
+void at_handler_test_callback(char *data, void *ctx) {
+  actual_output = data;
+}
 
 void test_request_response(char *request, const char *expected_response) {
-  char *output = NULL;
-  size_t output_length = 0;
-  at_handler_process(request, strlen(request), &output, &output_length, handler);
-  TEST_ASSERT_EQUAL_STRING(expected_response, output);
+  at_handler_process(request, strlen(request), at_handler_test_callback, NULL, handler);
+  TEST_ASSERT_EQUAL_STRING(expected_response, actual_output);
 }
 
 TEST_CASE("AT", "[at_handler]") {
@@ -53,7 +56,7 @@ TEST_CASE("AT+MAXFREQ=", "[at_handler]") {
 }
 
 void setUp(void) {
-  TEST_ASSERT_EQUAL_INT(ESP_OK, at_handler_create(&at_config, NULL, &handler));
+  TEST_ASSERT_EQUAL_INT(ESP_OK, at_handler_create(&at_config, NULL, NULL, &handler));
 }
 
 void tearDown(void) {

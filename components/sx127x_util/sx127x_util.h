@@ -25,7 +25,7 @@ typedef struct {
   uint64_t endTimeMillis;
   uint64_t currentTimeMillis;
   uint64_t freq;
-  float bw;
+  uint32_t bw;
   uint8_t sf;
   uint8_t cr;
   uint8_t syncWord;

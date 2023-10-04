@@ -15,8 +15,8 @@ menu "SX127X"
         int
         default 5
         prompt "SCK pin"
-    config PIN_DI0
+    config PIN_DIO0
         int
         default 26
-        prompt "DI0 pin"
+        prompt "DIO0 pin"
 endmenu

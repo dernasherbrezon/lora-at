@@ -33,11 +33,16 @@ static void uart_rx_task(void *arg) {
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   lora_frame_t *frame = NULL;
-  ERROR_CHECK("can't read the frame", lora_util_read_frame(device, data, data_length, &frame));
+  ERROR_CHECK("lora frame", lora_util_read_frame(device, data, data_length, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
-  //FIXME Push frame further
+  //TODO check push vs pull
+  ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
 }
 
+void tx_callback(sx127x *device) {
+  uart_at_handler_send("OK\r\n", lora_at_main->uart_at_handler);
+  lora_at_display_set_status("IDLE", lora_at_main->display);
+}
 
 void app_main(void) {
   lora_at_main = malloc(sizeof(main_t));
@@ -61,7 +66,9 @@ void app_main(void) {
   }
 
   ERROR_CHECK("lora", lora_util_init(&lora_at_main->device));
+  //FIXME cofigure digital pins somewhere
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
+  sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "lora initialized");
 
   ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, &lora_at_main->at_handler));
