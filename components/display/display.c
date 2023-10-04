@@ -56,6 +56,16 @@ esp_err_t lora_at_display_create(lora_at_display **display) {
   return ESP_OK;
 }
 
+esp_err_t lora_at_display_refresh(lora_at_display *display) {
+  ssd1306_clear_screen(display->ssd1306_dev, 0x00);
+  ssd1306_draw_bitmap(display->ssd1306_dev, 0, 0, logo_bits, logo_width, logo_height);
+  ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 5, (const uint8_t *) "lora-at", 14, 1);
+  char status_buffer[20] = {0};
+  sprintf(status_buffer, "status: %s", display->status);
+  ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 21, (const uint8_t *) status_buffer, 14, 1);
+  return ssd1306_refresh_gram(display->ssd1306_dev);
+}
+
 esp_err_t lora_at_display_start(lora_at_display *result) {
   if (result->ssd1306_dev != NULL) {
     return ESP_OK;
@@ -74,8 +84,7 @@ esp_err_t lora_at_display_start(lora_at_display *result) {
   ERROR_CHECK(i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0));
 
   result->ssd1306_dev = ssd1306_create(I2C_MASTER_NUM, SSD1306_I2C_ADDRESS);
-  ERROR_CHECK(ssd1306_refresh_gram(result->ssd1306_dev));
-  return ESP_OK;
+  return lora_at_display_refresh(result);
 }
 
 esp_err_t lora_at_display_stop(lora_at_display *display) {
@@ -90,16 +99,6 @@ esp_err_t lora_at_display_stop(lora_at_display *display) {
   esp_err_t result = i2c_driver_delete(I2C_MASTER_NUM);
   display->ssd1306_dev = NULL;
   return result;
-}
-
-esp_err_t lora_at_display_refresh(lora_at_display *display) {
-  ssd1306_clear_screen(display->ssd1306_dev, 0x00);
-  ssd1306_draw_bitmap(display->ssd1306_dev, 0, 0, logo_bits, logo_width, logo_height);
-  ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 5, (const uint8_t *) "lora-at", 14, 1);
-  char status_buffer[20] = {0};
-  sprintf(status_buffer, "status: %s", display->status);
-  ssd1306_draw_string(display->ssd1306_dev, logo_width + 5, 21, (const uint8_t *) status_buffer, 14, 1);
-  return ssd1306_refresh_gram(display->ssd1306_dev);
 }
 
 esp_err_t lora_at_display_set_status(const char *status, lora_at_display *display) {
