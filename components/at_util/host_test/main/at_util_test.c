@@ -33,8 +33,16 @@ TEST_CASE("string2hex", "[at_util]") {
   assert_input("ca fe");
   assert_input("   ca fe        ");
   assert_input("cA Fe");
+  assert_input("cA:Fe");
   assert_invalid_input("caxe");
   assert_invalid_input("caf ");
+}
+
+TEST_CASE("string2hex_allocated", "[at_util]") {
+  uint8_t allocated_output[2];
+  TEST_ASSERT_EQUAL_INT(0, at_util_string2hex_allocated("ca:fe", allocated_output));
+  TEST_ASSERT_EQUAL(0xca, allocated_output[0]);
+  TEST_ASSERT_EQUAL(0xfe, allocated_output[1]);
 }
 
 TEST_CASE("hex2string", "[at_util]") {

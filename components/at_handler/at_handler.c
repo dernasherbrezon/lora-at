@@ -21,7 +21,7 @@
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, at_handler_t **handler) {
+esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client_t *bluetooth, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
@@ -30,6 +30,7 @@ esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *displa
   result->at_config = at_config;
   result->display = display;
   result->device = device;
+  result->bluetooth = bluetooth;
   result->output_buffer = malloc(sizeof(uint8_t) * (result->buffer_length + 1)); // 1 is for \0
   if (result->output_buffer == NULL) {
     at_handler_destroy(result);
@@ -159,7 +160,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
 
-  char message[512];
+  char message[514];
+  memset(message, '\0', sizeof(message));
   matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%d,%hhu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader,
                    &state.length);
   if (matched == 13) {
@@ -178,7 +180,21 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     // only when the previous was sent
 //    callback("OK\r\n", ctx);
   }
-  //FIXME add more commands here
+  memset(message, '\0', sizeof(message));
+  matched = sscanf(input, "AT+BLUETOOTH=%[^,]", message);
+  if (matched == 1) {
+    if (strlen(message) != 17) {
+      at_handler_send_data(handler, callback, ctx, "invalid bluetooth address. expected: 00:00:00:00:00:00\r\nERROR\r\n");
+      return;
+    }
+    ble_addr_t address;
+    address.type = BLE_ADDR_PUBLIC;
+    ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, address.val));
+    ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(&address, handler->bluetooth));
+    ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(message, handler->at_config));
+    callback("OK\r\n", ctx);
+    return;
+  }
 }
 
 void at_handler_destroy(at_handler_t *handler) {

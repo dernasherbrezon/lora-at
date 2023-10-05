@@ -1,5 +1,6 @@
 #include "at_config.h"
 #include <nvs_flash.h>
+#include <string.h>
 
 const char *at_config_label = "lora-at";
 
@@ -79,6 +80,15 @@ esp_err_t lora_at_config_set_max_freq(uint64_t max_freq, lora_at_config_t *confi
   ERROR_CHECK(nvs_set_blob(out_handle, "maxFrequency", &max_freq, sizeof(uint64_t)));
   nvs_close(out_handle);
   config->min_freq = max_freq;
+  return ESP_OK;
+}
+
+esp_err_t lora_at_config_set_bt_address(char *bt_address, lora_at_config_t *config) {
+  nvs_handle_t out_handle;
+  ERROR_CHECK(nvs_open(at_config_label, NVS_READWRITE, &out_handle));
+  ERROR_CHECK(nvs_set_blob(out_handle, "address", &bt_address, strlen(bt_address)));
+  nvs_close(out_handle);
+  memcpy(config->bt_address, bt_address, sizeof(config->bt_address));
   return ESP_OK;
 }
 

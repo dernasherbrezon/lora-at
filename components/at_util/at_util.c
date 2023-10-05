@@ -10,7 +10,7 @@ esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_l
   size_t len = 0;
   size_t str_len = strlen(str);
   for (size_t i = 0; i < str_len; i++) {
-    if (str[i] == ' ') {
+    if (str[i] == ' ' || str[i] == ':') {
       continue;
     }
     len++;
@@ -23,10 +23,28 @@ esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_l
   }
   size_t bytes = len / 2;
   uint8_t *result = (uint8_t *) malloc(sizeof(uint8_t) * bytes);
+  if (result == NULL) {
+    *output = NULL;
+    *output_len = 0;
+    return ESP_ERR_NO_MEM;
+  }
+  esp_err_t code = at_util_string2hex_allocated(str, result);
+  if (code != ESP_OK) {
+    free(result);
+    *output = NULL;
+    *output_len = 0;
+    return code;
+  }
+  *output = result;
+  *output_len = bytes;
+  return ESP_OK;
+}
+
+esp_err_t at_util_string2hex_allocated(const char *str, uint8_t *output) {
   uint8_t curByte = 0;
-  for (size_t i = 0, j = 0; i < str_len; i++) {
+  for (size_t i = 0, j = 0; i < strlen(str); i++) {
     char curChar = str[i];
-    if (curChar == ' ') {
+    if (curChar == ' ' || str[i] == ':') {
       continue;
     }
     curByte *= 16;
@@ -38,18 +56,14 @@ esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_l
       curByte += (curChar - 'a') + 10;
     } else {
       ESP_LOGE(TAG, "invalid char: %c", curChar);
-      *output = NULL;
-      *output_len = 0;
       return ESP_ERR_INVALID_ARG;
     }
     j++;
     if (j % 2 == 0) {
-      result[j / 2 - 1] = curByte;
+      output[j / 2 - 1] = curByte;
       curByte = 0;
     }
   }
-  *output = result;
-  *output_len = bytes;
   return ESP_OK;
 }
 

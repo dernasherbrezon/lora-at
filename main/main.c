@@ -4,6 +4,7 @@
 #include <display.h>
 #include <at_config.h>
 #include <at_handler.h>
+#include <ble_client.h>
 #include "uart_at.h"
 
 static const char *TAG = "lora-at";
@@ -22,6 +23,7 @@ typedef struct {
   lora_at_display *display;
   at_handler_t *at_handler;
   uart_at_handler_t *uart_at_handler;
+  ble_client_t *ble;
 } main_t;
 
 main_t *lora_at_main = NULL;
@@ -66,16 +68,19 @@ void app_main(void) {
   }
 
   ERROR_CHECK("lora", lora_util_init(&lora_at_main->device));
-  //FIXME cofigure digital pins somewhere
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "lora initialized");
 
-  ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, &lora_at_main->at_handler));
+  ERROR_CHECK("bluetooth", ble_client_create(01, &lora_at_main->ble));
+  ESP_LOGI(TAG, "bluetooth initialized");
+
+  ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, lora_at_main->ble, &lora_at_main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
+
 
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 2, lora_at_main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
