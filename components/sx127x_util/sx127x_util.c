@@ -26,6 +26,12 @@
 #ifndef CONFIG_PIN_DIO0
 #define CONFIG_PIN_DIO0 26
 #endif
+#ifndef CONFIG_MIN_FREQUENCY
+#define CONFIG_MIN_FREQUENCY 25000000
+#endif
+#ifndef CONFIG_MAX_FREQUENCY
+#define CONFIG_MAX_FREQUENCY 25000000
+#endif
 
 #define ERROR_CHECK(x)        \
   do {                        \
@@ -202,6 +208,14 @@ esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_leng
   }
   *frame = result;
   return ESP_OK;
+}
+
+uint64_t lora_util_get_min_frequency() {
+  return CONFIG_MIN_FREQUENCY;
+}
+
+uint64_t lora_util_get_max_frequency() {
+  return CONFIG_MAX_FREQUENCY;
 }
 
 void lora_util_frame_destroy(lora_frame_t *frame) {

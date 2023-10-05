@@ -19,4 +19,12 @@ menu "SX127X"
         int
         default 26
         prompt "DIO0 pin"
+    config MIN_FREQUENCY
+        int
+        default 25000000
+        prompt "Minimum frequency"
+    config MAX_FREQUENCY
+        int
+        default 1700000000
+        prompt "Maximum frequency"
 endmenu

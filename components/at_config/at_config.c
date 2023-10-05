@@ -46,8 +46,6 @@ esp_err_t lora_at_config_create(lora_at_config_t **config) {
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u8(out_handle, "display_init", &display_init));
   result->init_display = display_init == 1;
   size_t uint64_t_size = sizeof(uint64_t);
-  ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_blob(out_handle, "minFrequency", &result->min_freq, &uint64_t_size));
-  ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_blob(out_handle, "maxFrequency", &result->max_freq, &uint64_t_size));
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "period", &result->bt_poll_period));
   size_t bt_address_length = sizeof(result->bt_address);
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_blob(out_handle, "address", result->bt_address, &bt_address_length));
@@ -62,24 +60,6 @@ esp_err_t lora_at_config_set_display(bool init_display, lora_at_config_t *config
   ERROR_CHECK(nvs_set_u8(out_handle, "display_init", init_display));
   nvs_close(out_handle);
   config->init_display = init_display;
-  return ESP_OK;
-}
-
-esp_err_t lora_at_config_set_min_freq(uint64_t min_freq, lora_at_config_t *config) {
-  nvs_handle_t out_handle;
-  ERROR_CHECK(nvs_open(at_config_label, NVS_READWRITE, &out_handle));
-  ERROR_CHECK(nvs_set_blob(out_handle, "minFrequency", &min_freq, sizeof(uint64_t)));
-  nvs_close(out_handle);
-  config->min_freq = min_freq;
-  return ESP_OK;
-}
-
-esp_err_t lora_at_config_set_max_freq(uint64_t max_freq, lora_at_config_t *config) {
-  nvs_handle_t out_handle;
-  ERROR_CHECK(nvs_open(at_config_label, NVS_READWRITE, &out_handle));
-  ERROR_CHECK(nvs_set_blob(out_handle, "maxFrequency", &max_freq, sizeof(uint64_t)));
-  nvs_close(out_handle);
-  config->min_freq = max_freq;
   return ESP_OK;
 }
 

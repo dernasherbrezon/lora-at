@@ -48,4 +48,8 @@ esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *re
 
 void lora_util_frame_destroy(lora_frame_t *frame);
 
+uint64_t lora_util_get_min_frequency();
+
+uint64_t lora_util_get_max_frequency();
+
 #endif //LORA_AT_SX127X_UTIL_H

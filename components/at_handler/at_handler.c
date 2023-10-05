@@ -95,11 +95,11 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+MINFREQ?", input) == 0) {
-    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", handler->at_config->min_freq);
+    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_min_frequency());
     return;
   }
   if (strcmp("AT+MAXFREQ?", input) == 0) {
-    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", handler->at_config->max_freq);
+    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_min_frequency());
     return;
   }
   if (strcmp("AT+STOPRX", input) == 0) {
@@ -121,19 +121,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
       ERROR_CHECK("unable to stop", lora_at_display_stop(handler->display));
     }
     ERROR_CHECK("unable to save config", lora_at_config_set_display(enabled, handler->at_config));
-    callback("OK\r\n", ctx);
-    return;
-  }
-  uint64_t freq;
-  matched = sscanf(input, "AT+MINFREQ=%" PRIu64, &freq);
-  if (matched == 1) {
-    ERROR_CHECK("unable to save config", lora_at_config_set_min_freq(freq, handler->at_config));
-    callback("OK\r\n", ctx);
-    return;
-  }
-  matched = sscanf(input, "AT+MAXFREQ=%" PRIu64, &freq);
-  if (matched == 1) {
-    ERROR_CHECK("unable to save config", lora_at_config_set_max_freq(freq, handler->at_config));
     callback("OK\r\n", ctx);
     return;
   }
