@@ -47,23 +47,23 @@ esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *displa
   return ESP_OK;
 }
 
-void at_handler_send_data(at_handler_t *handler, void (*callback)(char *, void *ctx), void *ctx, const char *response, ...) {
-  memset(handler->output_buffer, '\0', handler->buffer_length);
+void at_handler_send_data(at_handler_t *handler, void (*callback)(char *, size_t, void *ctx), void *ctx, const char *response, ...) {
+  memset(handler->output_buffer, 0, handler->buffer_length);
   va_list args;
   va_start (args, response);
   vsnprintf(handler->output_buffer, handler->buffer_length, response, args);
   va_end (args);
-  callback(handler->output_buffer, ctx);
+  callback(handler->output_buffer, strlen(handler->output_buffer), ctx);
 }
 
-void at_handler_handle_pull(void (*callback)(char *, void *ctx), void *ctx, at_handler_t *handler) {
+void at_handler_handle_pull(void (*callback)(char *, size_t, void *ctx), void *ctx, at_handler_t *handler) {
   for (size_t i = 0; i < at_util_vector_size(handler->frames); i++) {
     lora_frame_t *cur_frame = NULL;
     at_util_vector_get(i, (void *) &cur_frame, handler->frames);
     char *data = NULL;
     int code = at_util_hex2string(cur_frame->data, cur_frame->data_length, &data);
     if (code != 0) {
-      callback("unable to convert to hex\r\n", ctx);
+      at_handler_send_data(handler, callback, ctx, "unable to convert to hex\r\n");
       lora_util_frame_destroy(cur_frame);
       continue;
     }
@@ -72,16 +72,16 @@ void at_handler_handle_pull(void (*callback)(char *, void *ctx), void *ctx, at_h
     lora_util_frame_destroy(cur_frame);
   }
   at_util_vector_clear(handler->frames);
-  callback("OK\r\n", ctx);
+  at_handler_send_data(handler, callback, ctx, "OK\r\n");
 }
 
 esp_err_t at_handler_add_frame(lora_frame_t *frame, at_handler_t *handler) {
   return at_util_vector_add(frame, handler->frames);
 }
 
-void at_handler_process(char *input, size_t input_length, void (*callback)(char *, void *ctx), void *ctx, at_handler_t *handler) {
+void at_handler_process(char *input, size_t input_length, void (*callback)(char *, size_t, void *ctx), void *ctx, at_handler_t *handler) {
   if (strcmp("AT", input) == 0) {
-    callback("OK\r\n", ctx);
+    at_handler_send_data(handler, callback, ctx, "OK\r\n");
     return;
   }
   if (strcmp("AT+DISPLAY?", input) == 0) {
@@ -123,7 +123,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
       ERROR_CHECK("unable to stop", lora_at_display_stop(handler->display));
     }
     ERROR_CHECK("unable to save config", lora_at_config_set_display(enabled, handler->at_config));
-    callback("OK\r\n", ctx);
+    at_handler_send_data(handler, callback, ctx, "OK\r\n");
     return;
   }
   uint64_t time;
@@ -136,7 +136,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     if (code != 0) {
       at_handler_send_data(handler, callback, ctx, "%s\r\nERROR\r\n", strerror(errno));
     } else {
-      callback("OK\r\n", ctx);
+      at_handler_send_data(handler, callback, ctx, "OK\r\n");
     }
     return;
   }
@@ -144,7 +144,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   matched = sscanf(input, "AT+LORARX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 12) {
     ERROR_CHECK("unable to rx", lora_util_start_rx(&state, handler->device));
-    callback("OK\r\n", ctx);
+    at_handler_send_data(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("RX", handler->display);
     return;
   }
@@ -168,6 +168,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     // this will allow client applications to send next message
     // only when the previous was sent
 //    callback("OK\r\n", ctx);
+    return;
   }
   memset(message, '\0', sizeof(message));
   matched = sscanf(input, "AT+BLUETOOTH=%[^,]", message);
@@ -180,9 +181,10 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, val));
     ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(val, handler->bluetooth));
     ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(message, handler->at_config));
-    callback("OK\r\n", ctx);
+    at_handler_send_data(handler, callback, ctx, "OK\r\n");
     return;
   }
+  at_handler_send_data(handler, callback, ctx, "unknown command\r\nERROR\r\n");
 }
 
 void at_handler_destroy(at_handler_t *handler) {

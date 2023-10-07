@@ -45,7 +45,6 @@ esp_err_t lora_at_config_create(lora_at_config_t **config) {
   uint8_t display_init;
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u8(out_handle, "display_init", &display_init));
   result->init_display = display_init == 1;
-  size_t uint64_t_size = sizeof(uint64_t);
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "period", &result->bt_poll_period));
   size_t bt_address_length = sizeof(result->bt_address);
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_blob(out_handle, "address", result->bt_address, &bt_address_length));

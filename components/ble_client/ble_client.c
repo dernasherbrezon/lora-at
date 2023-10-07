@@ -170,6 +170,7 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
     case BLE_GAP_EVENT_CONNECT: {
       int status = event->connect.status;
       if (status == 0) {
+        ESP_LOGI(TAG, "connection established");
         client->conn_handle = event->connect.conn_handle;
         client->service_found = false;
         status = ble_gattc_disc_svc_by_uuid(client->conn_handle, remote_svc_uuid, ble_client_disc_svc_fn, client);
@@ -189,6 +190,7 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
 
 void ble_client_host_task(void *param) {
   nimble_port_run();
+  nimble_port_freertos_deinit();
 }
 
 static void ble_client_on_reset(int reason) {
@@ -202,7 +204,7 @@ static void ble_client_on_sync(void) {
   }
 }
 
-esp_err_t ble_client_create(uint16_t app_id, ble_client **client) {
+esp_err_t ble_client_create(ble_client **client) {
   if (global_client != NULL) {
     *client = global_client;
     return ESP_OK;
@@ -214,7 +216,12 @@ esp_err_t ble_client_create(uint16_t app_id, ble_client **client) {
   result->semaphore = xSemaphoreCreateMutex();
   // pessimistic by default
   result->semaphore_result = ESP_ERR_INVALID_ARG;
-  ERROR_CHECK(nvs_flash_init());
+  esp_err_t code = nvs_flash_init();
+  if (code == ESP_ERR_NVS_NO_FREE_PAGES || code == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ERROR_CHECK(nvs_flash_erase());
+    code = nvs_flash_init();
+  }
+  ERROR_CHECK(code);
   nimble_port_init();
 
   ble_hs_cfg.reset_cb = ble_client_on_reset;

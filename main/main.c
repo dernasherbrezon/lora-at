@@ -5,6 +5,7 @@
 #include <at_config.h>
 #include <at_handler.h>
 #include <ble_client.h>
+#include <string.h>
 #include "uart_at.h"
 
 static const char *TAG = "lora-at";
@@ -42,7 +43,8 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
 }
 
 void tx_callback(sx127x *device) {
-  uart_at_handler_send("OK\r\n", lora_at_main->uart_at_handler);
+  const char *output = "OK\r\n";
+  uart_at_handler_send((char *) output, strlen(output), lora_at_main->uart_at_handler);
   lora_at_display_set_status("IDLE", lora_at_main->display);
 }
 
@@ -72,7 +74,9 @@ void app_main(void) {
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "lora initialized");
 
-  ERROR_CHECK("bluetooth", ble_client_create(01, &lora_at_main->bluetooth));
+  //TODO this will actually initialize bluetooth stack
+  //check if bluetooth address configured and only then start
+  ERROR_CHECK("bluetooth", ble_client_create(&lora_at_main->bluetooth));
   ESP_LOGI(TAG, "bluetooth initialized");
 
   ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, &lora_at_main->at_handler));
@@ -82,7 +86,7 @@ void app_main(void) {
   ESP_LOGI(TAG, "uart initialized");
 
 
-  xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 2, lora_at_main, configMAX_PRIORITIES, NULL);
+  xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
 
 

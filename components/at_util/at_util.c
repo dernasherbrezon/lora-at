@@ -3,7 +3,6 @@
 #include <string.h>
 
 const char SYMBOLS[] = "0123456789ABCDEF";
-static const char *TAG = "lora-at";
 
 esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_len) {
   size_t len = 0;

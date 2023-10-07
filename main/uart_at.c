@@ -55,15 +55,15 @@ esp_err_t uart_at_handler_create(at_handler_t *at_handler, uart_at_handler_t **h
   return ESP_OK;
 }
 
-void uart_at_handler_send(char *output, void *ctx) {
+void uart_at_handler_send(char *output, size_t output_length, void *ctx) {
   uart_at_handler_t *handler = (uart_at_handler_t *) ctx;
-  uart_write_bytes(handler->uart_port_num, output, strlen(output));
+  uart_write_bytes(handler->uart_port_num, output, output_length);
 }
 
 void uart_at_handler_process(uart_at_handler_t *handler) {
   uart_event_t event;
   size_t current_index = 0;
-  size_t buffered_size;
+  int pattern_length = 0;
   while (1) {
     if (xQueueReceive(handler->uart_queue, (void *) &event, (TickType_t) portMAX_DELAY)) {
       switch (event.type) {
@@ -76,9 +76,8 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
           current_index += event.size;
           break;
         case UART_PATTERN_DET:
-          uart_get_buffered_data_len(handler->uart_port_num, &buffered_size);
-          int pos = uart_pattern_pop_pos(handler->uart_port_num);
-          if (pos == -1) {
+          pattern_length = uart_pattern_pop_pos(handler->uart_port_num);
+          if (pattern_length == -1) {
             // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
             // record the position. We should set a larger queue size.
             // As an example, we directly flush the rx buffer here.
@@ -86,8 +85,8 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
             current_index = 0;
           } else {
             // 1 is for pattern  - '\n'
-            uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, pos + 1, 100 / portTICK_PERIOD_MS);
-            current_index += pos + 1;
+            uart_read_bytes(handler->uart_port_num, handler->buffer + current_index, pattern_length + 1, 100 / portTICK_PERIOD_MS);
+            current_index += pattern_length + 1;
           }
           break;
           //Event of HW FIFO overflow detected
@@ -118,7 +117,7 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
         current_index--;
         found = true;
       }
-      if (found) {
+      if (found && current_index > 0) {
         at_handler_process(handler->buffer, current_index, uart_at_handler_send, handler, handler->handler);
         current_index = 0;
       }

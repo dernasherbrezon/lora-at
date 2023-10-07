@@ -20,7 +20,7 @@ typedef struct {
 
 esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_handler_t **handler);
 
-void at_handler_process(char *input, size_t input_length, void (*callback)(char *, void *ctx), void *ctx, at_handler_t *handler);
+void at_handler_process(char *input, size_t input_length, void (*callback)(char *, size_t, void *ctx), void *ctx, at_handler_t *handler);
 
 esp_err_t at_handler_add_frame(lora_frame_t *frame, at_handler_t *handler);
 
