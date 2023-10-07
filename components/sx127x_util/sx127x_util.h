@@ -33,7 +33,7 @@ typedef struct {
   int8_t power;
   uint16_t preambleLength;
   uint8_t gain;
-  ldo_type_t ldo;
+  uint8_t ldo;
   uint8_t useCrc;
   uint8_t useExplicitHeader;
   uint8_t length;
