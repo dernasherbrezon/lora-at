@@ -1,6 +1,5 @@
 #include "at_util.h"
-
-#include <esp_log.h>
+#include <stdlib.h>
 #include <string.h>
 
 const char SYMBOLS[] = "0123456789ABCDEF";
@@ -16,7 +15,6 @@ esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_l
     len++;
   }
   if (len % 2 != 0) {
-    ESP_LOGE(TAG, "invalid str length");
     *output = NULL;
     *output_len = 0;
     return ESP_ERR_INVALID_SIZE;
@@ -55,7 +53,6 @@ esp_err_t at_util_string2hex_allocated(const char *str, uint8_t *output) {
     } else if (curChar >= 'a' && curChar <= 'f') {
       curByte += (curChar - 'a') + 10;
     } else {
-      ESP_LOGE(TAG, "invalid char: %c", curChar);
       return ESP_ERR_INVALID_ARG;
     }
     j++;

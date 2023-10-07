@@ -2,6 +2,7 @@
 #include <esp_log.h>
 #include <nvs_flash.h>
 #include <nimble/nimble_port.h>
+#include <nimble/ble.h>
 #include <esp_bt.h>
 #include <nimble/nimble_port_freertos.h>
 #include <esp_nimble_hci.h>
@@ -21,6 +22,20 @@
 
 static const char *TAG = "lora-at";
 
+struct ble_client_t {
+  SemaphoreHandle_t semaphore;
+  esp_err_t semaphore_result;
+  uint16_t conn_handle;
+  bool service_found;
+  uint16_t start_handle;
+  uint16_t end_handle;
+};
+
+// callbacks doesn't accept user's data
+// so can't pass reference to the client
+// thus using global client
+ble_client *global_client = NULL;
+
 //#define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
 //#define STATUS_UUID "5b53256e-76d2-4259-b3aa-15b5b4cfdd32"
 
@@ -29,10 +44,6 @@ static const ble_uuid_t *remote_svc_uuid =
     BLE_UUID128_DECLARE(0xcc, 0x34, 0x87, 0xfb, 0x6a, 0x93, 0x9d, 0xb2,
                         0x21, 0x49, 0x11, 0xe3, 0x4d, 0x0b, 0x5f, 0x3f);
 
-// callbacks doesn't accept user's data
-// so can't pass reference to the client
-// thus using global client
-static ble_client_t *global_client = NULL;
 
 //void ble_client_esp_gap_ble_callback(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
 //  //FIXME
@@ -119,7 +130,7 @@ int ble_client_disc_svc_fn(uint16_t conn_handle,
                            const struct ble_gatt_error *error,
                            const struct ble_gatt_svc *service,
                            void *arg) {
-  ble_client_t *client = (ble_client_t *) arg;
+  struct ble_client_t *client = (struct ble_client_t *) arg;
   if (client->conn_handle != conn_handle) {
     return 0;
   }
@@ -154,7 +165,7 @@ int ble_client_disc_svc_fn(uint16_t conn_handle,
 }
 
 static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
-  ble_client_t *client = (ble_client_t *) arg;
+  ble_client *client = (ble_client *) arg;
   switch (event->type) {
     case BLE_GAP_EVENT_CONNECT: {
       int status = event->connect.status;
@@ -191,12 +202,12 @@ static void ble_client_on_sync(void) {
   }
 }
 
-esp_err_t ble_client_create(uint16_t app_id, ble_client_t **client) {
+esp_err_t ble_client_create(uint16_t app_id, ble_client **client) {
   if (global_client != NULL) {
     *client = global_client;
     return ESP_OK;
   }
-  ble_client_t *result = malloc(sizeof(ble_client_t));
+  struct ble_client_t *result = malloc(sizeof(struct ble_client_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
@@ -217,9 +228,12 @@ esp_err_t ble_client_create(uint16_t app_id, ble_client_t **client) {
   return ESP_OK;
 }
 
-esp_err_t ble_client_connect(ble_addr_t *bt_address, ble_client_t *client) {
+esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+  ble_addr_t bt_address;
+  bt_address.type = BLE_ADDR_PUBLIC;
+  memcpy(bt_address.val, address, sizeof(bt_address.val));
   client->semaphore_result = ESP_ERR_INVALID_ARG;
-  int code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
+  int code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to connect: %d", code);
     return ESP_ERR_INVALID_ARG;
@@ -231,7 +245,7 @@ esp_err_t ble_client_connect(ble_addr_t *bt_address, ble_client_t *client) {
   return client->semaphore_result;
 }
 
-void ble_client_destroy(ble_client_t *client) {
+void ble_client_destroy(ble_client *client) {
   if (client == NULL) {
     return;
   }

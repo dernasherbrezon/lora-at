@@ -1,4 +1,6 @@
 #include "at_handler.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
@@ -21,7 +23,7 @@
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client_t *bluetooth, at_handler_t **handler) {
+esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
@@ -99,7 +101,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+MAXFREQ?", input) == 0) {
-    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_min_frequency());
+    at_handler_send_data(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_max_frequency());
     return;
   }
   if (strcmp("AT+STOPRX", input) == 0) {
@@ -174,10 +176,9 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
       at_handler_send_data(handler, callback, ctx, "invalid bluetooth address. expected: 00:00:00:00:00:00\r\nERROR\r\n");
       return;
     }
-    ble_addr_t address;
-    address.type = BLE_ADDR_PUBLIC;
-    ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, address.val));
-    ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(&address, handler->bluetooth));
+    uint8_t val[6];
+    ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, val));
+    ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(val, handler->bluetooth));
     ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(message, handler->at_config));
     callback("OK\r\n", ctx);
     return;
