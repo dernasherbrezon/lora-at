@@ -59,14 +59,12 @@ void app_main(void) {
   ERROR_CHECK("config", lora_at_config_create(&config));
   ESP_LOGI(TAG, "config initialized");
   ERROR_CHECK("display", lora_at_display_create(&lora_at_main->display));
-  config->init_display = 1;
+  lora_at_display_set_status("IDLE", lora_at_main->display);
   if (config->init_display) {
     ERROR_CHECK("display", lora_at_display_start(lora_at_main->display));
-    ESP_LOGI(TAG, "display initialized");
-    lora_at_display_set_status("IDLE", lora_at_main->display);
+    ESP_LOGI(TAG, "display started");
   } else {
-    ESP_LOGI(TAG, "display NOT initialized");
-    lora_at_main->display = NULL;
+    ESP_LOGI(TAG, "display NOT started");
   }
 
   ERROR_CHECK("lora", lora_util_init(&lora_at_main->device));
@@ -74,8 +72,6 @@ void app_main(void) {
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "lora initialized");
 
-  //TODO this will actually initialize bluetooth stack
-  //check if bluetooth address configured and only then start
   ERROR_CHECK("bluetooth", ble_client_create(&lora_at_main->bluetooth));
   ESP_LOGI(TAG, "bluetooth initialized");
 

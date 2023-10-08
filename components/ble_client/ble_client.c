@@ -11,6 +11,8 @@
 #include <host/util/util.h>
 
 #define CONNECTION_TIMEOUT 30000
+#define MUTEX_TIMEOUT_DELTA 1000
+#define BLE_ADDRESS_SIZE 6
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -44,6 +46,23 @@ static const ble_uuid_t *remote_svc_uuid =
     BLE_UUID128_DECLARE(0xcc, 0x34, 0x87, 0xfb, 0x6a, 0x93, 0x9d, 0xb2,
                         0x21, 0x49, 0x11, 0xe3, 0x4d, 0x0b, 0x5f, 0x3f);
 
+// most obvious conversions
+esp_err_t ble_client_convert_ble_code(int ble_code) {
+  switch (ble_code) {
+    case 0:
+      return ESP_OK;
+    case BLE_HS_ENOMEM:
+      return ESP_ERR_NO_MEM;
+    case BLE_HS_ENOTSUP:
+      return ESP_ERR_NOT_SUPPORTED;
+    case BLE_HS_ETIMEOUT:
+      return ESP_ERR_TIMEOUT;
+    case BLE_HS_EBADDATA:
+      return ESP_ERR_INVALID_ARG;
+    default:
+      return ble_code;
+  }
+}
 
 //void ble_client_esp_gap_ble_callback(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
 //  //FIXME
@@ -131,6 +150,7 @@ int ble_client_disc_svc_fn(uint16_t conn_handle,
                            const struct ble_gatt_svc *service,
                            void *arg) {
   struct ble_client_t *client = (struct ble_client_t *) arg;
+  ESP_LOGI(TAG, "got service discovery event: %d for conn %d", error->status, conn_handle);
   if (client->conn_handle != conn_handle) {
     return 0;
   }
@@ -166,6 +186,7 @@ int ble_client_disc_svc_fn(uint16_t conn_handle,
 
 static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
   ble_client *client = (ble_client *) arg;
+  ESP_LOGI(TAG, "got event: %d", event->type);
   switch (event->type) {
     case BLE_GAP_EVENT_CONNECT: {
       int status = event->connect.status;
@@ -176,9 +197,11 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
         status = ble_gattc_disc_svc_by_uuid(client->conn_handle, remote_svc_uuid, ble_client_disc_svc_fn, client);
       }
       if (status != 0) {
-        ESP_LOGE(TAG, "connection failed: %d", status);
-        client->semaphore_result = ESP_ERR_INVALID_STATE;
-        xSemaphoreGive(client->semaphore);
+        ESP_LOGE(TAG, "connection failed ble code: %d", status);
+        client->semaphore_result = ble_client_convert_ble_code(status);
+        if (xSemaphoreGive(client->semaphore) != pdTRUE) {
+          ESP_LOGE(TAG, "can't return semaphore");
+        }
       }
       break;
     }
@@ -213,9 +236,14 @@ esp_err_t ble_client_create(ble_client **client) {
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
-  result->semaphore = xSemaphoreCreateMutex();
+  result->semaphore = xSemaphoreCreateBinary();
+  if (result->semaphore == NULL) {
+    return ESP_ERR_NO_MEM;
+  }
   // pessimistic by default
-  result->semaphore_result = ESP_ERR_INVALID_ARG;
+  result->semaphore_result = ESP_FAIL;
+  result->service_found = false;
+
   esp_err_t code = nvs_flash_init();
   if (code == ESP_ERR_NVS_NO_FREE_PAGES || code == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ERROR_CHECK(nvs_flash_erase());
@@ -230,34 +258,65 @@ esp_err_t ble_client_create(ble_client **client) {
   ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set(TAG));
   nimble_port_freertos_init(ble_client_host_task);
 
+
   global_client = result;
   *client = result;
   return ESP_OK;
 }
 
 esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+
   ble_addr_t bt_address;
   bt_address.type = BLE_ADDR_PUBLIC;
-  memcpy(bt_address.val, address, sizeof(bt_address.val));
-  client->semaphore_result = ESP_ERR_INVALID_ARG;
+  // reverse address for nimble
+  for (int i = 0; i < BLE_ADDRESS_SIZE; i++) {
+    bt_address.val[BLE_ADDRESS_SIZE - i - 1] = address[i];
+  }
+  client->semaphore_result = ESP_FAIL;
+  client->service_found = false;
   int code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to connect: %d", code);
     return ESP_ERR_INVALID_ARG;
   }
-  if (xSemaphoreTake(client->semaphore, pdMS_TO_TICKS(CONNECTION_TIMEOUT)) == pdFALSE) {
-    ESP_LOGE(TAG, "timeout waiting for connection");
-    return ESP_ERR_TIMEOUT;
+  while (client->semaphore_result == ESP_FAIL) {
+    //wait a little bit longer for ble stack to process timeout and nicely return it
+    //won't be an issue if semaphore timeout happens first
+    if (xSemaphoreTake(client->semaphore, pdMS_TO_TICKS(CONNECTION_TIMEOUT + MUTEX_TIMEOUT_DELTA)) == pdFALSE) {
+      ESP_LOGE(TAG, "timeout waiting for connection");
+      return ESP_ERR_TIMEOUT;
+    }
   }
   return client->semaphore_result;
 }
+
+esp_err_t ble_client_disconnect(ble_client *client) {
+  //TODO ensure status code is correct
+  int code = ble_gap_terminate(client->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+  if (code != 0) {
+    ESP_LOGE(TAG, "unable to gracefully terminate connection: %d", code);
+  }
+  nimble_port_freertos_deinit();
+  nimble_port_deinit();
+  return ESP_OK;
+}
+
+esp_err_t ble_client_load_request(rx_request_t *request, ble_client *client) {
+  return ESP_OK;
+}
+
+esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
+  return ESP_OK;
+}
+
 
 void ble_client_destroy(ble_client *client) {
   if (client == NULL) {
     return;
   }
-  nimble_port_freertos_deinit();
-  nimble_port_deinit();
+  if (client->semaphore != NULL) {
+    vSemaphoreDelete(client->semaphore);
+  }
   free(client);
   global_client = NULL;
 }

@@ -8,7 +8,8 @@
 typedef struct {
   bool init_display;
   uint64_t bt_poll_period;
-  char bt_address[18]; //00:00:00:00:00:00\0
+  char *bt_address; //00:00:00:00:00:00\0
+  size_t bt_address_length;
 } lora_at_config_t;
 
 esp_err_t lora_at_config_create(lora_at_config_t **config);
