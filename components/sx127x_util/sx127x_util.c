@@ -82,18 +82,20 @@ esp_err_t lora_util_init(sx127x **device) {
       .dummy_bits = 0,
       .mode = 0};
   spi_device_handle_t spi_device;
+  sx127x *result = NULL;
   ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_cfg, &spi_device));
-  ERROR_CHECK(sx127x_create(spi_device, device));
+  ERROR_CHECK(sx127x_create(spi_device, &result));
 
-  BaseType_t task_code = xTaskCreatePinnedToCore(lora_util_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
+  BaseType_t task_code = xTaskCreatePinnedToCore(lora_util_interrupt_task, "handle interrupt", 8196, result, 2, &handle_interrupt, xPortGetCoreID());
   if (task_code != pdPASS) {
     ESP_LOGE(TAG, "can't create task %d", task_code);
-    sx127x_destroy(*device);
+    sx127x_destroy(result);
     return ESP_ERR_INVALID_STATE;
   }
 
   gpio_install_isr_service(0);
-  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO0, *device);
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO0, result);
+  *device = result;
   return SX127X_OK;
 }
 
@@ -152,7 +154,11 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
 esp_err_t lora_util_start_rx(rx_request_t *request, sx127x *device) {
   ERROR_CHECK(lora_util_start_common(request, device));
   ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (request->gain << 5), device));
-  return sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
+  int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
+  if (result == SX127X_OK) {
+    ESP_LOGI(TAG, "rx started on %" PRIu64, request->freq);
+  }
+  return result;
 }
 
 esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *request, sx127x *device) {
@@ -166,7 +172,11 @@ esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *re
     ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, device));
   }
   ERROR_CHECK(sx127x_lora_tx_set_for_transmission(data, data_length, device));
-  return sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
+  int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
+  if (result == SX127X_OK) {
+    ESP_LOGI(TAG, "transmitting %zu bytes on %" PRIu64, data_length, request->freq);
+  }
+  return result;
 }
 
 esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **frame) {
