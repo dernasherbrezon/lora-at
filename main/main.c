@@ -25,6 +25,7 @@ typedef struct {
   at_handler_t *at_handler;
   uart_at_handler_t *uart_at_handler;
   ble_client *bluetooth;
+  lora_at_config_t *config;
 } main_t;
 
 main_t *lora_at_main = NULL;
@@ -39,7 +40,13 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   ERROR_CHECK("lora frame", lora_util_read_frame(device, data, data_length, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   //TODO check push vs pull
-  ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
+  if (lora_at_main->config->bt_address != NULL) {
+    ERROR_CHECK("send frame", ble_client_send_frame(frame, lora_at_main->bluetooth));
+    // frame was sent, no longer needed
+    lora_util_frame_destroy(frame);
+  } else {
+    ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
+  }
 }
 
 void tx_callback(sx127x *device) {
@@ -55,12 +62,11 @@ void app_main(void) {
     return;
   }
 
-  lora_at_config_t *config = NULL;
-  ERROR_CHECK("config", lora_at_config_create(&config));
+  ERROR_CHECK("config", lora_at_config_create(&lora_at_main->config));
   ESP_LOGI(TAG, "config initialized");
   ERROR_CHECK("display", lora_at_display_create(&lora_at_main->display));
   lora_at_display_set_status("IDLE", lora_at_main->display);
-  if (config->init_display) {
+  if (lora_at_main->config->init_display) {
     ERROR_CHECK("display", lora_at_display_start(lora_at_main->display));
     ESP_LOGI(TAG, "display started");
   } else {
@@ -73,14 +79,20 @@ void app_main(void) {
   ESP_LOGI(TAG, "lora initialized");
 
   ERROR_CHECK("bluetooth", ble_client_create(&lora_at_main->bluetooth));
-  ESP_LOGI(TAG, "bluetooth initialized");
+  if (lora_at_main->config->bt_address != NULL) {
+    uint8_t val[6];
+    ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(lora_at_main->config->bt_address, val));
+    ERROR_CHECK("bluetooth", ble_client_connect(val, lora_at_main->bluetooth));
+    ESP_LOGI(TAG, "bluetooth initialized: %s", lora_at_main->config->bt_address);
+  } else {
+    ESP_LOGI(TAG, "bluetooth not initialized");
+  }
 
-  ERROR_CHECK("at_handler", at_handler_create(config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, &lora_at_main->at_handler));
+  ERROR_CHECK("at_handler", at_handler_create(lora_at_main->config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, &lora_at_main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
-
 
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");

@@ -49,6 +49,7 @@ esp_err_t lora_at_config_create(lora_at_config_t **config) {
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "period", &result->bt_poll_period));
   char bt_address[18];
   size_t bt_address_length = sizeof(bt_address);
+  memset(bt_address, 0, bt_address_length);
   err = nvs_get_blob(out_handle, "address", bt_address, &bt_address_length);
   if (err == ESP_OK) {
     result->bt_address = malloc(result->bt_address_length);
