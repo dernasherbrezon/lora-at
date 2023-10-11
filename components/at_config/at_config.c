@@ -46,7 +46,8 @@ esp_err_t lora_at_config_create(lora_at_config_t **config) {
   uint8_t display_init;
   ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u8(out_handle, "display_init", &display_init));
   result->init_display = display_init == 1;
-  ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "period", &result->bt_poll_period));
+  ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "period", &result->deep_sleep_period_micros));
+  ERROR_CHECK_IGNORE_NOT_FOUND(nvs_get_u64(out_handle, "inactivity", &result->inactivity_period_micros));
   char bt_address[18];
   size_t bt_address_length = sizeof(bt_address);
   memset(bt_address, 0, bt_address_length);

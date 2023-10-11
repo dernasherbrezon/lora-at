@@ -7,9 +7,10 @@
 
 typedef struct {
   bool init_display;
-  uint64_t bt_poll_period;
   char *bt_address; //00:00:00:00:00:00\0
   size_t bt_address_length;
+  uint64_t deep_sleep_period_micros;
+  uint64_t inactivity_period_micros;
 } lora_at_config_t;
 
 esp_err_t lora_at_config_create(lora_at_config_t **config);
