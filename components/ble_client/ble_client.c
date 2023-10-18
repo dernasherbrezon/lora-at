@@ -41,12 +41,17 @@ struct ble_client_t {
   SemaphoreHandle_t semaphore;
   esp_err_t semaphore_result;
   rx_request_t *last_request;
+  bool controller_initialized;
+
   uint16_t conn_handle;
-  bool service_found;
+  bool connected;
+
   uint16_t start_handle;
   uint16_t end_handle;
-  bool request_characteristic_found;
+  bool service_found;
+
   uint16_t request_characteristic_handle;
+  bool characteristic_found;
 };
 
 // callbacks doesn't accept user's data
@@ -180,14 +185,14 @@ int ble_client_gatt_chr_fn(uint16_t conn_handle, const struct ble_gatt_error *er
   switch (error->status) {
     case 0: {
       ESP_LOGI(TAG, "characteristic found");
-      client->request_characteristic_found = true;
+      client->characteristic_found = true;
       client->request_characteristic_handle = chr->val_handle;
       client->semaphore_result = ESP_OK;
       xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_EDONE: {
-      if (!client->request_characteristic_found) {
+      if (!client->characteristic_found) {
         client->semaphore_result = ESP_ERR_TIMEOUT;
         xSemaphoreGive(client->semaphore);
       }
@@ -209,12 +214,13 @@ int ble_client_disc_svc_fn(uint16_t conn_handle, const struct ble_gatt_error *er
       client->service_found = true;
       client->start_handle = service->start_handle;
       client->end_handle = service->end_handle;
-      int status = ble_gattc_disc_chrs_by_uuid(client->conn_handle, client->start_handle, client->end_handle, remote_request_chr_uuid, ble_client_gatt_chr_fn, client);
-      if (status != 0) {
-        ESP_LOGE(TAG, "unable to find characteristic: %d", status);
-        client->semaphore_result = ble_client_convert_ble_code(status);
-        xSemaphoreGive(client->semaphore);
-      }
+      client->semaphore_result = ESP_OK;
+      xSemaphoreGive(client->semaphore);
+      break;
+    }
+    case BLE_HS_ETIMEOUT: {
+      client->semaphore_result = ESP_ERR_TIMEOUT;
+      xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_EDONE: {
@@ -237,14 +243,14 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
       if (status == 0) {
         ESP_LOGI(TAG, "connection established");
         client->conn_handle = event->connect.conn_handle;
-        client->service_found = false;
-        status = ble_gattc_disc_svc_by_uuid(client->conn_handle, remote_svc_uuid, ble_client_disc_svc_fn, client);
-      }
-      if (status != 0) {
+        client->semaphore_result = ESP_OK;
+        client->connected = true;
+      } else {
         ESP_LOGE(TAG, "connection failed. ble code: %d", status);
         client->semaphore_result = ble_client_convert_ble_code(status);
-        xSemaphoreGive(client->semaphore);
+        client->connected = false;
       }
+      xSemaphoreGive(client->semaphore);
       break;
     }
     default:
@@ -260,15 +266,17 @@ void ble_client_host_task(void *param) {
 
 static void ble_client_on_reset(int reason) {
   ESP_LOGE(TAG, "resetting state. reason: %d", reason);
+  global_client->connected = false;
   global_client->service_found = false;
-  global_client->request_characteristic_found = false;
+  global_client->characteristic_found = false;
 }
 
 static void ble_client_on_sync(void) {
-  int code = ble_hs_util_ensure_addr(0);
-  if (code != 0) {
+  esp_err_t code = ble_hs_util_ensure_addr(0);
+  if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to ensure address: %d", code);
   }
+  global_client->semaphore_result = code;
   if (xSemaphoreGive(global_client->semaphore) != pdTRUE) {
     ESP_LOGE(TAG, "can't return semaphore");
   }
@@ -289,30 +297,42 @@ esp_err_t ble_client_create(ble_client **client) {
   }
   // pessimistic by default
   result->semaphore_result = ESP_FAIL;
+  result->controller_initialized = false;
+  result->connected = false;
   result->service_found = false;
+  result->characteristic_found = false;
 
   global_client = result;
   *client = result;
   return ESP_OK;
 }
 
-esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+esp_err_t ble_client_init_controller(ble_client *client) {
+  if (client->controller_initialized) {
+    return ESP_OK;
+  }
   esp_err_t code = nvs_flash_init();
   if (code == ESP_ERR_NVS_NO_FREE_PAGES || code == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ERROR_CHECK(nvs_flash_erase());
     code = nvs_flash_init();
   }
   ERROR_CHECK(code);
-  nimble_port_init();
-
   ble_hs_cfg.reset_cb = ble_client_on_reset;
   ble_hs_cfg.sync_cb = ble_client_on_sync;
+  client->semaphore_result = ESP_FAIL;
+  nimble_port_init();
 
   ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set(TAG));
   nimble_port_freertos_init(ble_client_host_task);
-
   WAIT_FOR_SYNC("timeout waiting for sync");
+  client->controller_initialized = true;
+  return ESP_OK;
+}
 
+esp_err_t ble_client_connect_internally(uint8_t *address, ble_client *client) {
+  if (client->connected) {
+    return ESP_OK;
+  }
   ble_addr_t bt_address;
   bt_address.type = BLE_ADDR_PUBLIC;
   // reverse address for nimble
@@ -320,15 +340,49 @@ esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
     bt_address.val[BLE_ADDRESS_SIZE - i - 1] = address[i];
   }
   client->semaphore_result = ESP_FAIL;
-  client->service_found = false;
-  client->request_characteristic_found = false;
-  code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
+  esp_err_t code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to connect: %d", code);
     return ESP_ERR_INVALID_ARG;
   }
   WAIT_FOR_SYNC("timeout waiting for connection");
   return client->semaphore_result;
+}
+
+esp_err_t ble_client_find_service(ble_client *client) {
+  if (client->service_found) {
+    return ESP_OK;
+  }
+  client->semaphore_result = ESP_FAIL;
+  esp_err_t code = ble_gattc_disc_svc_by_uuid(client->conn_handle, remote_svc_uuid, ble_client_disc_svc_fn, client);
+  if (code != 0) {
+    ESP_LOGE(TAG, "unable to find service: %d", code);
+    return ESP_ERR_INVALID_ARG;
+  }
+  WAIT_FOR_SYNC("timeout waiting for service discovery");
+  return client->semaphore_result;
+}
+
+esp_err_t ble_client_find_characteristic(ble_client *client) {
+  if (client->characteristic_found) {
+    return ESP_OK;
+  }
+  client->semaphore_result = ESP_FAIL;
+  int status = ble_gattc_disc_chrs_by_uuid(client->conn_handle, client->start_handle, client->end_handle, remote_request_chr_uuid, ble_client_gatt_chr_fn, client);
+  if (status != 0) {
+    ESP_LOGE(TAG, "unable to find characteristic: %d", status);
+    return ESP_ERR_INVALID_ARG;
+  }
+  WAIT_FOR_SYNC("timeout waiting for characteristic discovery");
+  return client->semaphore_result;
+}
+
+esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+  ERROR_CHECK(ble_client_init_controller(client));
+  ERROR_CHECK(ble_client_connect_internally(address, client));
+  ERROR_CHECK(ble_client_find_service(client));
+  ERROR_CHECK(ble_client_find_characteristic(client));
+  return ESP_OK;
 }
 
 esp_err_t ble_client_disconnect(ble_client *client) {
