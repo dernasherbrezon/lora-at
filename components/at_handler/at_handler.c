@@ -9,6 +9,7 @@
 #include <errno.h>
 #include "sdkconfig.h"
 #include <at_util.h>
+#include <esp_mac.h>
 
 #ifndef CONFIG_AT_UART_BUFFER_LENGTH
 #define CONFIG_AT_UART_BUFFER_LENGTH 1024
@@ -102,6 +103,26 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   }
   if (strcmp("AT+MAXFREQ?", input) == 0) {
     at_handler_respond(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_max_frequency());
+    return;
+  }
+  if (strcmp("AT+BLUETOOTH?", input) == 0) {
+    if (handler->at_config->bt_address != NULL) {
+      at_handler_respond(handler, callback, ctx, "Server: %s\r\n", handler->at_config->bt_address);
+    }
+    uint8_t mac[6];
+    esp_err_t code = esp_read_mac(mac, ESP_MAC_BT);
+    if (code != ESP_OK) {
+      at_handler_respond(handler, callback, ctx, "Unable to read bluetooth address: %s\r\nnERROR\r\n", esp_err_to_name(code));
+    } else {
+      char *output = NULL;
+      code = at_util_hex2string(mac, sizeof(mac), &output);
+      if (code != ESP_OK) {
+        at_handler_respond(handler, callback, ctx, "Unable to convert MAC address to string: %s\r\nnERROR\r\n", esp_err_to_name(code));
+      } else {
+        at_handler_respond(handler, callback, ctx, "LoraAt: %.2s:%.2s:%.2s:%.2s:%.2s:%.2s\r\nOK\r\n", output, output + 2, output + 4, output + 6, output + 8, output + 10);
+        free(output);
+      }
+    }
     return;
   }
   if (strcmp("AT+STOPRX", input) == 0) {
