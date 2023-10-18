@@ -385,15 +385,18 @@ esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
   return ESP_OK;
 }
 
-esp_err_t ble_client_disconnect(ble_client *client) {
+void ble_client_disconnect(ble_client *client) {
+  if (!client->connected) {
+    return;
+  }
   //TODO ensure status code is correct
   int code = ble_gap_terminate(client->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to gracefully terminate connection: %d", code);
   }
-  nimble_port_freertos_deinit();
-  nimble_port_deinit();
-  return ESP_OK;
+  client->connected = false;
+  client->service_found = false;
+  client->characteristic_found = false;
 }
 
 esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {

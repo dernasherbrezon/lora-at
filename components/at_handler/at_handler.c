@@ -125,6 +125,12 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     }
     return;
   }
+  if (strcmp("AT+BLUETOOTH=", input) == 0) {
+    ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(NULL, handler->at_config));
+    ble_client_disconnect(handler->bluetooth);
+    at_handler_respond(handler, callback, ctx, "OK\r\n");
+    return;
+  }
   if (strcmp("AT+STOPRX", input) == 0) {
     ERROR_CHECK("unable to stop RX", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
     at_handler_handle_pull(callback, ctx, handler);
@@ -195,10 +201,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   matched = sscanf(input, "AT+BLUETOOTH=%[^,]", message);
   if (matched == 1) {
     size_t message_length = strlen(message);
-    if (message_length == 0) {
-      ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(NULL, handler->at_config));
-      at_handler_respond(handler, callback, ctx, "OK\r\n");
-    } else if (message_length == 17) {
+    if (message_length == 17) {
       uint8_t val[6];
       ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, val));
       ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(val, handler->bluetooth));
