@@ -24,7 +24,7 @@
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_handler_t **handler) {
+esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_timer_t *timer, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
@@ -34,6 +34,7 @@ esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *displa
   result->display = display;
   result->device = device;
   result->bluetooth = bluetooth;
+  result->timer = timer;
   result->output_buffer = malloc(sizeof(uint8_t) * (result->buffer_length + 1)); // 1 is for \0
   if (result->output_buffer == NULL) {
     at_handler_destroy(result);
@@ -125,6 +126,12 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     }
     return;
   }
+  if (strcmp("AT+DSCONFIG=", input) == 0) {
+    ERROR_CHECK("unable to stop timer", at_timer_stop(handler->timer));
+    ERROR_CHECK("unable to save config", lora_at_config_set_dsconfig(0, 0, handler->at_config));
+    at_handler_respond(handler, callback, ctx, "OK\r\n");
+    return;
+  }
   if (strcmp("AT+BLUETOOTH=", input) == 0) {
     ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(NULL, handler->at_config));
     ble_client_disconnect(handler->bluetooth);
@@ -150,6 +157,15 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
       ERROR_CHECK("unable to stop", lora_at_display_stop(handler->display));
     }
     ERROR_CHECK("unable to save config", lora_at_config_set_display(enabled, handler->at_config));
+    at_handler_respond(handler, callback, ctx, "OK\r\n");
+    return;
+  }
+  uint64_t inactivity_period_millis;
+  uint64_t deep_sleep_period_millis;
+  matched = sscanf(input, "AT+DSCONFIG=%" PRIu64 ",%" PRIu64, &inactivity_period_millis, &deep_sleep_period_millis);
+  if (matched == 2) {
+    ERROR_CHECK("unable to start timer", at_timer_start(inactivity_period_millis * 1000, handler->timer));
+    ERROR_CHECK("unable to save config", lora_at_config_set_dsconfig(inactivity_period_millis * 1000, deep_sleep_period_millis * 1000, handler->at_config));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     return;
   }

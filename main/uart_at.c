@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <driver/uart.h>
 #include <string.h>
+#include <esp_log.h>
 #include "sdkconfig.h"
 
 #ifndef CONFIG_AT_UART_PORT_NUM
@@ -25,13 +26,17 @@
     }                         \
   } while (0)
 
-esp_err_t uart_at_handler_create(at_handler_t *at_handler, uart_at_handler_t **handler) {
+static const char *TAG = "lora-at";
+
+esp_err_t uart_at_handler_create(at_handler_t *at_handler, at_timer_t *timer, uart_at_handler_t **handler) {
   uart_at_handler_t *result = malloc(sizeof(uart_at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
   result->uart_port_num = CONFIG_AT_UART_PORT_NUM;
   result->handler = at_handler;
+  result->timer = timer;
+  result->last_active_micros = 0;
   result->buffer = malloc(sizeof(uint8_t) * (CONFIG_AT_UART_BUFFER_LENGTH + 1)); // 1 is for \0
   memset(result->buffer, 0, (CONFIG_AT_UART_BUFFER_LENGTH + 1));
   if (result->buffer == NULL) {
@@ -119,10 +124,20 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
       }
       if (found && current_index > 0) {
         at_handler_process(handler->buffer, current_index, uart_at_handler_send, handler, handler->handler);
+        esp_err_t code = at_timer_get_counter(&handler->last_active_micros, handler->timer);
+        if (code != ESP_OK) {
+          ESP_LOGE(TAG, "unable to get current time: %s", esp_err_to_name(code));
+          handler->last_active_micros = 0;
+        }
         current_index = 0;
       }
     }
   }
+}
+
+esp_err_t uart_at_get_last_active(uint64_t *last_active_micros, uart_at_handler_t *handler) {
+  *last_active_micros = handler->last_active_micros;
+  return ESP_OK;
 }
 
 void uart_at_handler_destroy(uart_at_handler_t *handler) {

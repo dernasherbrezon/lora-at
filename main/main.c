@@ -8,6 +8,7 @@
 #include "uart_at.h"
 #include <deep_sleep.h>
 #include <esp_sleep.h>
+#include <at_timer.h>
 
 static const char *TAG = "lora-at";
 
@@ -27,6 +28,7 @@ typedef struct {
   uart_at_handler_t *uart_at_handler;
   ble_client *bluetooth;
   lora_at_config_t *config;
+  at_timer_t *timer;
 } main_t;
 
 main_t *lora_at_main = NULL;
@@ -90,22 +92,24 @@ void tx_callback(sx127x *device) {
   lora_at_display_set_status("IDLE", lora_at_main->display);
 }
 
-void schedule_observation() {
+void schedule_observation_and_go_ds(main_t *main) {
   rx_request_t *req = NULL;
-  esp_err_t code = ble_client_load_request(&req, lora_at_main->bluetooth);
-  if (code != ESP_OK) {
-    ESP_LOGE(TAG, "unable to read rx request: %s", esp_err_to_name(code));
-    deep_sleep_enter(lora_at_main->config->deep_sleep_period_micros);
-    return;
+  if (main->bluetooth != NULL) {
+    esp_err_t code = ble_client_load_request(&req, main->bluetooth);
+    if (code != ESP_OK) {
+      ESP_LOGE(TAG, "unable to read rx request: %s", esp_err_to_name(code));
+      deep_sleep_enter(main->config->deep_sleep_period_micros);
+      return;
+    }
   }
   if (req == NULL) {
     ESP_LOGI(TAG, "no active requests");
-    deep_sleep_enter(lora_at_main->config->deep_sleep_period_micros);
+    deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   if (req->currentTimeMillis > req->endTimeMillis || req->startTimeMillis > req->endTimeMillis) {
     ESP_LOGE(TAG, "incorrect schedule found on server current: %" PRIu64 " start: %" PRIu64 " end: %" PRIu64, req->currentTimeMillis, req->startTimeMillis, req->endTimeMillis);
-    deep_sleep_enter(lora_at_main->config->deep_sleep_period_micros);
+    deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   if (req->startTimeMillis > req->currentTimeMillis) {
@@ -115,15 +119,30 @@ void schedule_observation() {
   // observation is actually should start now
   rx_length_micros = (req->endTimeMillis - req->currentTimeMillis) * 1000;
   rx_start_utc_millis = req->currentTimeMillis;
-  code = lora_util_start_rx(req, lora_at_main->device);
+  esp_err_t code = lora_util_start_rx(req, main->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "cannot start rx: %s", esp_err_to_name(code));
-    deep_sleep_enter(lora_at_main->config->deep_sleep_period_micros);
+    deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   //FIXME
 //  rx_start_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
   deep_sleep_rx_enter(rx_length_micros);
+}
+
+static void at_timer_callback(void *arg) {
+  main_t *main = (main_t *) arg;
+  uint64_t last_active = 0;
+  uart_at_get_last_active(&last_active, main->uart_at_handler);
+  uint64_t current_counter = 0;
+  at_timer_get_counter(&current_counter, main->timer);
+  uint64_t remaining = current_counter - last_active;
+  if (remaining > main->config->inactivity_period_micros) {
+    ESP_LOGI(TAG, "inactive for %.2f seconds", (remaining / 1000000.0F));
+    schedule_observation_and_go_ds(main);
+  } else {
+    at_timer_set_counter(remaining, main->timer);
+  }
 }
 
 void app_main(void) {
@@ -154,7 +173,7 @@ void app_main(void) {
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to put sx127x to sleep: %s", esp_err_to_name(code));
     }
-    schedule_observation(); // should always put esp32 into deep sleep. so can return from here
+    schedule_observation_and_go_ds(lora_at_main); // should always put esp32 into deep sleep. so can return from here
     return;
   }
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
@@ -176,10 +195,15 @@ void app_main(void) {
     ESP_LOGI(TAG, "display NOT started");
   }
 
-  ERROR_CHECK("at_handler", at_handler_create(lora_at_main->config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, &lora_at_main->at_handler));
+  ERROR_CHECK("timer", at_timer_create(at_timer_callback, lora_at_main, &lora_at_main->timer));
+  if (lora_at_main->config->inactivity_period_micros != 0) {
+    ERROR_CHECK("timer", at_timer_start(lora_at_main->config->inactivity_period_micros, lora_at_main->timer));
+  }
+
+  ERROR_CHECK("at_handler", at_handler_create(lora_at_main->config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, lora_at_main->timer, &lora_at_main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
 
-  ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, &lora_at_main->uart_at_handler));
+  ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, lora_at_main->timer, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
 
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);

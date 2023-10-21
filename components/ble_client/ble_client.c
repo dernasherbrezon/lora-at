@@ -35,7 +35,7 @@
     }                         \
   } while(0)
 
-static const char *TAG = "lora-at";
+static const char *TAG = "ble_client";
 
 struct ble_client_t {
   SemaphoreHandle_t semaphore;
@@ -100,7 +100,7 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
     xSemaphoreGive(client->semaphore);
     return 0;
   }
-  ESP_LOGI(TAG, "request received: %d", attr->om->om_len);
+  ESP_LOGI(TAG, "received bytes: %d", attr->om->om_len);
   // no observations scheduled
   if (attr->om->om_len == 0) {
     client->semaphore_result = ESP_OK;
