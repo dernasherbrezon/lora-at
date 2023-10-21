@@ -91,7 +91,7 @@ esp_err_t ble_client_convert_ble_code(int ble_code) {
 
 int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *error, struct ble_gatt_attr *attr, void *arg) {
   struct ble_client_t *client = (struct ble_client_t *) arg;
-  ESP_LOGI(TAG, "characteristic value response received: %d status: %d", conn_handle, error->status);
+  ESP_LOGD(TAG, "characteristic value response received: %d status: %d", conn_handle, error->status);
   if (client->conn_handle != conn_handle) {
     return 0;
   }
@@ -389,7 +389,6 @@ void ble_client_disconnect(ble_client *client) {
   if (!client->connected) {
     return;
   }
-  //TODO ensure status code is correct
   int code = ble_gap_terminate(client->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to gracefully terminate connection: %d", code);
@@ -397,6 +396,26 @@ void ble_client_disconnect(ble_client *client) {
   client->connected = false;
   client->service_found = false;
   client->characteristic_found = false;
+}
+
+void ble_client_log_request(rx_request_t *req) {
+  char buf[80];
+  struct tm *ts;
+  const char *format = "%Y-%m-%d %H:%M:%S";
+  uint64_t timeSeconds = req->currentTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "current time: %s", buf);
+  timeSeconds = req->startTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "start time:   %s", buf);
+  timeSeconds = req->endTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "end time:     %s", buf);
+  ESP_LOGI(TAG, "observation requested: %" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%" PRIu16 ",%hhu,%hhu,%hhu,%hhu", req->freq, req->bw, req->sf, req->cr, req->syncWord, req->power, req->preambleLength, req->gain, req->ldo,
+           req->useCrc, req->useExplicitHeader);
 }
 
 esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {
@@ -407,9 +426,12 @@ esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {
     ESP_LOGE(TAG, "unable to load request. ble code: %d", code);
     return ble_client_convert_ble_code(code);
   }
-  WAIT_FOR_SYNC("timeout waiting for data");
+  WAIT_FOR_SYNC("timeout waiting for the data");
   if (client->semaphore_result == ESP_OK) {
     *request = client->last_request;
+  }
+  if (*request != NULL) {
+    ble_client_log_request(*request);
   }
   return client->semaphore_result;
 }
@@ -459,7 +481,6 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
     ESP_LOGE(TAG, "unable to send frame. ble code: %d", code);
     return ble_client_convert_ble_code(code);
   }
-  //TODO async write?
   WAIT_FOR_SYNC("timeout waiting for writing");
   return ESP_OK;
 }

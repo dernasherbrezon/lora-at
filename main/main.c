@@ -116,7 +116,7 @@ void schedule_observation_and_go_ds(main_t *main) {
     deep_sleep_enter((req->startTimeMillis - req->currentTimeMillis) * 1000);
     return;
   }
-  // observation is actually should start now
+  // observation actually should start now
   rx_length_micros = (req->endTimeMillis - req->currentTimeMillis) * 1000;
   rx_start_utc_millis = req->currentTimeMillis;
   esp_err_t code = lora_util_start_rx(req, main->device);
@@ -159,8 +159,12 @@ void app_main(void) {
   if (lora_at_main->config->bt_address != NULL) {
     uint8_t val[6];
     ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(lora_at_main->config->bt_address, val));
-    ERROR_CHECK("bluetooth", ble_client_connect(val, lora_at_main->bluetooth));
-    ESP_LOGI(TAG, "bluetooth initialized: %s", lora_at_main->config->bt_address);
+    esp_err_t code = ble_client_connect(val, lora_at_main->bluetooth);
+    if (code != ESP_OK) {
+      ESP_LOGE(TAG, "unable to connect to: %s", lora_at_main->config->bt_address);
+    } else {
+      ESP_LOGI(TAG, "bluetooth initialized: %s", lora_at_main->config->bt_address);
+    }
   } else {
     ESP_LOGI(TAG, "bluetooth not initialized");
   }

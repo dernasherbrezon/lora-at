@@ -127,7 +127,8 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
   } else if (request->bw == 500000) {
     bw = SX127x_BW_500000;
   } else {
-    return -1;
+    ESP_LOGE(TAG, "unsupported bw: %" PRIu32, request->bw);
+    return ESP_ERR_INVALID_ARG;
   }
   ERROR_CHECK(sx127x_lora_set_bandwidth(bw, device));
   if (request->useExplicitHeader) {
