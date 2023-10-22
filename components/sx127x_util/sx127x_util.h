@@ -21,6 +21,7 @@ typedef enum {
   LDO_OFF = 2
 } ldo_type_t;
 
+#pragma pack(push, 1)
 typedef struct {
   uint64_t startTimeMillis;
   uint64_t endTimeMillis;
@@ -38,6 +39,7 @@ typedef struct {
   uint8_t useExplicitHeader;
   uint8_t length;
 } rx_request_t;
+#pragma pack(pop)
 
 esp_err_t lora_util_init(sx127x **device);
 

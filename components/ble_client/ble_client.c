@@ -114,58 +114,20 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
     return 0;
   }
 
-  size_t offset = 0;
+  if (attr->om->om_len != sizeof(rx_request_t)) {
+    ESP_LOGE(TAG, "not enough bytes. expected %d", sizeof(rx_request_t));
+    client->semaphore_result = ESP_ERR_NO_MEM;
+    xSemaphoreGive(client->semaphore);
+    return 0;
+  }
 
-  memcpy(&(client->last_request->startTimeMillis), attr->om->om_data + offset, sizeof(client->last_request->startTimeMillis));
+  memcpy(client->last_request, attr->om->om_data, sizeof(rx_request_t));
   client->last_request->startTimeMillis = ntohll(client->last_request->startTimeMillis);
-  offset += sizeof(client->last_request->startTimeMillis);
-
-  memcpy(&(client->last_request->endTimeMillis), attr->om->om_data + offset, sizeof(client->last_request->endTimeMillis));
   client->last_request->endTimeMillis = ntohll(client->last_request->endTimeMillis);
-  offset += sizeof(client->last_request->endTimeMillis);
-
-  memcpy(&(client->last_request->currentTimeMillis), attr->om->om_data + offset, sizeof(client->last_request->currentTimeMillis));
   client->last_request->currentTimeMillis = ntohll(client->last_request->currentTimeMillis);
-  offset += sizeof(client->last_request->currentTimeMillis);
-
-  memcpy(&(client->last_request->freq), attr->om->om_data + offset, sizeof(client->last_request->freq));
   client->last_request->freq = ntohll(client->last_request->freq);
-  offset += sizeof(client->last_request->freq);
-
-  memcpy(&(client->last_request->bw), attr->om->om_data + offset, sizeof(client->last_request->bw));
   client->last_request->bw = ntohl(client->last_request->bw);
-  offset += sizeof(client->last_request->bw);
-
-  memcpy(&(client->last_request->sf), attr->om->om_data + offset, sizeof(client->last_request->sf));
-  offset += sizeof(client->last_request->sf);
-
-  memcpy(&(client->last_request->cr), attr->om->om_data + offset, sizeof(client->last_request->cr));
-  offset += sizeof(client->last_request->cr);
-
-  memcpy(&(client->last_request->syncWord), attr->om->om_data + offset, sizeof(client->last_request->syncWord));
-  offset += sizeof(client->last_request->syncWord);
-
-  memcpy(&(client->last_request->power), attr->om->om_data + offset, sizeof(client->last_request->power));
-  offset += sizeof(client->last_request->power);
-
-  memcpy(&(client->last_request->preambleLength), attr->om->om_data + offset, sizeof(client->last_request->preambleLength));
   client->last_request->preambleLength = ntohs(client->last_request->preambleLength);
-  offset += sizeof(client->last_request->preambleLength);
-
-  memcpy(&(client->last_request->gain), attr->om->om_data + offset, sizeof(client->last_request->gain));
-  offset += sizeof(client->last_request->gain);
-
-  memcpy(&client->last_request->ldo, attr->om->om_data + offset, sizeof(client->last_request->ldo));
-  offset += sizeof(client->last_request->ldo);
-
-  memcpy(&client->last_request->useCrc, attr->om->om_data + offset, sizeof(client->last_request->useCrc));
-  offset += sizeof(client->last_request->useCrc);
-
-  memcpy(&client->last_request->useExplicitHeader, attr->om->om_data + offset, sizeof(client->last_request->useExplicitHeader));
-  offset += sizeof(client->last_request->useExplicitHeader);
-
-  memcpy(&client->last_request->length, attr->om->om_data + offset, sizeof(client->last_request->length));
-  offset += sizeof(client->last_request->length);
 
   client->semaphore_result = ESP_OK;
   xSemaphoreGive(client->semaphore);
