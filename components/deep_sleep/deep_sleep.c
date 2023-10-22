@@ -26,9 +26,9 @@ void deep_sleep_enter(uint64_t micros_to_wait) {
 }
 
 void deep_sleep_rx_enter(uint64_t micros_to_wait) {
-  //FIXME micros_to_wait - check max possible? Can't wait for rx more than max possible. 2 hours?
   ERROR_CHECK("rtc_gpio_set_direction", rtc_gpio_set_direction((gpio_num_t) CONFIG_PIN_DIO0, RTC_GPIO_MODE_INPUT_ONLY));
   ERROR_CHECK("rtc_gpio_pulldown_en", rtc_gpio_pulldown_en((gpio_num_t) CONFIG_PIN_DIO0));
+  // max wait is ~400 days https://github.com/espressif/esp-idf/blob/42cce06704a24b01721cd34920f25b2e48b88c55/components/esp_hw_support/port/esp32s2/rtc_time.c#L205
   ERROR_CHECK("esp_sleep_enable_timer_wakeup", esp_sleep_enable_timer_wakeup(micros_to_wait));
   ERROR_CHECK("esp_sleep_enable_ext0_wakeup", esp_sleep_enable_ext0_wakeup((gpio_num_t) CONFIG_PIN_DIO0, 1));
   ESP_LOGI(TAG, "entering rx deep sleep for %" PRIu64 " seconds or first packet", (micros_to_wait / 1000000));

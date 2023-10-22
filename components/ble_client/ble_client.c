@@ -128,17 +128,13 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
   client->last_request->currentTimeMillis = ntohll(client->last_request->currentTimeMillis);
   offset += sizeof(client->last_request->currentTimeMillis);
 
-  uint32_t freq;
-  memcpy(&freq, attr->om->om_data + offset, sizeof(freq));
-  freq = ntohl(freq);
-  memcpy(&(client->last_request->freq), &freq, sizeof(freq));
-  offset += sizeof(freq);
+  memcpy(&(client->last_request->freq), attr->om->om_data + offset, sizeof(client->last_request->freq));
+  client->last_request->freq = ntohll(client->last_request->freq);
+  offset += sizeof(client->last_request->freq);
 
-  uint32_t bw;
-  memcpy(&bw, attr->om->om_data + offset, sizeof(bw));
-  bw = ntohl(bw);
-  memcpy(&(client->last_request->bw), &bw, sizeof(bw));
-  offset += sizeof(bw);
+  memcpy(&(client->last_request->bw), attr->om->om_data + offset, sizeof(client->last_request->bw));
+  client->last_request->bw = ntohl(client->last_request->bw);
+  offset += sizeof(client->last_request->bw);
 
   memcpy(&(client->last_request->sf), attr->om->om_data + offset, sizeof(client->last_request->sf));
   offset += sizeof(client->last_request->sf);
@@ -293,6 +289,7 @@ esp_err_t ble_client_create(ble_client **client) {
   }
   result->semaphore = xSemaphoreCreateBinary();
   if (result->semaphore == NULL) {
+    ble_client_destroy(result);
     return ESP_ERR_NO_MEM;
   }
   // pessimistic by default
@@ -301,6 +298,8 @@ esp_err_t ble_client_create(ble_client **client) {
   result->connected = false;
   result->service_found = false;
   result->characteristic_found = false;
+  result->last_request = NULL;
+
 
   global_client = result;
   *client = result;
@@ -482,6 +481,7 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
     return ble_client_convert_ble_code(code);
   }
   WAIT_FOR_SYNC("timeout waiting for writing");
+  free(message);
   return ESP_OK;
 }
 
