@@ -9,6 +9,7 @@
 #include <deep_sleep.h>
 #include <esp_sleep.h>
 #include <at_timer.h>
+#include <sys/time.h>
 
 static const char *TAG = "lora-at";
 
@@ -33,9 +34,7 @@ typedef struct {
 
 main_t *lora_at_main = NULL;
 
-RTC_DATA_ATTR uint64_t rx_start_micros;
-RTC_DATA_ATTR uint64_t rx_start_utc_millis;
-RTC_DATA_ATTR uint64_t rx_length_micros;
+RTC_DATA_ATTR uint64_t rx_end_micros;
 
 static void uart_rx_task(void *arg) {
   main_t *main = (main_t *) arg;
@@ -43,10 +42,17 @@ static void uart_rx_task(void *arg) {
 }
 
 static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length) {
-  //FIXME
-  uint64_t now_micros = 0ULL;//rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-  uint64_t in_rx_micros = now_micros - rx_start_micros;
-  uint64_t remaining_micros = rx_length_micros - in_rx_micros;
+  struct timeval tm_vl;
+  gettimeofday(&tm_vl, NULL);
+  uint64_t now_micros = tm_vl.tv_sec * 1000000 + tm_vl.tv_usec;
+  uint64_t remaining_micros;
+  if (rx_end_micros > now_micros) {
+    // if we received the message just before the end
+    // wake up took some time so current time can be slightly more than expected end
+    remaining_micros = rx_end_micros - now_micros;
+  } else {
+    remaining_micros = 0;
+  }
   lora_frame_t *frame = NULL;
   esp_err_t code = lora_util_read_frame(device, data, data_length, &frame);
   if (code != ESP_OK) {
@@ -55,9 +61,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     deep_sleep_rx_enter(remaining_micros);
     return;
   }
-  // calculate current utc millis without calling server via Bluetooth
-  // this timestamp is not precise, but for short rx requests should suffice
-  frame->timestamp = rx_start_utc_millis + in_rx_micros / 1000;
+  frame->timestamp = now_micros / 1000;
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   //do not store received frames in RTC memory.
   //currently only push via bluetooth is supported
@@ -116,18 +120,21 @@ void schedule_observation_and_go_ds(main_t *main) {
     deep_sleep_enter((req->startTimeMillis - req->currentTimeMillis) * 1000);
     return;
   }
+  // set time before doing rx
+  // time will be used in rx callback to figure out how long to sleep
+  struct timeval tm_vl;
+  tm_vl.tv_sec = req->currentTimeMillis / 1000;
+  tm_vl.tv_usec = 0;
+  settimeofday(&tm_vl, NULL);
   // observation actually should start now
-  rx_length_micros = (req->endTimeMillis - req->currentTimeMillis) * 1000;
-  rx_start_utc_millis = req->currentTimeMillis;
   esp_err_t code = lora_util_start_rx(req, main->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "cannot start rx: %s", esp_err_to_name(code));
     deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
-  //FIXME
-//  rx_start_micros = rtc_time_slowclk_to_us(rtc_time_get(), esp_clk_slowclk_cal_get());
-  deep_sleep_rx_enter(rx_length_micros);
+  rx_end_micros = req->endTimeMillis * 1000;
+  deep_sleep_rx_enter((req->endTimeMillis - req->currentTimeMillis) * 1000);
 }
 
 static void at_timer_callback(void *arg) {
@@ -212,7 +219,4 @@ void app_main(void) {
 
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
   ESP_LOGI(TAG, "lora-at initialized");
-
-  //FIXME implement inactivity period
-
 }

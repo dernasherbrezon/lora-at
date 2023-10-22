@@ -137,6 +137,7 @@ void uart_at_handler_process(uart_at_handler_t *handler) {
 
 esp_err_t uart_at_get_last_active(uint64_t *last_active_micros, uart_at_handler_t *handler) {
   *last_active_micros = handler->last_active_micros;
+  handler->last_active_micros = 0;
   return ESP_OK;
 }
 

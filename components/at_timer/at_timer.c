@@ -75,17 +75,18 @@ esp_err_t at_timer_start(uint64_t inactivity_period_micros, at_timer_t *timer) {
     gptimer_event_callbacks_t cbs = {
         .on_alarm = at_timer_interrupt_fromisr,
     };
-    ESP_ERROR_CHECK(gptimer_register_event_callbacks(timer->handle, &cbs, timer));
-    ESP_ERROR_CHECK(gptimer_set_alarm_action(timer->handle, &alarm_config));
-    ESP_ERROR_CHECK(gptimer_enable(timer->handle));
-    ESP_ERROR_CHECK(gptimer_start(timer->handle));
+    ERROR_CHECK(gptimer_register_event_callbacks(timer->handle, &cbs, timer));
+    ERROR_CHECK(gptimer_set_alarm_action(timer->handle, &alarm_config));
+    ERROR_CHECK(gptimer_enable(timer->handle));
+    ERROR_CHECK(gptimer_start(timer->handle));
     ESP_LOGI(TAG, "inactivity timer started: %.2fs", inactivity_period_micros / 1000000.0F);
   }
   return ESP_OK;
 }
 
 esp_err_t at_timer_set_counter(uint64_t current_time, at_timer_t *timer) {
-  return gptimer_set_raw_count(timer->handle, current_time);
+  ERROR_CHECK(gptimer_set_raw_count(timer->handle, current_time));
+  return gptimer_start(timer->handle);
 }
 
 esp_err_t at_timer_get_counter(uint64_t *output, at_timer_t *timer) {
