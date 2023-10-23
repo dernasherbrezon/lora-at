@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include <errno.h>
-#include "sdkconfig.h"
+#include <sdkconfig.h>
 #include <at_util.h>
 #include <esp_mac.h>
 

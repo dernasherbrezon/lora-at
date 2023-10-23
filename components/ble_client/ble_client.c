@@ -5,13 +5,16 @@
 #include <nimble/ble.h>
 #include <esp_bt.h>
 #include <nimble/nimble_port_freertos.h>
-#include <esp_nimble_hci.h>
 #include <services/gap/ble_svc_gap.h>
 #include <host/ble_gap.h>
 #include <host/util/util.h>
 #include <arpa/inet.h>
+#include <sdkconfig.h>
 
-#define CONNECTION_TIMEOUT 30000
+#ifndef CONFIG_BLUETOOTH_CONNECTION_TIMEOUT
+#define CONFIG_BLUETOOTH_CONNECTION_TIMEOUT 30000
+#endif
+
 #define MUTEX_TIMEOUT_DELTA 1000
 #define BLE_ADDRESS_SIZE 6
 #define ERROR_CHECK(x)        \
@@ -28,7 +31,7 @@
 #define WAIT_FOR_SYNC(x) \
   do {                   \
     while (client->semaphore_result == ESP_FAIL) { \
-      if (xSemaphoreTake(client->semaphore, pdMS_TO_TICKS(CONNECTION_TIMEOUT + MUTEX_TIMEOUT_DELTA)) == pdFALSE) { \
+      if (xSemaphoreTake(client->semaphore, pdMS_TO_TICKS(CONFIG_BLUETOOTH_CONNECTION_TIMEOUT + MUTEX_TIMEOUT_DELTA)) == pdFALSE) { \
         ESP_LOGE(TAG, x); \
         return ESP_ERR_TIMEOUT; \
       } \
@@ -301,7 +304,7 @@ esp_err_t ble_client_connect_internally(uint8_t *address, ble_client *client) {
     bt_address.val[BLE_ADDRESS_SIZE - i - 1] = address[i];
   }
   client->semaphore_result = ESP_FAIL;
-  esp_err_t code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
+  esp_err_t code = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &bt_address, CONFIG_BLUETOOTH_CONNECTION_TIMEOUT, NULL, ble_client_gap_event, client);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to connect: %d", code);
     return ESP_ERR_INVALID_ARG;

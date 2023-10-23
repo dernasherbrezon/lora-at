@@ -3,7 +3,7 @@
 #include <driver/uart.h>
 #include <string.h>
 #include <esp_log.h>
-#include "sdkconfig.h"
+#include <sdkconfig.h>
 
 #ifndef CONFIG_AT_UART_PORT_NUM
 #define CONFIG_AT_UART_PORT_NUM UART_NUM_0

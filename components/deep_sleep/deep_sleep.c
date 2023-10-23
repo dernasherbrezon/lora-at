@@ -2,8 +2,8 @@
 #include <esp_log.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
+#include <sdkconfig.h>
 
-//TODO source from sx127x_util? Or from the main config?
 #ifndef CONFIG_PIN_DIO0
 #define CONFIG_PIN_DIO0 26
 #endif

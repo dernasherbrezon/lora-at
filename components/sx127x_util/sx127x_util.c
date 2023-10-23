@@ -11,6 +11,7 @@
 #include <freertos/task.h>
 #include <inttypes.h>
 #include <sys/time.h>
+#include <sdkconfig.h>
 
 #ifndef CONFIG_PIN_CS
 #define CONFIG_PIN_CS 18

@@ -2,6 +2,7 @@
 #include <ssd1306.h>
 #include <esp_log.h>
 #include <string.h>
+#include <sdkconfig.h>
 
 #ifndef CONFIG_PIN_OLED_SDL
 #define CONFIG_PIN_OLED_SDL 22        /*!&lt; gpio number for I2C master clock */
@@ -11,6 +12,7 @@
 #define CONFIG_PIN_OLED_SDA 21        /*!&lt; gpio number for I2C master data  */
 #endif
 
+//FIXME actually not used
 #ifndef CONFIG_PIN_OLED_RESET
 #define  CONFIG_PIN_OLED_RESET -1
 #endif

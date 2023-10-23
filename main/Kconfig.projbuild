@@ -1,0 +1,74 @@
+menu "Lora-AT"
+    config AT_UART_PORT_NUM
+        int "UART bus to use for AT commands"
+        default 0
+        help
+            ESP32 has several UART buses: 0,1,2. Most likely you need to use default - 0.
+    config AT_UART_BAUD_RATE
+        int "UART baud rate"
+        default 115200
+        help
+            Baud rate to use for sending and receiving AT commands
+    config AT_UART_BUFFER_LENGTH
+        int "UART buffer for RX and TX"
+        default 1024
+    config PIN_CS
+        int "CS pin"
+        default 18
+        help
+            CS (Chip Select) or SS (Slave Select) pin for communicating with sx127x chip
+    config PIN_MOSI
+        int "MOSI pin"
+        default 27
+        help
+            MOSI pin for communicating with sx127x chip
+    config PIN_MISO
+        int "MISO pin"
+        default 19
+        help
+             MISO pin for communicating with sx127x chip
+    config PIN_SCK
+        int "SCK pin"
+        default 5
+        help
+            SCK or SCLK pin for communicating with sx127x chip
+    config PIN_DIO0
+        int "DIO0 pin"
+        default 26
+        help
+             DIO0 (Digital IO) pin for communicating with sx127x chip
+    config MIN_FREQUENCY
+        int "Minimum frequency"
+        default 25000000
+        help
+            Minimum supported frequency. sx127x chip are normally have tuned for specific ISM frequency band.
+    config MAX_FREQUENCY
+        int "Maximum frequency"
+        default 1700000000
+        help
+            Minimum supported frequency. sx127x chip are normally have tuned for specific ISM frequency band.
+    config PIN_OLED_SDA
+        int "SDA Pin for OLED display"
+        default 21
+        help
+            Lora-AT support standard ssd1306 OLED display to show current status
+    config PIN_OLED_SDL
+        int "SDL Pin for OLED display"
+        default 22
+        help
+            Lora-AT support standard ssd1306 OLED display to show current status
+    config PIN_OLED_RESET
+        int "Reset Pin for OLED display"
+        default -1
+        help
+            Some boards wire ssd1306 OLED displays so that they have to be reset at the start.
+            Configure this pin if display doesn't work out-of-the-box
+    config BLUETOOTH_CONNECTION_TIMEOUT
+        int "Bluetooth connection timeout"
+        default 30000
+        help
+            Connection timeout while connecting to Bluetooth GATT server
+            Used during deep-sleep wake up phase
+            The longer timeout the more time device will spend in non-deep sleep mode
+            The more energy it will consume
+endmenu
