@@ -173,8 +173,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   matched = sscanf(input, "AT+TIME=%" PRIu64, &time);
   if (matched == 1) {
     struct timeval now;
-    now.tv_sec = (time_t) time;
-    now.tv_usec = 0;
+    now.tv_sec = (time_t) (time / 1000);
+    now.tv_usec = (suseconds_t) ((time % 1000) * 1000);
     int code = settimeofday(&now, NULL);
     if (code != 0) {
       at_handler_respond(handler, callback, ctx, "%s\r\nERROR\r\n", strerror(errno));

@@ -10,6 +10,7 @@
 #include <esp_intr_alloc.h>
 #include <freertos/task.h>
 #include <inttypes.h>
+#include <sys/time.h>
 
 #ifndef CONFIG_PIN_CS
 #define CONFIG_PIN_CS 18
@@ -217,6 +218,10 @@ esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_leng
     ESP_LOGE(TAG, "unable to get snr: %s", esp_err_to_name(code));
     result->snr = -255;
   }
+  struct timeval tm_vl;
+  gettimeofday(&tm_vl, NULL);
+  uint64_t now_micros = tm_vl.tv_sec * 1000000 + tm_vl.tv_usec;
+  result->timestamp = now_micros / 1000;
   *frame = result;
   return ESP_OK;
 }

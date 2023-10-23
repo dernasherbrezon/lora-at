@@ -61,7 +61,6 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     deep_sleep_rx_enter(remaining_micros);
     return;
   }
-  frame->timestamp = now_micros / 1000;
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   //do not store received frames in RTC memory.
   //currently only push via bluetooth is supported
