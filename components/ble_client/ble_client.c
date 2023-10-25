@@ -20,8 +20,7 @@
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
-    if (__err_rc != 0) {      \
-      global_client = NULL;          \
+    if (__err_rc != ESP_OK) {      \
       return __err_rc;        \
     }                         \
   } while (0)
@@ -41,6 +40,7 @@
 static const char *TAG = "ble_client";
 
 struct ble_client_t {
+  uint8_t *address;
   SemaphoreHandle_t semaphore;
   esp_err_t semaphore_result;
   rx_request_t *last_request;
@@ -243,7 +243,7 @@ static void ble_client_on_sync(void) {
   }
 }
 
-esp_err_t ble_client_create(ble_client **client) {
+esp_err_t ble_client_create(uint8_t *address, ble_client **client) {
   if (global_client != NULL) {
     *client = global_client;
     return ESP_OK;
@@ -264,7 +264,7 @@ esp_err_t ble_client_create(ble_client **client) {
   result->service_found = false;
   result->characteristic_found = false;
   result->last_request = NULL;
-
+  result->address = address;
 
   global_client = result;
   *client = result;
@@ -383,6 +383,9 @@ void ble_client_log_request(rx_request_t *req) {
 }
 
 esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {
+  if (!client->characteristic_found) {
+    ERROR_CHECK(ble_client_connect(client->address, client));
+  }
   client->semaphore_result = ESP_FAIL;
   client->last_request = NULL;
   int code = ble_gattc_read(client->conn_handle, client->request_characteristic_handle, ble_client_gatt_attr_fn, client);
@@ -401,6 +404,9 @@ esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {
 }
 
 esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
+  if (!client->characteristic_found) {
+    ERROR_CHECK(ble_client_connect(client->address, client));
+  }
   size_t length = 0;
   length += sizeof(frame->frequency_error);
   length += sizeof(frame->rssi);

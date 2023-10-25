@@ -161,16 +161,15 @@ void app_main(void) {
   ERROR_CHECK("config", lora_at_config_create(&lora_at_main->config));
   ESP_LOGI(TAG, "config initialized");
 
-  ERROR_CHECK("bluetooth", ble_client_create(&lora_at_main->bluetooth));
+  uint8_t *bt_address = NULL;
+  uint8_t val[6];
   if (lora_at_main->config->bt_address != NULL) {
-    uint8_t val[6];
     ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(lora_at_main->config->bt_address, val));
-    esp_err_t code = ble_client_connect(val, lora_at_main->bluetooth);
-    if (code != ESP_OK) {
-      ESP_LOGE(TAG, "unable to connect to: %s", lora_at_main->config->bt_address);
-    } else {
-      ESP_LOGI(TAG, "bluetooth initialized: %s", lora_at_main->config->bt_address);
-    }
+    bt_address = val;
+  }
+  ERROR_CHECK("bluetooth", ble_client_create(bt_address, &lora_at_main->bluetooth));
+  if (lora_at_main->config->bt_address != NULL) {
+    ESP_LOGI(TAG, "bluetooth initialized: %s", lora_at_main->config->bt_address);
   } else {
     ESP_LOGI(TAG, "bluetooth not initialized");
   }
