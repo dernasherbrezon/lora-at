@@ -37,6 +37,16 @@ menu "Lora-AT"
         default 26
         help
              DIO0 (Digital IO) pin for communicating with sx127x chip
+    config PIN_DIO1
+        int "DIO1 pin"
+        default 33
+        help
+             DIO1 (Digital IO) pin for communicating with sx127x chip. Used in FSK/OOK mode
+    config PIN_DIO2
+        int "DIO2 pin"
+        default 32
+        help
+             DIO2 (Digital IO) pin for communicating with sx127x chip. Used in FSK/OOK mode
     config MIN_FREQUENCY
         int "Minimum frequency"
         default 25000000

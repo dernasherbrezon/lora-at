@@ -54,7 +54,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     remaining_micros = 0;
   }
   lora_frame_t *frame = NULL;
-  esp_err_t code = lora_util_read_frame(device, data, data_length, &frame);
+  esp_err_t code = sx127x_util_read_frame(device, data, data_length, &frame);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to read frame: %s", esp_err_to_name(code));
     //enter deep sleep
@@ -69,21 +69,21 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to send frame: %s", esp_err_to_name(code));
     }
-    lora_util_frame_destroy(frame);
+    sx127x_util_frame_destroy(frame);
   }
   deep_sleep_rx_enter(remaining_micros);
 }
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   lora_frame_t *frame = NULL;
-  ERROR_CHECK("lora frame", lora_util_read_frame(device, data, data_length, &frame));
+  ERROR_CHECK("lora frame", sx127x_util_read_frame(device, data, data_length, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {
     esp_err_t code = ble_client_send_frame(frame, lora_at_main->bluetooth);
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to send frame: %s", esp_err_to_name(code));
     }
-    lora_util_frame_destroy(frame);
+    sx127x_util_frame_destroy(frame);
   } else {
     ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
   }
@@ -97,7 +97,7 @@ void tx_callback(sx127x *device) {
 
 void schedule_observation_and_go_ds(main_t *main) {
   rx_request_t *req = NULL;
-  if (main->bluetooth != NULL) {
+  if (main->config->bt_address != NULL) {
     esp_err_t code = ble_client_load_request(&req, main->bluetooth);
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to read rx request: %s", esp_err_to_name(code));
@@ -126,7 +126,7 @@ void schedule_observation_and_go_ds(main_t *main) {
   tm_vl.tv_usec = 0;
   settimeofday(&tm_vl, NULL);
   // observation actually should start now
-  esp_err_t code = lora_util_start_rx(req, main->device);
+  esp_err_t code = sx127x_util_lora_rx(req, main->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "cannot start rx: %s", esp_err_to_name(code));
     deep_sleep_enter(main->config->deep_sleep_period_micros);
@@ -174,7 +174,7 @@ void app_main(void) {
     ESP_LOGI(TAG, "bluetooth not initialized");
   }
 
-  ERROR_CHECK("lora", lora_util_init(&lora_at_main->device));
+  ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
     ESP_LOGI(TAG, "woken up by timer. loading new rx request");

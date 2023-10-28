@@ -342,6 +342,9 @@ esp_err_t ble_client_find_characteristic(ble_client *client) {
 }
 
 esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+  if (address == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
   ERROR_CHECK(ble_client_init_controller(client));
   ERROR_CHECK(ble_client_connect_internally(address, client));
   ERROR_CHECK(ble_client_find_service(client));

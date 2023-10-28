@@ -28,6 +28,12 @@
 #ifndef CONFIG_PIN_DIO0
 #define CONFIG_PIN_DIO0 26
 #endif
+#ifndef CONFIG_PIN_DIO1
+#define CONFIG_PIN_DIO1 33
+#endif
+#ifndef CONFIG_PIN_DIO2
+#define CONFIG_PIN_DIO2 32
+#endif
 #ifndef CONFIG_MIN_FREQUENCY
 #define CONFIG_MIN_FREQUENCY 25000000
 #endif
@@ -46,26 +52,26 @@
 static const char *TAG = "lora-at";
 TaskHandle_t handle_interrupt;
 
-void IRAM_ATTR lora_util_interrupt_fromisr(void *arg) {
+void IRAM_ATTR sx127x_util_interrupt_fromisr(void *arg) {
   xTaskResumeFromISR(handle_interrupt);
 }
 
-void lora_util_interrupt_task(void *arg) {
+void sx127x_util_interrupt_task(void *arg) {
   while (1) {
     vTaskSuspend(NULL);
     sx127x_handle_interrupt((sx127x *) arg);
   }
 }
 
-void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device) {
+void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device, gpio_int_type_t type) {
   gpio_set_direction(gpio, GPIO_MODE_INPUT);
   gpio_pulldown_en(gpio);
   gpio_pullup_dis(gpio);
-  gpio_set_intr_type(gpio, GPIO_INTR_POSEDGE);
-  gpio_isr_handler_add(gpio, lora_util_interrupt_fromisr, (void *) device);
+  gpio_set_intr_type(gpio, type);
+  gpio_isr_handler_add(gpio, sx127x_util_interrupt_fromisr, (void *) device);
 }
 
-esp_err_t lora_util_init(sx127x **device) {
+esp_err_t sx127x_util_init(sx127x **device) {
   spi_bus_config_t config = {
       .mosi_io_num = CONFIG_PIN_MOSI,
       .miso_io_num = CONFIG_PIN_MISO,
@@ -88,7 +94,7 @@ esp_err_t lora_util_init(sx127x **device) {
   ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_cfg, &spi_device));
   ERROR_CHECK(sx127x_create(spi_device, &result));
 
-  BaseType_t task_code = xTaskCreatePinnedToCore(lora_util_interrupt_task, "handle interrupt", 8196, result, 2, &handle_interrupt, xPortGetCoreID());
+  BaseType_t task_code = xTaskCreatePinnedToCore(sx127x_util_interrupt_task, "handle interrupt", 8196, result, 2, &handle_interrupt, xPortGetCoreID());
   if (task_code != pdPASS) {
     ESP_LOGE(TAG, "can't create task %d", task_code);
     sx127x_destroy(result);
@@ -96,12 +102,15 @@ esp_err_t lora_util_init(sx127x **device) {
   }
 
   gpio_install_isr_service(0);
-  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO0, result);
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO0, result, GPIO_INTR_POSEDGE);
+  //tx require negedge, rx require posedge
+  //setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, result, GPIO_INTR_NEGEDGE);
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO2, result, GPIO_INTR_POSEDGE);
   *device = result;
   return SX127X_OK;
 }
 
-esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
+esp_err_t sx127x_util_lora_common(rx_request_t *request, sx127x *device) {
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
   ERROR_CHECK(sx127x_set_frequency(request->freq, device));
   ERROR_CHECK(sx127x_lora_reset_fifo(device));
@@ -154,43 +163,43 @@ esp_err_t lora_util_start_common(rx_request_t *request, sx127x *device) {
   return SX127X_OK;
 }
 
-esp_err_t lora_util_start_rx(rx_request_t *request, sx127x *device) {
-  ERROR_CHECK(lora_util_start_common(request, device));
-  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (request->gain << 5), device));
+esp_err_t sx127x_util_lora_rx(rx_request_t *req, sx127x *device) {
+  ERROR_CHECK(sx127x_util_lora_common(req, device));
+  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
-    ESP_LOGI(TAG, "rx started on %" PRIu64, request->freq);
+    ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
   }
   return result;
 }
 
-esp_err_t lora_util_start_tx(uint8_t *data, size_t data_length, rx_request_t *request, sx127x *device) {
-  ERROR_CHECK(lora_util_start_common(request, device));
-  ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, request->power, device));
-  if (request->useExplicitHeader) {
+esp_err_t sx127x_util_lora_tx(uint8_t *data, size_t data_length, rx_request_t *req, sx127x *device) {
+  ERROR_CHECK(sx127x_util_lora_common(req, device));
+  ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
+  if (req->useExplicitHeader) {
     sx127x_tx_header_t header = {
-        .enable_crc = request->useCrc,
-        .coding_rate = ((sx127x_cr_t) (request->cr - 4)) << 1
+        .enable_crc = req->useCrc,
+        .coding_rate = ((sx127x_cr_t) (req->cr - 4)) << 1
     };
     ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, device));
   }
   ERROR_CHECK(sx127x_lora_tx_set_for_transmission(data, data_length, device));
   int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
-    ESP_LOGI(TAG, "transmitting %zu bytes on %" PRIu64, data_length, request->freq);
+    ESP_LOGI(TAG, "transmitting %zu bytes on %" PRIu64, data_length, req->freq);
   }
   return result;
 }
 
-esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **frame) {
+esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **frame) {
   lora_frame_t *result = malloc(sizeof(lora_frame_t));
-  if (frame == NULL) {
+  if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
   result->data_length = data_length;
   result->data = malloc(sizeof(uint8_t) * result->data_length);
   if (result->data == NULL) {
-    lora_util_frame_destroy(result);
+    sx127x_util_frame_destroy(result);
     return ESP_ERR_NO_MEM;
   }
   memcpy(result->data, data, sizeof(uint8_t) * result->data_length);
@@ -227,15 +236,15 @@ esp_err_t lora_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_leng
   return ESP_OK;
 }
 
-uint64_t lora_util_get_min_frequency() {
+uint64_t sx127x_util_get_min_frequency() {
   return CONFIG_MIN_FREQUENCY;
 }
 
-uint64_t lora_util_get_max_frequency() {
+uint64_t sx127x_util_get_max_frequency() {
   return CONFIG_MAX_FREQUENCY;
 }
 
-void lora_util_frame_destroy(lora_frame_t *frame) {
+void sx127x_util_frame_destroy(lora_frame_t *frame) {
   if (frame == NULL) {
     return;
   }

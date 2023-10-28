@@ -66,12 +66,12 @@ void at_handler_handle_pull(void (*callback)(char *, size_t, void *ctx), void *c
     int code = at_util_hex2string(cur_frame->data, cur_frame->data_length, &data);
     if (code != 0) {
       at_handler_respond(handler, callback, ctx, "unable to convert to hex\r\n");
-      lora_util_frame_destroy(cur_frame);
+      sx127x_util_frame_destroy(cur_frame);
       continue;
     }
     at_handler_respond(handler, callback, ctx, "%s,%d,%g,%d,%" PRIu64 "\r\n", data, cur_frame->rssi, cur_frame->snr, cur_frame->frequency_error, cur_frame->timestamp);
     free(data);
-    lora_util_frame_destroy(cur_frame);
+    sx127x_util_frame_destroy(cur_frame);
   }
   at_util_vector_clear(handler->frames);
   at_handler_respond(handler, callback, ctx, "OK\r\n");
@@ -84,6 +84,10 @@ esp_err_t at_handler_add_frame(lora_frame_t *frame, at_handler_t *handler) {
 void at_handler_process(char *input, size_t input_length, void (*callback)(char *, size_t, void *ctx), void *ctx, at_handler_t *handler) {
   if (strcmp("AT", input) == 0) {
     at_handler_respond(handler, callback, ctx, "OK\r\n");
+    return;
+  }
+  if (strcmp("AT+GMR", input) == 0) {
+    at_handler_respond(handler, callback, ctx, "2.0\r\nOK\r\n");
     return;
   }
   if (strcmp("AT+DISPLAY?", input) == 0) {
@@ -99,11 +103,11 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+MINFREQ?", input) == 0) {
-    at_handler_respond(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_min_frequency());
+    at_handler_respond(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", sx127x_util_get_min_frequency());
     return;
   }
   if (strcmp("AT+MAXFREQ?", input) == 0) {
-    at_handler_respond(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", lora_util_get_max_frequency());
+    at_handler_respond(handler, callback, ctx, "%" PRIu64 "\r\nOK\r\n", sx127x_util_get_max_frequency());
     return;
   }
   if (strcmp("AT+BLUETOOTH?", input) == 0) {
@@ -186,7 +190,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   rx_request_t state;
   matched = sscanf(input, "AT+LORARX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 12) {
-    ERROR_CHECK("unable to rx", lora_util_start_rx(&state, handler->device));
+    ERROR_CHECK("unable to rx", sx127x_util_lora_rx(&state, handler->device));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("RX", handler->display);
     return;
@@ -201,7 +205,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     size_t binaryDataLength = 0;
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(message, &binaryData, &binaryDataLength));
     lora_at_display_set_status("TX", handler->display);
-    esp_err_t code = lora_util_start_tx(binaryData, binaryDataLength, &state, handler->device);
+    esp_err_t code = sx127x_util_lora_tx(binaryData, binaryDataLength, &state, handler->device);
     if (code != ESP_OK) {
       lora_at_display_set_status("IDLE", handler->display);
       at_handler_respond(handler, callback, ctx, "unable to tx: %s\r\nERROR\r\n", esp_err_to_name(code));
