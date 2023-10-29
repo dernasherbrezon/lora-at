@@ -96,7 +96,7 @@ void tx_callback(sx127x *device) {
 }
 
 void schedule_observation_and_go_ds(main_t *main) {
-  rx_request_t *req = NULL;
+  lora_config_t *req = NULL;
   if (main->config->bt_address != NULL) {
     esp_err_t code = ble_client_load_request(&req, main->bluetooth);
     if (code != ESP_OK) {
@@ -163,8 +163,9 @@ void app_main(void) {
 
   uint8_t *bt_address = NULL;
   uint8_t val[6];
+  size_t val_length = 0;
   if (lora_at_main->config->bt_address != NULL) {
-    ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(lora_at_main->config->bt_address, val));
+    ERROR_CHECK("unable to convert address to hex", at_util_string2hex(lora_at_main->config->bt_address, val, &val_length));
     bt_address = val;
   }
   ERROR_CHECK("bluetooth", ble_client_create(bt_address, &lora_at_main->bluetooth));

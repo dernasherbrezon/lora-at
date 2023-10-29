@@ -38,16 +38,38 @@ typedef struct {
   uint8_t useCrc;
   uint8_t useExplicitHeader;
   uint8_t length;
-} rx_request_t;
+} lora_config_t;
+
+typedef struct {
+  uint64_t startTimeMillis;
+  uint64_t endTimeMillis;
+  uint64_t currentTimeMillis;
+  uint64_t freq;
+  uint16_t bitrate;
+  uint16_t freq_deviation;
+  uint16_t preamble;
+  uint8_t *syncword;
+  uint8_t syncword_length;
+  uint8_t encoding;
+  uint8_t data_shaping;
+  uint8_t crc; // 0 - off, 1 - ccitt, 2 - ibm
+  int8_t power;
+  uint32_t rx_bandwidth;
+  uint32_t rx_afc_bandwidth;
+} fsk_config_t;
 #pragma pack(pop)
 
 esp_err_t sx127x_util_init(sx127x **device);
 
 esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **result);
 
-esp_err_t sx127x_util_lora_rx(rx_request_t *req, sx127x *device);
+esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device);
 
-esp_err_t sx127x_util_lora_tx(uint8_t *data, size_t data_length, rx_request_t *req, sx127x *device);
+esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t *req, sx127x *device);
+
+esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device);
+
+esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x *device);
 
 void sx127x_util_frame_destroy(lora_frame_t *frame);
 

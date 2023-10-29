@@ -43,7 +43,7 @@ struct ble_client_t {
   uint8_t *address;
   SemaphoreHandle_t semaphore;
   esp_err_t semaphore_result;
-  rx_request_t *last_request;
+  lora_config_t *last_request;
   bool controller_initialized;
 
   uint16_t conn_handle;
@@ -110,21 +110,21 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
     xSemaphoreGive(client->semaphore);
     return 0;
   }
-  client->last_request = malloc(sizeof(rx_request_t));
+  client->last_request = malloc(sizeof(lora_config_t));
   if (client->last_request == NULL) {
     client->semaphore_result = ESP_ERR_NO_MEM;
     xSemaphoreGive(client->semaphore);
     return 0;
   }
 
-  if (attr->om->om_len != sizeof(rx_request_t)) {
-    ESP_LOGE(TAG, "not enough bytes. expected %d", sizeof(rx_request_t));
+  if (attr->om->om_len != sizeof(lora_config_t)) {
+    ESP_LOGE(TAG, "not enough bytes. expected %d", sizeof(lora_config_t));
     client->semaphore_result = ESP_ERR_NO_MEM;
     xSemaphoreGive(client->semaphore);
     return 0;
   }
 
-  memcpy(client->last_request, attr->om->om_data, sizeof(rx_request_t));
+  memcpy(client->last_request, attr->om->om_data, sizeof(lora_config_t));
   client->last_request->startTimeMillis = ntohll(client->last_request->startTimeMillis);
   client->last_request->endTimeMillis = ntohll(client->last_request->endTimeMillis);
   client->last_request->currentTimeMillis = ntohll(client->last_request->currentTimeMillis);
@@ -365,7 +365,7 @@ void ble_client_disconnect(ble_client *client) {
   client->characteristic_found = false;
 }
 
-void ble_client_log_request(rx_request_t *req) {
+void ble_client_log_request(lora_config_t *req) {
   char buf[80];
   struct tm *ts;
   const char *format = "%Y-%m-%d %H:%M:%S";
@@ -385,7 +385,7 @@ void ble_client_log_request(rx_request_t *req) {
            req->useCrc, req->useExplicitHeader);
 }
 
-esp_err_t ble_client_load_request(rx_request_t **request, ble_client *client) {
+esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
   if (!client->characteristic_found) {
     ERROR_CHECK(ble_client_connect(client->address, client));
   }

@@ -187,7 +187,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     }
     return;
   }
-  rx_request_t state;
+  lora_config_t state;
   matched = sscanf(input, "AT+LORARX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 12) {
     ERROR_CHECK("unable to rx", sx127x_util_lora_rx(&state, handler->device));
@@ -196,16 +196,14 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
 
-  char message[514];
-  memset(message, '\0', sizeof(message));
-  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader,
+  memset(handler->message, '\0', sizeof(handler->message));
+  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", handler->message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc,
+                   &state.useExplicitHeader,
                    &state.length);
   if (matched == 13) {
-    uint8_t *binaryData = NULL;
-    size_t binaryDataLength = 0;
-    ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(message, &binaryData, &binaryDataLength));
+    ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
     lora_at_display_set_status("TX", handler->display);
-    esp_err_t code = sx127x_util_lora_tx(binaryData, binaryDataLength, &state, handler->device);
+    esp_err_t code = sx127x_util_lora_tx(handler->message_hex, handler->message_hex_length, &state, handler->device);
     if (code != ESP_OK) {
       lora_at_display_set_status("IDLE", handler->display);
       at_handler_respond(handler, callback, ctx, "unable to tx: %s\r\nERROR\r\n", esp_err_to_name(code));
@@ -214,18 +212,57 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     // will be sent from tx callback when message was actually sent
     // this will allow client applications to send next message
     // only when the previous was sent
-//    callback("OK\r\n", ctx);
+    // callback("OK\r\n", ctx);
     return;
   }
-  memset(message, '\0', sizeof(message));
-  matched = sscanf(input, "AT+BLUETOOTH=%[^,]", message);
+
+  fsk_config_t fsk_config;
+  memset(handler->syncword, '\0', sizeof(handler->syncword));
+  matched = sscanf(input, "AT+FSKRX=%" PRIu64 ",%hu,%hu,%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.power,
+                   &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
+  if (matched == 11) {
+    ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
+    fsk_config.syncword = handler->syncword_hex;
+    fsk_config.syncword_length = handler->syncword_hex_length;
+    ERROR_CHECK("unable to rx", sx127x_util_fsk_rx(&fsk_config, handler->device));
+    at_handler_respond(handler, callback, ctx, "OK\r\n");
+    lora_at_display_set_status("RX", handler->display);
+    return;
+  }
+
+  memset(handler->message, '\0', sizeof(handler->message));
+  memset(handler->syncword, '\0', sizeof(handler->syncword));
+  matched = sscanf(input, "AT+FSKTX=%[^,],%" PRIu64 ",%hu,%hu,%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, handler->message, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping,
+                   &fsk_config.crc,
+                   &fsk_config.power, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
+  if (matched == 12) {
+    ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
+    fsk_config.syncword = handler->syncword_hex;
+    fsk_config.syncword_length = handler->syncword_hex_length;
+    // set tx before actually running function because if the race with tx_Callback
+    ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
+    lora_at_display_set_status("TX", handler->display);
+    esp_err_t code = sx127x_util_fsk_tx(handler->message_hex, handler->message_hex_length, &fsk_config, handler->device);
+    if (code != ESP_OK) {
+      lora_at_display_set_status("IDLE", handler->display);
+      at_handler_respond(handler, callback, ctx, "unable to tx: %s\r\nERROR\r\n", esp_err_to_name(code));
+      return;
+    }
+    // will be sent from tx callback when message was actually sent
+    // this will allow client applications to send next message
+    // only when the previous was sent
+    // callback("OK\r\n", ctx);
+    return;
+  }
+
+  memset(handler->message, '\0', sizeof(handler->message));
+  matched = sscanf(input, "AT+BLUETOOTH=%[^,]", handler->message);
   if (matched == 1) {
-    size_t message_length = strlen(message);
+    size_t message_length = strlen(handler->message);
     if (message_length == 17) {
-      uint8_t val[6];
-      ERROR_CHECK("unable to convert address to hex", at_util_string2hex_allocated(message, val));
-      ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(val, handler->bluetooth));
-      ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(message, handler->at_config));
+      ERROR_CHECK("unable to convert address to hex", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
+      ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(handler->message_hex, handler->bluetooth));
+      ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(handler->message, handler->at_config));
       at_handler_respond(handler, callback, ctx, "OK\r\n");
     } else {
       at_handler_respond(handler, callback, ctx, "invalid address format. expected: 00:00:00:00:00:00\r\nERROR\r\n");

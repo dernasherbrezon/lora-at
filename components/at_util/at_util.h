@@ -5,11 +5,9 @@
 #include <stddef.h>
 #include <esp_err.h>
 
-esp_err_t at_util_string2hex(const char *str, uint8_t **output, size_t *output_len);
+esp_err_t at_util_string2hex(const char *str, uint8_t *output, size_t *output_len);
 
-esp_err_t at_util_string2hex_allocated(const char *str, uint8_t *output);
-
-esp_err_t at_util_hex2string(const uint8_t *input, size_t input_len, char **output);
+esp_err_t at_util_hex2string(const uint8_t *input, size_t input_len, char *output);
 
 typedef struct at_util_vector {
   void *data;

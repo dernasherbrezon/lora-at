@@ -18,6 +18,15 @@ typedef struct {
   sx127x *device;
   ble_client *bluetooth;
   at_timer_t *timer;
+
+  char message[514];
+  uint8_t message_hex[255];
+  size_t message_hex_length;
+
+  char syncword[18];
+  uint8_t syncword_hex[16];
+  size_t syncword_hex_length;
+
 } at_handler_t;
 
 esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_timer_t *timer, at_handler_t **handler);

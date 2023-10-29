@@ -110,7 +110,7 @@ esp_err_t sx127x_util_init(sx127x **device) {
   return SX127X_OK;
 }
 
-esp_err_t sx127x_util_lora_common(rx_request_t *request, sx127x *device) {
+esp_err_t sx127x_util_lora_common(lora_config_t *request, sx127x *device) {
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
   ERROR_CHECK(sx127x_set_frequency(request->freq, device));
   ERROR_CHECK(sx127x_lora_reset_fifo(device));
@@ -163,7 +163,7 @@ esp_err_t sx127x_util_lora_common(rx_request_t *request, sx127x *device) {
   return SX127X_OK;
 }
 
-esp_err_t sx127x_util_lora_rx(rx_request_t *req, sx127x *device) {
+esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_lora_common(req, device));
   ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
@@ -173,7 +173,7 @@ esp_err_t sx127x_util_lora_rx(rx_request_t *req, sx127x *device) {
   return result;
 }
 
-esp_err_t sx127x_util_lora_tx(uint8_t *data, size_t data_length, rx_request_t *req, sx127x *device) {
+esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_lora_common(req, device));
   ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
   if (req->useExplicitHeader) {
@@ -186,7 +186,65 @@ esp_err_t sx127x_util_lora_tx(uint8_t *data, size_t data_length, rx_request_t *r
   ERROR_CHECK(sx127x_lora_tx_set_for_transmission(data, data_length, device));
   int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
-    ESP_LOGI(TAG, "transmitting %zu bytes on %" PRIu64, data_length, req->freq);
+    ESP_LOGI(TAG, "transmitting %d bytes on %" PRIu64, data_length, req->freq);
+  }
+  return result;
+}
+
+esp_err_t sx127x_util_common_fsk(fsk_config_t *config, sx127x *device) {
+  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device));
+  ESP_ERROR_CHECK(sx127x_set_frequency(config->freq, device));
+  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_FSK, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_bitrate(config->bitrate, device));
+  ESP_ERROR_CHECK(sx127x_fsk_set_fdev(config->freq_deviation, device));
+  ESP_ERROR_CHECK(sx127x_set_preamble_length(config->preamble, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_syncword(config->syncword, config->syncword_length, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_address_filtering(SX127X_FILTER_NONE, 0, 0, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_packet_encoding((config->encoding << 5), device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_packet_format(SX127X_VARIABLE, 255, device));
+  ESP_ERROR_CHECK(sx127x_fsk_set_data_shaping((config->data_shaping << 5), SX127X_PA_RAMP_10, device));
+  sx127x_crc_type_t crc;
+  switch (config->crc) {
+    case 0:
+      crc = SX127X_CRC_NONE;
+      break;
+    case 1:
+      crc = SX127X_CRC_CCITT;
+      break;
+    case 2:
+      crc = SX127X_CRC_IBM;
+      break;
+    default:
+      return ESP_ERR_INVALID_ARG;
+  }
+  ESP_ERROR_CHECK(sx127x_fsk_ook_set_crc(crc, device));
+  return SX127X_OK;
+}
+
+esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device) {
+  ESP_ERROR_CHECK(sx127x_util_common_fsk(req, device));
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device, GPIO_INTR_POSEDGE);
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_afc_auto(true, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_afc_bandwidth(req->rx_afc_bandwidth, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_bandwidth(req->rx_bandwidth, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_trigger(SX127X_RX_TRIGGER_RSSI_PREAMBLE, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_rssi_config(SX127X_8, 0, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_rx_set_preamble_detector(true, 2, 0x0A, device));
+  int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_FSK, device);
+  if (result == SX127X_OK) {
+    ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
+  }
+  return result;
+}
+
+esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x *device) {
+  ESP_ERROR_CHECK(sx127x_util_common_fsk(req, device));
+  setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device, GPIO_INTR_NEGEDGE);
+  ESP_ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
+  ESP_ERROR_CHECK(sx127x_fsk_ook_tx_set_for_transmission(data, sizeof(data), device));
+  int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_FSK, device);
+  if (result == SX127X_OK) {
+    ESP_LOGI(TAG, "transmitting %d bytes on %" PRIu64, data_length, req->freq);
   }
   return result;
 }
