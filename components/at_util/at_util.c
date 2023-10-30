@@ -98,6 +98,7 @@ void at_util_vector_get(uint16_t index, void **output, at_util_vector_t *vector)
       *output = last_node->next->data;
       return;
     }
+    last_node = last_node->next;
     current_index++;
   }
   *output = NULL;

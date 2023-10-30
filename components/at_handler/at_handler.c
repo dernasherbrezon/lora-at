@@ -62,15 +62,13 @@ void at_handler_handle_pull(void (*callback)(char *, size_t, void *ctx), void *c
   for (size_t i = 0; i < at_util_vector_size(handler->frames); i++) {
     lora_frame_t *cur_frame = NULL;
     at_util_vector_get(i, (void *) &cur_frame, handler->frames);
-    char *data = NULL;
-    int code = at_util_hex2string(cur_frame->data, cur_frame->data_length, &data);
+    int code = at_util_hex2string(cur_frame->data, cur_frame->data_length, handler->message);
     if (code != 0) {
       at_handler_respond(handler, callback, ctx, "unable to convert to hex\r\n");
       sx127x_util_frame_destroy(cur_frame);
       continue;
     }
-    at_handler_respond(handler, callback, ctx, "%s,%d,%g,%d,%" PRIu64 "\r\n", data, cur_frame->rssi, cur_frame->snr, cur_frame->frequency_error, cur_frame->timestamp);
-    free(data);
+    at_handler_respond(handler, callback, ctx, "%s,%d,%g,%d,%" PRIu64 "\r\n", handler->message, cur_frame->rssi, cur_frame->snr, cur_frame->frequency_error, cur_frame->timestamp);
     sx127x_util_frame_destroy(cur_frame);
   }
   at_util_vector_clear(handler->frames);
@@ -119,13 +117,11 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     if (code != ESP_OK) {
       at_handler_respond(handler, callback, ctx, "Unable to read bluetooth address: %s\r\nnERROR\r\n", esp_err_to_name(code));
     } else {
-      char *output = NULL;
-      code = at_util_hex2string(mac, sizeof(mac), &output);
+      code = at_util_hex2string(mac, sizeof(mac), handler->message);
       if (code != ESP_OK) {
         at_handler_respond(handler, callback, ctx, "Unable to convert MAC address to string: %s\r\nnERROR\r\n", esp_err_to_name(code));
       } else {
-        at_handler_respond(handler, callback, ctx, "LoraAt: %.2s:%.2s:%.2s:%.2s:%.2s:%.2s\r\nOK\r\n", output, output + 2, output + 4, output + 6, output + 8, output + 10);
-        free(output);
+        at_handler_respond(handler, callback, ctx, "LoraAt: %.2s:%.2s:%.2s:%.2s:%.2s:%.2s\r\nOK\r\n", handler->message, handler->message + 2, handler->message + 4, handler->message + 6, handler->message + 8, handler->message + 10);
       }
     }
     return;
@@ -145,7 +141,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   if (strcmp("AT+STOPRX", input) == 0) {
     ERROR_CHECK("unable to stop RX", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
     at_handler_handle_pull(callback, ctx, handler);
-    lora_at_display_set_status("IDLE", handler->display);
+    ERROR_CHECK("unable to set display status", lora_at_display_set_status("IDLE", handler->display));
     return;
   }
   if (strcmp("AT+PULL", input) == 0) {

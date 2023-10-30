@@ -64,6 +64,10 @@ TEST_CASE("vector", "[at_util]") {
   TEST_ASSERT_NOT_NULL(result);
   TEST_ASSERT_EQUAL_STRING(item.data, result->data);
   TEST_ASSERT_EQUAL(item.timestamp, result->timestamp);
+  at_util_vector_get(1, (void *) &result, vector);
+  TEST_ASSERT_NOT_NULL(result);
+  TEST_ASSERT_EQUAL_STRING(item2.data, result->data);
+  TEST_ASSERT_EQUAL(item2.timestamp, result->timestamp);
   at_util_vector_clear(vector);
   TEST_ASSERT_EQUAL(0, at_util_vector_size(vector));
   at_util_vector_destroy(vector);

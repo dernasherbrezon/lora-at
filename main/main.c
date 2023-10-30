@@ -192,6 +192,8 @@ void app_main(void) {
     sx127x_handle_interrupt(lora_at_main->device); // should always put esp32 into deep sleep. so can return from here
     return;
   }
+  // reset whatever state was before
+  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device);
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "sx127x initialized");
