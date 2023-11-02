@@ -4,6 +4,21 @@ menu "Lora-AT"
         default 0
         help
             ESP32 has several UART buses: 0,1,2. Most likely you need to use default - 0.
+    config AT_UART_RX_PIN
+        int "RX pin for UART bus"
+        default -1
+        help
+            "-1" mean "use default pin for selected UART_PORT_NUM". Can be re-assigned to any other GPIO pin on the board
+    config AT_UART_TX_PIN
+        int "TX pin for UART bus"
+        default -1
+        help
+            "-1" mean "use default pin for selected UART_PORT_NUM". Can be re-assigned to any other GPIO pin on the board
+    config AT_UART_TX_PIN
+        int "UART bus to use for AT commands"
+        default 0
+        help
+            ESP32 has several UART buses: 0,1,2. Most likely you need to use default - 0.
     config AT_UART_BAUD_RATE
         int "UART baud rate"
         default 115200

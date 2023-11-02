@@ -17,6 +17,14 @@
 #define CONFIG_AT_UART_BUFFER_LENGTH 1024
 #endif
 
+#ifndef CONFIG_AT_UART_RX_PIN
+#define CONFIG_AT_UART_RX_PIN UART_PIN_NO_CHANGE
+#endif
+
+#ifndef CONFIG_AT_UART_TX_PIN
+#define CONFIG_AT_UART_TX_PIN UART_PIN_NO_CHANGE
+#endif
+
 #define ERROR_CHECK_ON_CREATE(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -53,7 +61,7 @@ esp_err_t uart_at_handler_create(at_handler_t *at_handler, at_timer_t *timer, ua
   };
   ERROR_CHECK_ON_CREATE(uart_driver_install(result->uart_port_num, CONFIG_AT_UART_BUFFER_LENGTH * 2, CONFIG_AT_UART_BUFFER_LENGTH * 2, 20, &result->uart_queue, 0));
   ERROR_CHECK_ON_CREATE(uart_param_config(result->uart_port_num, &uart_config));
-  ERROR_CHECK_ON_CREATE(uart_set_pin(result->uart_port_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+  ERROR_CHECK_ON_CREATE(uart_set_pin(result->uart_port_num, CONFIG_AT_UART_TX_PIN, CONFIG_AT_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
   ERROR_CHECK_ON_CREATE(uart_enable_pattern_det_baud_intr(result->uart_port_num, '\n', 1, 9, 0, 0));
   ERROR_CHECK_ON_CREATE(uart_pattern_queue_reset(result->uart_port_num, 20));
   *handler = result;
