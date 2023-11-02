@@ -25,7 +25,7 @@ esp_err_t at_util_string2hex(const char *str, uint8_t *output, size_t *output_le
       continue;
     }
     curByte *= 16;
-    if (curChar > '0' && curChar < '9') {
+    if (curChar >= '0' && curChar <= '9') {
       curByte += curChar - '0';
     } else if (curChar >= 'A' && curChar <= 'F') {
       curByte += (curChar - 'A') + 10;

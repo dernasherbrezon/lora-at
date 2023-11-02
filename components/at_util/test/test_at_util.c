@@ -13,7 +13,7 @@ void assert_input(const char *input) {
   uint8_t output[514];
   size_t output_len = 0;
   TEST_ASSERT_EQUAL_INT(0, at_util_string2hex(input, output, &output_len));
-  uint8_t expected[] = {0xca, 0xfe};
+  uint8_t expected[] = {0xca, 0xfe, 0x10};
   size_t expected_len = sizeof(expected) / sizeof(uint8_t);
   // there is no size_t comparison in unity.h
   TEST_ASSERT_TRUE(expected_len == output_len);
@@ -27,13 +27,13 @@ void assert_invalid_input(const char *input) {
 }
 
 TEST_CASE("string2hex", "[at_util]") {
-  assert_input("cafe");
-  assert_input("ca fe");
-  assert_input("   ca fe        ");
-  assert_input("cA Fe");
-  assert_input("cA:Fe");
-  assert_invalid_input("caxe");
-  assert_invalid_input("caf ");
+  assert_input("cafe10");
+  assert_input("ca fe 10");
+  assert_input("   ca fe        10  ");
+  assert_input("cA Fe 10");
+  assert_input("cA:Fe:10");
+  assert_invalid_input("caxe10");
+  assert_invalid_input("caf 10");
 }
 
 TEST_CASE("hex2string", "[at_util]") {
