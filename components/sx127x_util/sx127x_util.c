@@ -13,6 +13,10 @@
 #include <sys/time.h>
 #include <sdkconfig.h>
 
+#ifndef CONFIG_PIN_RESET
+#define CONFIG_PIN_RESET -1
+#endif
+
 #ifndef CONFIG_PIN_CS
 #define CONFIG_PIN_CS 18
 #endif
@@ -194,7 +198,6 @@ esp_err_t sx127x_util_common_fsk(fsk_config_t *config, sx127x *device) {
   ERROR_CHECK(sx127x_set_frequency(config->freq, device));
   ERROR_CHECK(sx127x_fsk_ook_set_bitrate(config->bitrate, device));
   ERROR_CHECK(sx127x_fsk_set_fdev(config->freq_deviation, device));
-  ERROR_CHECK(sx127x_set_preamble_length(config->preamble, device));
   ERROR_CHECK(sx127x_fsk_ook_set_syncword(config->syncword, config->syncword_length, device));
   ERROR_CHECK(sx127x_fsk_ook_set_address_filtering(SX127X_FILTER_NONE, 0, 0, device));
   ERROR_CHECK(sx127x_fsk_ook_set_packet_encoding((config->encoding << 5), device));
@@ -236,6 +239,7 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device) {
 
 esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_common_fsk(req, device));
+  ERROR_CHECK(sx127x_set_preamble_length(req->preamble, device));
   setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device, GPIO_INTR_NEGEDGE);
   ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_FSK, device));
@@ -247,7 +251,7 @@ esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *re
   return result;
 }
 
-esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, lora_frame_t **frame) {
+esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, sx127x_modulation_t active_mode, lora_frame_t **frame) {
   lora_frame_t *result = malloc(sizeof(lora_frame_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
@@ -277,11 +281,15 @@ esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_le
     result->rssi = -255;
   }
   float snr;
-  code = sx127x_lora_rx_get_packet_snr(device, &snr);
-  if (code == ESP_OK) {
-    result->snr = snr;
+  if (active_mode == SX127x_MODULATION_LORA) {
+    code = sx127x_lora_rx_get_packet_snr(device, &snr);
+    if (code == ESP_OK) {
+      result->snr = snr;
+    } else {
+      ESP_LOGE(TAG, "unable to get snr: %s", esp_err_to_name(code));
+      result->snr = -255;
+    }
   } else {
-    ESP_LOGE(TAG, "unable to get snr: %s", esp_err_to_name(code));
     result->snr = -255;
   }
   struct timeval tm_vl;
@@ -298,6 +306,19 @@ uint64_t sx127x_util_get_min_frequency() {
 
 uint64_t sx127x_util_get_max_frequency() {
   return CONFIG_MAX_FREQUENCY;
+}
+
+esp_err_t sx127x_util_reset() {
+  if (CONFIG_PIN_RESET == -1) {
+    return ESP_OK;
+  }
+  ERROR_CHECK(gpio_set_direction((gpio_num_t) CONFIG_PIN_RESET, GPIO_MODE_OUTPUT));
+  ERROR_CHECK(gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 0));
+  vTaskDelay(1 / portTICK_PERIOD_MS);
+  ERROR_CHECK(gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 1));
+  vTaskDelay(5 / portTICK_PERIOD_MS);
+  ESP_LOGI(TAG, "sx127x was reset");
+  return ESP_OK;
 }
 
 void sx127x_util_frame_destroy(lora_frame_t *frame) {

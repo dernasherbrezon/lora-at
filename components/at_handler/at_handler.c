@@ -86,12 +86,30 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+GMR", input) == 0) {
+    //Should be taken from esp-idf default app version?
     at_handler_respond(handler, callback, ctx, "2.0\r\nOK\r\n");
     return;
   }
   if (strcmp("AT+STATE", input) == 0) {
-    sx127x_dump_registers(handler->device);
+    uint8_t registers[0x80];
+    sx127x_dump_registers(registers, handler->device);
+    for (int i = 0; i < sizeof(registers); i++) {
+      if (i != 0) {
+        printf(",");
+      }
+      printf("0x%x", registers[i]);
+    }
+    printf("\n");
     at_handler_respond(handler, callback, ctx, "OK\r\n");
+    return;
+  }
+  if (strcmp("AT+RESET", input) == 0) {
+    esp_err_t code = sx127x_util_reset();
+    if (code != ESP_OK) {
+      at_handler_respond(handler, callback, ctx, "Unable to reset sx127x chip: %s\r\nnERROR\r\n", esp_err_to_name(code));
+    } else {
+      at_handler_respond(handler, callback, ctx, "OK\r\n");
+    }
     return;
   }
   if (strcmp("AT+DISPLAY?", input) == 0) {

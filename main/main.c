@@ -10,12 +10,6 @@
 #include <esp_sleep.h>
 #include <at_timer.h>
 #include <sys/time.h>
-#include <driver/gpio.h>
-#include <sdkconfig.h>
-
-#ifndef CONFIG_PIN_RESET
-#define CONFIG_PIN_RESET -1
-#endif
 
 static const char *TAG = "lora-at";
 
@@ -60,7 +54,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     remaining_micros = 0;
   }
   lora_frame_t *frame = NULL;
-  esp_err_t code = sx127x_util_read_frame(device, data, data_length, &frame);
+  esp_err_t code = sx127x_util_read_frame(device, data, data_length, SX127x_MODULATION_LORA, &frame);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to read frame: %s", esp_err_to_name(code));
     //enter deep sleep
@@ -82,7 +76,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   lora_frame_t *frame = NULL;
-  ERROR_CHECK("lora frame", sx127x_util_read_frame(device, data, data_length, &frame));
+  ERROR_CHECK("lora frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {
     esp_err_t code = ble_client_send_frame(frame, lora_at_main->bluetooth);
@@ -199,13 +193,9 @@ void app_main(void) {
     return;
   }
   // reset whatever state was before
-  if (CONFIG_PIN_RESET != -1) {
-    ERROR_CHECK("gpio_set_direction", gpio_set_direction((gpio_num_t) CONFIG_PIN_RESET, GPIO_MODE_OUTPUT));
-    ERROR_CHECK("gpio_set_level 0", gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 0));
-    vTaskDelay(1 / portTICK_PERIOD_MS);
-    ERROR_CHECK("gpio_set_level 1", gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 1));
-    vTaskDelay(5 / portTICK_PERIOD_MS);
-    ESP_LOGI(TAG, "sx127x was reset");
+  esp_err_t code = sx127x_util_reset();
+  if (code != ESP_OK) {
+    ESP_LOGE(TAG, "unable to reset sx127x chip");
   }
 
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
