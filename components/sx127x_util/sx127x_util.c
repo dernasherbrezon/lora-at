@@ -13,6 +13,8 @@
 #include <sys/time.h>
 #include <sdkconfig.h>
 
+#define MAX_LOWER_BAND_HZ 525000000
+
 #ifndef CONFIG_PIN_RESET
 #define CONFIG_PIN_RESET -1
 #endif
@@ -117,7 +119,6 @@ esp_err_t sx127x_util_init(sx127x **device) {
 esp_err_t sx127x_util_lora_common(lora_config_t *request, sx127x *device) {
   ERROR_CHECK(sx127x_set_frequency(request->freq, device));
   ERROR_CHECK(sx127x_lora_reset_fifo(device));
-  ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
   sx127x_bw_t bw;
   if (request->bw == 7800) {
     bw = SX127x_BW_7800;
@@ -167,6 +168,11 @@ esp_err_t sx127x_util_lora_common(lora_config_t *request, sx127x *device) {
 
 esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_lora_common(req, device));
+  if (req->freq > MAX_LOWER_BAND_HZ) {
+    ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
+  } else {
+    ERROR_CHECK(sx127x_rx_set_lna_boost_hf(false, device));
+  }
   ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
@@ -230,6 +236,12 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_fsk_ook_rx_set_trigger(SX127X_RX_TRIGGER_RSSI_PREAMBLE, device));
   ERROR_CHECK(sx127x_fsk_ook_rx_set_rssi_config(SX127X_8, 0, device));
   ERROR_CHECK(sx127x_fsk_ook_rx_set_preamble_detector(true, 2, 0x0A, device));
+  if (req->freq > MAX_LOWER_BAND_HZ) {
+    ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
+  } else {
+    ERROR_CHECK(sx127x_rx_set_lna_boost_hf(false, device));
+  }
+  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_FSK, device);
   if (result == SX127X_OK) {
     ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);

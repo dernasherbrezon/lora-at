@@ -53,6 +53,7 @@ typedef struct {
   uint8_t encoding;
   uint8_t data_shaping;
   uint8_t crc; // 0 - off, 1 - ccitt, 2 - ibm
+  uint8_t gain;
   int8_t power;
   uint32_t rx_bandwidth;
   uint32_t rx_afc_bandwidth;
