@@ -10,6 +10,12 @@
 #include <esp_sleep.h>
 #include <at_timer.h>
 #include <sys/time.h>
+#include <driver/gpio.h>
+#include <sdkconfig.h>
+
+#ifndef CONFIG_PIN_RESET
+#define CONFIG_PIN_RESET -1
+#endif
 
 static const char *TAG = "lora-at";
 
@@ -193,7 +199,15 @@ void app_main(void) {
     return;
   }
   // reset whatever state was before
-  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device);
+  if (CONFIG_PIN_RESET != -1) {
+    ERROR_CHECK("gpio_set_direction", gpio_set_direction((gpio_num_t) CONFIG_PIN_RESET, GPIO_MODE_OUTPUT));
+    ERROR_CHECK("gpio_set_level 0", gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 0));
+    vTaskDelay(1 / portTICK_PERIOD_MS);
+    ERROR_CHECK("gpio_set_level 1", gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 1));
+    vTaskDelay(5 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "sx127x was reset");
+  }
+
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
   ESP_LOGI(TAG, "sx127x initialized");
