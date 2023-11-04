@@ -62,6 +62,13 @@ menu "Lora-AT"
         default 32
         help
              DIO2 (Digital IO) pin for communicating with sx127x chip. Used in FSK/OOK mode
+    config PIN_RESET
+        int "sx127x reset pin"
+        default 23
+        help
+             Pin to reset sx127x transceiver. The chip will be reset on startup (POWERON_RESET).
+             If "-1" then reset won't be performed. However keep in mind that chip might be in the
+             unknown state.
     config MIN_FREQUENCY
         int "Minimum frequency"
         default 25000000

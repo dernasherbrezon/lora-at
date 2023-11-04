@@ -111,8 +111,6 @@ esp_err_t sx127x_util_init(sx127x **device) {
 }
 
 esp_err_t sx127x_util_lora_common(lora_config_t *request, sx127x *device) {
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
   ERROR_CHECK(sx127x_set_frequency(request->freq, device));
   ERROR_CHECK(sx127x_lora_reset_fifo(device));
   ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
@@ -193,8 +191,6 @@ esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t 
 }
 
 esp_err_t sx127x_util_common_fsk(fsk_config_t *config, sx127x *device) {
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device));
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device));
   ERROR_CHECK(sx127x_set_frequency(config->freq, device));
   ERROR_CHECK(sx127x_fsk_ook_set_bitrate(config->bitrate, device));
   ERROR_CHECK(sx127x_fsk_set_fdev(config->freq_deviation, device));
