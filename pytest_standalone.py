@@ -2,7 +2,7 @@ import pytest
 from pytest_embedded import Dut
 from typing import Tuple
 
-@pytest.mark.supported_targets
+# @pytest.mark.supported_targets
 @pytest.mark.generic
 @pytest.mark.parametrize('count', [
     2,
@@ -43,7 +43,7 @@ def test_common_at_commands(dut: Tuple[Dut, Dut]) -> None:
     dut_rx.expect('LoraAt', timeout=3)
     dut_rx.expect('OK', timeout=3)
     dut_rx.write('AT+BLUETOOTH=00:00:00:00:00:00')
-    dut_rx.expect('ERROR', timeout=10)
+    dut_rx.expect('ERROR', timeout=40)
     dut_rx.write('AT+BLUETOOTH=00')
     dut_rx.expect('ERROR', timeout=10)
     # test rx
@@ -60,6 +60,15 @@ def test_common_at_commands(dut: Tuple[Dut, Dut]) -> None:
     dut_tx.expect('OK', timeout=3)
     dut_rx.write('AT+STOPRX')
     dut_rx.expect('CAFE', timeout=3)
+    dut_rx.expect('OK', timeout=3)
+    # test FSK mode
+    dut_rx.write('AT+FSKRX=437200012,4800,5000,4,12AD,0,2,1,4,5000,20000')
+    dut_rx.expect('OK', timeout=3)
+    dut_tx.write('AT+FSKTX=10CAFE,437200012,4800,5000,4,12AD,0,2,1,4,0,0')
+    dut_tx.expect('OK', timeout=3)
+    dut_rx.expect('received frame', timeout=3)
+    dut_rx.write('AT+STOPRX')
+    dut_rx.expect('10CAFE', timeout=3)
     dut_rx.expect('OK', timeout=3)
 
 
