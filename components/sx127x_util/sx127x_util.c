@@ -241,7 +241,8 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device) {
   } else {
     ERROR_CHECK(sx127x_rx_set_lna_boost_hf(false, device));
   }
-  ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
+  // manual gain don't start FSK Receiver
+  ERROR_CHECK(sx127x_rx_set_lna_gain(SX127x_LNA_GAIN_AUTO, device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_FSK, device);
   if (result == SX127X_OK) {
     ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
