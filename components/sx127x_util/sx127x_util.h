@@ -63,7 +63,7 @@ esp_err_t sx127x_util_init(sx127x **device);
 
 esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, sx127x_modulation_t active_mode, lora_frame_t **result);
 
-esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device);
+esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x *device);
 
 esp_err_t sx127x_util_reset();
 

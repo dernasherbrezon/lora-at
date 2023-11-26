@@ -41,6 +41,11 @@ static void uart_rx_task(void *arg) {
   uart_at_handler_process(main->uart_at_handler);
 }
 
+void main_deep_sleep_enter(uint64_t remaining_micros) {
+  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device);
+  deep_sleep_enter(remaining_micros);
+}
+
 static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_length) {
   struct timeval tm_vl;
   gettimeofday(&tm_vl, NULL);
@@ -95,28 +100,39 @@ void tx_callback(sx127x *device) {
   lora_at_display_set_status("IDLE", lora_at_main->display);
 }
 
+void cad_callback(sx127x *device, int cad_detected) {
+  if (cad_detected == 0) {
+    ESP_LOGD(TAG, "cad not detected");
+    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
+    return;
+  }
+  // put into RX mode first to handle interrupt as soon as possible
+  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device));
+  ESP_LOGD(TAG, "cad detected\n");
+}
+
 void schedule_observation_and_go_ds(main_t *main) {
   lora_config_t *req = NULL;
   if (main->config->bt_address != NULL) {
     esp_err_t code = ble_client_load_request(&req, main->bluetooth);
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to read rx request: %s", esp_err_to_name(code));
-      deep_sleep_enter(main->config->deep_sleep_period_micros);
+      main_deep_sleep_enter(main->config->deep_sleep_period_micros);
       return;
     }
   }
   if (req == NULL) {
     ESP_LOGI(TAG, "no active requests");
-    deep_sleep_enter(main->config->deep_sleep_period_micros);
+    main_deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   if (req->currentTimeMillis > req->endTimeMillis || req->startTimeMillis > req->endTimeMillis) {
     ESP_LOGE(TAG, "incorrect schedule found on server current: %" PRIu64 " start: %" PRIu64 " end: %" PRIu64, req->currentTimeMillis, req->startTimeMillis, req->endTimeMillis);
-    deep_sleep_enter(main->config->deep_sleep_period_micros);
+    main_deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   if (req->startTimeMillis > req->currentTimeMillis) {
-    deep_sleep_enter((req->startTimeMillis - req->currentTimeMillis) * 1000);
+    main_deep_sleep_enter((req->startTimeMillis - req->currentTimeMillis) * 1000);
     return;
   }
   // set time before doing rx
@@ -126,10 +142,10 @@ void schedule_observation_and_go_ds(main_t *main) {
   tm_vl.tv_usec = 0;
   settimeofday(&tm_vl, NULL);
   // observation actually should start now
-  esp_err_t code = sx127x_util_lora_rx(req, main->device);
+  esp_err_t code = sx127x_util_lora_rx(SX127x_MODE_RX_CONT, req, main->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "cannot start rx: %s", esp_err_to_name(code));
-    deep_sleep_enter(main->config->deep_sleep_period_micros);
+    main_deep_sleep_enter(main->config->deep_sleep_period_micros);
     return;
   }
   rx_end_micros = req->endTimeMillis * 1000;
@@ -175,10 +191,10 @@ void app_main(void) {
     ESP_LOGI(TAG, "bluetooth not initialized");
   }
 
-  ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
     ESP_LOGI(TAG, "woken up by timer. loading new rx request");
+    ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
     esp_err_t code = sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device);
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to put sx127x to sleep: %s", esp_err_to_name(code));
@@ -188,6 +204,7 @@ void app_main(void) {
   }
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     ESP_LOGI(TAG, "woken up by incoming message. loading the message");
+    ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
     sx127x_rx_set_callback(rx_callback_deep_sleep, lora_at_main->device);
     sx127x_handle_interrupt(lora_at_main->device); // should always put esp32 into deep sleep. so can return from here
     return;
@@ -197,9 +214,10 @@ void app_main(void) {
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to reset sx127x chip");
   }
-
+  ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
   sx127x_rx_set_callback(rx_callback, lora_at_main->device);
   sx127x_tx_set_callback(tx_callback, lora_at_main->device);
+  sx127x_lora_cad_set_callback(cad_callback, lora_at_main->device);
   ESP_LOGI(TAG, "sx127x initialized");
 
   ERROR_CHECK("display", lora_at_display_create(&lora_at_main->display));

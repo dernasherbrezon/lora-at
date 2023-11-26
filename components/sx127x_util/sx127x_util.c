@@ -166,7 +166,7 @@ esp_err_t sx127x_util_lora_common(lora_config_t *request, sx127x *device) {
   return SX127X_OK;
 }
 
-esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device) {
+esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_lora_common(req, device));
   if (req->freq > MAX_LOWER_BAND_HZ) {
     ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, device));
@@ -174,7 +174,7 @@ esp_err_t sx127x_util_lora_rx(lora_config_t *req, sx127x *device) {
     ERROR_CHECK(sx127x_rx_set_lna_boost_hf(false, device));
   }
   ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device));
-  int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device);
+  int result = sx127x_set_opmod(opmod, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
     ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
   }
@@ -325,11 +325,17 @@ esp_err_t sx127x_util_reset() {
   if (CONFIG_PIN_RESET == -1) {
     return ESP_OK;
   }
-  ERROR_CHECK(gpio_set_direction((gpio_num_t) CONFIG_PIN_RESET, GPIO_MODE_OUTPUT));
+  gpio_config_t conf = {
+      .pin_bit_mask = (1ULL << (gpio_num_t) CONFIG_PIN_RESET), /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+      .mode = GPIO_MODE_INPUT_OUTPUT,                         /*!< GPIO mode: set input/output mode                     */
+      .pull_up_en = GPIO_PULLUP_ENABLE,                      /*!< GPIO pull-up                                         */
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,                  /*!< GPIO pull-down                                       */
+      .intr_type = GPIO_INTR_DISABLE};
+  ERROR_CHECK(gpio_config(&conf));
   ERROR_CHECK(gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 0));
-  vTaskDelay(1 / portTICK_PERIOD_MS);
-  ERROR_CHECK(gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 1));
   vTaskDelay(5 / portTICK_PERIOD_MS);
+  ERROR_CHECK(gpio_set_level((gpio_num_t) CONFIG_PIN_RESET, 1));
+  vTaskDelay(10 / portTICK_PERIOD_MS);
   ESP_LOGI(TAG, "sx127x was reset");
   return ESP_OK;
 }

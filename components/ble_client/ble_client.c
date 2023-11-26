@@ -10,9 +10,14 @@
 #include <host/util/util.h>
 #include <arpa/inet.h>
 #include <sdkconfig.h>
+#include <driver/gpio.h>
 
 #ifndef CONFIG_BLUETOOTH_CONNECTION_TIMEOUT
 #define CONFIG_BLUETOOTH_CONNECTION_TIMEOUT 30000
+#endif
+
+#ifndef CONFIG_BLUETOOTH_POWER_PROFILING
+#define CONFIG_BLUETOOTH_POWER_PROFILING -1
 #endif
 
 #define MUTEX_TIMEOUT_DELTA 1000
@@ -265,6 +270,10 @@ esp_err_t ble_client_create(uint8_t *address, ble_client **client) {
   result->characteristic_found = false;
   result->last_request = NULL;
   result->address = address;
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_direction((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
+  }
 
   global_client = result;
   *client = result;
@@ -341,15 +350,26 @@ esp_err_t ble_client_find_characteristic(ble_client *client) {
   return client->semaphore_result;
 }
 
-esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
-  if (address == NULL) {
-    return ESP_ERR_INVALID_ARG;
-  }
+esp_err_t ble_client_reconnect(uint8_t *address, ble_client *client) {
   ERROR_CHECK(ble_client_init_controller(client));
   ERROR_CHECK(ble_client_connect_internally(address, client));
   ERROR_CHECK(ble_client_find_service(client));
   ERROR_CHECK(ble_client_find_characteristic(client));
   return ESP_OK;
+}
+
+esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
+  if (address == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 1);
+  }
+  esp_err_t result = ble_client_reconnect(address, client);
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
+  }
+  return result;
 }
 
 void ble_client_disconnect(ble_client *client) {
@@ -386,8 +406,11 @@ void ble_client_log_request(lora_config_t *req) {
 }
 
 esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 1);
+  }
   if (!client->characteristic_found) {
-    ERROR_CHECK(ble_client_connect(client->address, client));
+    ERROR_CHECK(ble_client_reconnect(client->address, client));
   }
   client->semaphore_result = ESP_FAIL;
   client->last_request = NULL;
@@ -403,12 +426,19 @@ esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
   if (*request != NULL) {
     ble_client_log_request(*request);
   }
+  // assume success route during power profiling
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
+  }
   return client->semaphore_result;
 }
 
 esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 1);
+  }
   if (!client->characteristic_found) {
-    ERROR_CHECK(ble_client_connect(client->address, client));
+    ERROR_CHECK(ble_client_reconnect(client->address, client));
   }
   size_t length = 0;
   length += sizeof(frame->frequency_error);
@@ -456,6 +486,10 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
   }
   WAIT_FOR_SYNC("timeout waiting for writing");
   free(message);
+  // assume success route during power profiling
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
+  }
   return ESP_OK;
 }
 

@@ -215,9 +215,23 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     }
     ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
     handler->active_mode = SX127x_MODULATION_LORA;
-    ERROR_CHECK("unable to rx", sx127x_util_lora_rx(&state, handler->device));
+    ERROR_CHECK("unable to rx", sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &state, handler->device));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("RX", handler->display);
+    return;
+  }
+
+  memset(handler->message, '\0', sizeof(handler->message));
+  matched = sscanf(input, "AT+LORACADRX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
+  if (matched == 12) {
+    if (handler->active_mode != SX127x_MODULATION_LORA) {
+      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
+    }
+    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
+    handler->active_mode = SX127x_MODULATION_LORA;
+    ERROR_CHECK("unable to cadrx", sx127x_util_lora_rx(SX127x_MODE_CAD, &state, handler->device));
+    at_handler_respond(handler, callback, ctx, "OK\r\n");
+    lora_at_display_set_status("CAD", handler->display);
     return;
   }
 
