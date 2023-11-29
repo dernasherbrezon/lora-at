@@ -271,6 +271,7 @@ esp_err_t ble_client_create(uint8_t *address, ble_client **client) {
   result->last_request = NULL;
   result->address = address;
   if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    ESP_LOGI(TAG, "power profiling initialized");
     gpio_set_direction((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, GPIO_MODE_OUTPUT);
     gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
   }

@@ -47,6 +47,10 @@
 #define CONFIG_MAX_FREQUENCY 25000000
 #endif
 
+#ifndef CONFIG_SX127X_POWER_PROFILING
+#define CONFIG_SX127X_POWER_PROFILING -1
+#endif
+
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -70,6 +74,9 @@ void sx127x_util_interrupt_task(void *arg) {
 }
 
 void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device, gpio_int_type_t type) {
+  if (gpio == GPIO_NUM_NC) {
+    return;
+  }
   gpio_set_direction(gpio, GPIO_MODE_INPUT);
   gpio_pulldown_en(gpio);
   gpio_pullup_dis(gpio);
@@ -112,6 +119,13 @@ esp_err_t sx127x_util_init(sx127x **device) {
   //tx require negedge, rx require posedge
   //setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, result, GPIO_INTR_NEGEDGE);
   setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO2, result, GPIO_INTR_POSEDGE);
+
+  if (CONFIG_SX127X_POWER_PROFILING > 0) {
+    ESP_LOGI(TAG, "power profiling initialized");
+    gpio_set_direction((gpio_num_t) CONFIG_SX127X_POWER_PROFILING, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t) CONFIG_SX127X_POWER_PROFILING, 0);
+  }
+
   *device = result;
   return SX127X_OK;
 }
@@ -193,6 +207,9 @@ esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t 
   }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, device));
   ERROR_CHECK(sx127x_lora_tx_set_for_transmission(data, data_length, device));
+  if (CONFIG_SX127X_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_SX127X_POWER_PROFILING, 1);
+  }
   int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_LORA, device);
   if (result == SX127X_OK) {
     ESP_LOGI(TAG, "transmitting %d bytes on %" PRIu64, data_length, req->freq);
@@ -257,6 +274,9 @@ esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *re
   ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_FSK, device));
   ERROR_CHECK(sx127x_fsk_ook_tx_set_for_transmission(data, data_length, device));
+  if (CONFIG_SX127X_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_SX127X_POWER_PROFILING, 1);
+  }
   int result = sx127x_set_opmod(SX127x_MODE_TX, SX127x_MODULATION_FSK, device);
   if (result == SX127X_OK) {
     ESP_LOGI(TAG, "transmitting %d bytes on %" PRIu64, data_length, req->freq);

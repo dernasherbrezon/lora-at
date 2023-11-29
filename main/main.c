@@ -10,8 +10,14 @@
 #include <esp_sleep.h>
 #include <at_timer.h>
 #include <sys/time.h>
+#include <sdkconfig.h>
+#include <driver/gpio.h>
 
 static const char *TAG = "lora-at";
+
+#ifndef CONFIG_SX127X_POWER_PROFILING
+#define CONFIG_SX127X_POWER_PROFILING -1
+#endif
 
 #define ERROR_CHECK(y, x)        \
   do {                        \
@@ -30,6 +36,7 @@ typedef struct {
   ble_client *bluetooth;
   lora_at_config_t *config;
   at_timer_t *timer;
+  int cad_mode;
 } main_t;
 
 main_t *lora_at_main = NULL;
@@ -92,9 +99,18 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   } else {
     ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
   }
+  // this rx message was received using CAD<->RX mode
+  // put back into CAD mode
+  ESP_LOGI(TAG, "mode is %d", lora_at_main->cad_mode);
+  if (lora_at_main->cad_mode == 1) {
+    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
+  }
 }
 
 void tx_callback(sx127x *device) {
+  if (CONFIG_SX127X_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_SX127X_POWER_PROFILING, 0);
+  }
   const char *output = "OK\r\n";
   uart_at_handler_send((char *) output, strlen(output), lora_at_main->uart_at_handler);
   lora_at_display_set_status("IDLE", lora_at_main->display);
@@ -103,12 +119,14 @@ void tx_callback(sx127x *device) {
 void cad_callback(sx127x *device, int cad_detected) {
   if (cad_detected == 0) {
     ESP_LOGD(TAG, "cad not detected");
+    lora_at_main->cad_mode = 0;
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
     return;
   }
   // put into RX mode first to handle interrupt as soon as possible
-  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device));
-  ESP_LOGD(TAG, "cad detected\n");
+  lora_at_main->cad_mode = 1;
+  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_SINGLE, SX127x_MODULATION_LORA, device));
+  ESP_LOGD(TAG, "cad detected");
 }
 
 void schedule_observation_and_go_ds(main_t *main) {
@@ -173,6 +191,7 @@ void app_main(void) {
     ESP_LOGE(TAG, "unable to init main");
     return;
   }
+  lora_at_main->cad_mode = 0;
 
   ERROR_CHECK("config", lora_at_config_create(&lora_at_main->config));
   ESP_LOGI(TAG, "config initialized");

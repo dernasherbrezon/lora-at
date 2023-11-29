@@ -45,8 +45,8 @@ typedef struct {
   uint64_t endTimeMillis;
   uint64_t currentTimeMillis;
   uint64_t freq;
-  uint16_t bitrate;
-  uint16_t freq_deviation;
+  uint32_t bitrate;
+  uint32_t freq_deviation;
   uint16_t preamble;
   uint8_t *syncword;
   uint8_t syncword_length;

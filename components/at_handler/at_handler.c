@@ -236,7 +236,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   }
 
   memset(handler->message, '\0', sizeof(handler->message));
-  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", handler->message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
+  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hhd,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", handler->message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.power, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc,
+                   &state.useExplicitHeader, &state.length);
   if (matched == 13) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
     lora_at_display_set_status("TX", handler->display);
@@ -260,7 +261,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
 
   fsk_config_t fsk_config;
   memset(handler->syncword, '\0', sizeof(handler->syncword));
-  matched = sscanf(input, "AT+FSKRX=%" PRIu64 ",%hu,%hu,%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.power, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
+  matched = sscanf(input, "AT+FSKRX=%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc,
+                   &fsk_config.power, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
   if (matched == 11) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
     fsk_config.syncword = handler->syncword_hex;
@@ -278,7 +280,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
 
   memset(handler->message, '\0', sizeof(handler->message));
   memset(handler->syncword, '\0', sizeof(handler->syncword));
-  matched = sscanf(input, "AT+FSKTX=%[^,],%" PRIu64 ",%hu,%hu,%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, handler->message, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.power, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
+  matched = sscanf(input, "AT+FSKTX=%[^,],%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%" PRIu32 ",%" PRIu32, handler->message, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding,
+                   &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.power, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
   if (matched == 12) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
     fsk_config.syncword = handler->syncword_hex;

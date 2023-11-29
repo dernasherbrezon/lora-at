@@ -14,11 +14,6 @@ menu "Lora-AT"
         default -1
         help
             "-1" mean "use default pin for selected UART_PORT_NUM". Can be re-assigned to any other GPIO pin on the board
-    config AT_UART_TX_PIN
-        int "UART bus to use for AT commands"
-        default 0
-        help
-            ESP32 has several UART buses: 0,1,2. Most likely you need to use default - 0.
     config AT_UART_BAUD_RATE
         int "UART baud rate"
         default 115200
@@ -103,4 +98,19 @@ menu "Lora-AT"
             Used during deep-sleep wake up phase
             The longer timeout the more time device will spend in non-deep sleep mode
             The more energy it will consume
+    config BLUETOOTH_POWER_PROFILING
+        int "Pin for bluetooth power profiling"
+        default -1
+        help
+            Configure digital pin to become high when bluetooth communication initiated
+            and become low when completed. Can be used in the Power Profiler Kit II to
+            capture periods when bluetooth is active
+    config SX127X_POWER_PROFILING
+        int "Pin for sx127x power profiling"
+        default -1
+        help
+            Configure digital pin to become high when sx127x communication started
+            and become low when completed. Can be used in the Power Profiler Kit II to
+            capture periods when sx127x transmitter or receiver is active
+
 endmenu
