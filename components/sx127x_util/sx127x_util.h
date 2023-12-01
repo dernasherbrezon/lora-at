@@ -38,6 +38,8 @@ typedef struct {
   uint8_t useCrc;
   uint8_t useExplicitHeader;
   uint8_t length;
+  int16_t ocp;
+  uint8_t pin;
 } lora_config_t;
 
 typedef struct {
@@ -56,6 +58,8 @@ typedef struct {
   int8_t power;
   uint32_t rx_bandwidth;
   uint32_t rx_afc_bandwidth;
+  int16_t ocp;
+  uint8_t pin;
 } fsk_config_t;
 #pragma pack(pop)
 

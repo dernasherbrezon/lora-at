@@ -197,7 +197,10 @@ esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x *d
 
 esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t *req, sx127x *device) {
   ERROR_CHECK(sx127x_util_lora_common(req, device));
-  ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
+  ERROR_CHECK(sx127x_tx_set_pa_config(req->pin << 7, req->power, device));
+  if (req->ocp > 0) {
+    ERROR_CHECK(sx127x_tx_set_ocp(true, (uint8_t) req->ocp, device));
+  }
   if (req->useExplicitHeader) {
     sx127x_tx_header_t header = {
         .enable_crc = req->useCrc,
@@ -271,7 +274,10 @@ esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *re
   ERROR_CHECK(sx127x_util_common_fsk(req, device));
   ERROR_CHECK(sx127x_set_preamble_length(req->preamble, device));
   setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device, GPIO_INTR_NEGEDGE);
-  ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, req->power, device));
+  ERROR_CHECK(sx127x_tx_set_pa_config(req->pin << 7, req->power, device));
+  if (req->ocp > 0) {
+    ERROR_CHECK(sx127x_tx_set_ocp(true, (uint8_t) req->ocp, device));
+  }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_FSK, device));
   ERROR_CHECK(sx127x_fsk_ook_tx_set_for_transmission(data, data_length, device));
   if (CONFIG_SX127X_POWER_PROFILING > 0) {
