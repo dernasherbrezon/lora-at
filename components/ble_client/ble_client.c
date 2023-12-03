@@ -202,20 +202,35 @@ int ble_client_disc_svc_fn(uint16_t conn_handle, const struct ble_gatt_error *er
 
 static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
   ble_client *client = (ble_client *) arg;
-  ESP_LOGD(TAG, "gap event: %d", event->type);
+  ESP_LOGI(TAG, "gap event: %d", event->type);
   switch (event->type) {
     case BLE_GAP_EVENT_CONNECT: {
       int status = event->connect.status;
       if (status == 0) {
         ESP_LOGI(TAG, "connection established");
         client->conn_handle = event->connect.conn_handle;
-        client->semaphore_result = ESP_OK;
-        client->connected = true;
       } else {
         ESP_LOGE(TAG, "connection failed. ble code: %d", status);
         client->semaphore_result = ble_client_convert_ble_code(status);
         client->connected = false;
+        xSemaphoreGive(client->semaphore);
       }
+      break;
+    }
+      // notify connected only after MTU negotiation completes
+    case BLE_GAP_EVENT_MTU: {
+      ESP_LOGI(TAG, "MTU negotiated");
+      client->semaphore_result = ESP_OK;
+      client->connected = true;
+      xSemaphoreGive(client->semaphore);
+      break;
+    }
+    case BLE_GAP_EVENT_DISCONNECT: {
+      ESP_LOGI(TAG, "disconnected");
+      client->semaphore_result = ESP_OK;
+      client->connected = false;
+      client->service_found = false;
+      client->characteristic_found = false;
       xSemaphoreGive(client->semaphore);
       break;
     }
@@ -373,17 +388,17 @@ esp_err_t ble_client_connect(uint8_t *address, ble_client *client) {
   return result;
 }
 
-void ble_client_disconnect(ble_client *client) {
+esp_err_t ble_client_disconnect(ble_client *client) {
   if (!client->connected) {
-    return;
+    return ESP_OK;
   }
+  client->semaphore_result = ESP_FAIL;
   int code = ble_gap_terminate(client->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
   if (code != 0) {
     ESP_LOGE(TAG, "unable to gracefully terminate connection: %d", code);
   }
-  client->connected = false;
-  client->service_found = false;
-  client->characteristic_found = false;
+  WAIT_FOR_SYNC("timeout waiting for disconnect");
+  return client->semaphore_result;
 }
 
 void ble_client_log_request(lora_config_t *req) {
