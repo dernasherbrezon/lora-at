@@ -39,7 +39,6 @@ idf.py menuconfig
 
 ```bash
 idf.py build
-pio run -t upload -e board
 ```
 
 5. Upload the application. Replace ```/dev/cu.usbserial-0001``` with your device's port/path.
