@@ -227,7 +227,7 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
     }
     case BLE_GAP_EVENT_DISCONNECT: {
       ESP_LOGI(TAG, "disconnected");
-      client->semaphore_result = ESP_OK;
+      client->semaphore_result = ESP_ERR_INVALID_STATE;
       client->connected = false;
       client->service_found = false;
       client->characteristic_found = false;
