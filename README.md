@@ -8,151 +8,7 @@ All request commands must start with "AT". All responses must end with "OK" or "
 
 Sometimes response might contain lines with "[I]" or "[E]". This is lora-at internal logging. These messages can be ignored.
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Format/Example</th>
-            <th>Description</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td rowspan="2">Check status</td>
-            <td>AT</td>
-            <td rowspan="2">Just check the status</td>
-        </tr>
-        <tr>
-            <td>AT<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get firmware version</td>
-            <td>AT+GMR</td>
-            <td rowspan="2">The returned version is in format: major.minor</td>
-        </tr>
-        <tr>
-            <td>AT+GMR<br>1.0<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get minimum supported frequency</td>
-            <td>AT+MINFREQ?</td>
-            <td rowspan="2">Configured manually using the command AT+MINFREQ=%f</td>
-        </tr>
-        <tr>
-            <td>AT+MINFREQ?<br>863<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Set minimum supported frequency</td>
-            <td>AT+MINFREQ=freq</td>
-            <td rowspan="2">Minimum and maximum frequencies can help with automatic scheduling</td>
-        </tr>
-        <tr>
-            <td>AT+MINFREQ=863<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get maximum supported frequency</td>
-            <td>AT+MAXFREQ?</td>
-            <td rowspan="2">Configured manually using the command AT+MAXFREQ=%f</td>
-        </tr>
-        <tr>
-            <td>AT+MAXFREQ?<br>928<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Set maximum supported frequency</td>
-            <td>AT+MAXFREQ=freq</td>
-            <td rowspan="2">Minimum and maximum frequencies can help with automatic scheduling</td>
-        </tr>
-        <tr>
-            <td>AT+MAXFREQ=928<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Start LoRa RX</td>
-            <td>AT+LORARX=freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro,useCrc,useExplicitHeader,length</td>
-            <td rowspan="2">Start LoRa receiver. All messages will be received asynchronously and stored in the memory. They can be retrived by a separate command AT+PULL or AT+STOPRX. ldro can be one of the following:
-            <ul>
-                <li>0 - LDRO_AUTO</li>
-                <li>1 - LDRO_ON. Force ldro ON</li>
-                <li>2 - LDRO_OFF. Force ldro OFF</li>
-            </ul>
-            </td>
-        </tr>
-        <tr>
-            <td>AT+LORARX=433.0,10.4,9,6,18,10,55,0,0,1,0,0<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get received messages</td>
-            <td>AT+PULL</td>
-            <td rowspan="2">Get all currently received messages. Each line will contain received message in the following format: &lt;hexadecimal string of received data&gt;,&lt;RSSI&gt;,&lt;SNR&gt;,&lt;Frequency error&gt;,&lt;UNIX timestamp&gt;. After executing this command the internal in-memory storage will be cleared. This command should be executed for heavy traffic usages in order to keep memory usage within certain limits.</td>
-        </tr>
-        <tr>
-            <td>AT+PULL<br>CAFE,-11.22,3.2,13.2,1605980902<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Stop receiving data</td>
-            <td>AT+STOPRX</td>
-            <td rowspan="2">Stop receiving data and return all pending messages in the in-memory storage. The format matches AT+PULL command</td>
-        </tr>
-        <tr>
-            <td>AT+STOPRX<br>CAFE,-11.22,3.2,13.2,1605980902<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Send data</td>
-            <td>AT+LORATX=hexadecimal string of data to send,freq,bw,sf,cr,syncword,power,preambleLength,gain,ldro,useCrc,useExplicitHeader,length</td>
-            <td rowspan="2">Send the data using LoRa</td>
-        </tr>
-        <tr>
-            <td>AT+LORATX=CAFE,433.0,10.4,9,6,18,10,55,0,0<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get current time</td>
-            <td>AT+TIME?</td>
-            <td rowspan="2">The board doesn't have access to NTP server so it needs externally provided time. AT+TIME? and AT+TIME commands can be used for that. The command will return currently configured time on board in the following format: yyyy-MM-dd HH:mm:ss</td>
-        </tr>
-        <tr>
-            <td>AT+TIME?<br>2022-04-11 12:26:31<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Set current time</td>
-            <td>AT+TIME=unixtime</td>
-            <td rowspan="2">Set current time on board. Can be called periodically to ensure time is not drifted too much</td>
-        </tr>
-        <tr>
-            <td>AT+TIME=1649679986<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Get display status</td>
-            <td>AT+DISPLAY?</td>
-            <td rowspan="2">The command will return 1 if display enabled, 0 - otherwise</td>
-        </tr>
-        <tr>
-            <td>AT+DISPLAY?<br>1<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Set display status</td>
-            <td>AT+DISPLAY=status</td>
-            <td rowspan="2">This command can be used to toggle display. status=1 - enable display, status=0 - disable display. Can be used to reduce power consumption</td>
-        </tr>
-        <tr>
-            <td>AT+DISPLAY=1<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Configure deep sleep mode</td>
-            <td>AT+DSCONFIG=server_bt_address,inactivity_timeout,deep_sleep_period</td>
-            <td rowspan="2">This command will configure deep sleep mode. After startup ESP will wait inactivity_timeout before going into deep sleep mode. Any AT command will reset this timeout. Once in deep sleep mode it will sleep for deep_sleep_period, wake up, check server_bt_address for any observation updates. If none, then it will go to sleep again. If there any, then it will start LoRa rx and periodically send frames to server_bt_address. The command will return client's bluetooth address. Going into deep sleep mode will automatically turn display off</td>
-        </tr>
-        <tr>
-            <td>AT+DSCONFIG=B8:27:EB:6C:7C:F8,30000,30000<br>B8:27:EB:6C:5B:AA<br>OK</td>
-        </tr>
-        <tr>
-            <td rowspan="2">Enter deep sleep mode</td>
-            <td>AT+DS</td>
-            <td rowspan="2">Go into deep sleep mode immediately using the current configuration.</td>
-        </tr>
-        <tr>
-            <td>AT+DS<br>OK</td>
-        </tr>
-    </tbody>
-</table>
+Full list of supported commands can be found here: [AT-commands](https://github.com/dernasherbrezon/lora-at/wiki/AT-commands)
 
 # Supported boards
 
@@ -165,7 +21,7 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
 
 # How to install / compile
 
-1. Install [PlatformIO](https://platformio.org) GUI or CLI version
+1. Install [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)
 
 2. Clone this repository:
 
@@ -173,9 +29,29 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
 git clone https://github.com/dernasherbrezon/lora-at.git
 ```
 
-3. Build the application. Replace ```board``` with one of board names above.
+3. Configure the application. All relevant configuration can be found under "LoRa-AT" menu option
 
 ```bash
-cd lora-at
+idf.py menuconfig
+```
+
+4. Build the application.
+
+```bash
+idf.py build
 pio run -t upload -e board
 ```
+
+5. Upload the application. Replace ```/dev/cu.usbserial-0001``` with your device's port/path.
+
+```bash
+idf.py -p /dev/cu.usbserial-0001 flash
+```
+
+6. Connect to the device and send AT commands.
+
+```bash
+idf.py -p /dev/cu.usbserial-0001 monitor
+```
+
+They can be also sent programmatically.
