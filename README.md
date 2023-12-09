@@ -1,8 +1,8 @@
 # About
 
-Control LoRa via serial interface using AT commands. Baud rate: 115200.
+Control LoRa via serial interface using AT commands or Bluetooth.
 
-# Supported commands
+# Supported AT commands
 
 All request commands must start with "AT". All responses must end with "OK" or "ERROR". If command returned "ERROR" then the message before contained the error reason.
 
