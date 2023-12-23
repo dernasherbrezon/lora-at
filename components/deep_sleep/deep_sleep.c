@@ -20,7 +20,7 @@
 static const char *TAG = "lora-at";
 
 void deep_sleep_enter(uint64_t micros_to_wait) {
-  esp_sleep_enable_timer_wakeup(micros_to_wait);
+  ERROR_CHECK("esp_sleep_enable_timer_wakeup", esp_sleep_enable_timer_wakeup(micros_to_wait));
   ESP_LOGI(TAG, "entering deep sleep mode for %" PRIu64 " seconds", (micros_to_wait / 1000000));
   esp_deep_sleep_start();
 }

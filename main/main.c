@@ -101,7 +101,6 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   }
   // this rx message was received using CAD<->RX mode
   // put back into CAD mode
-  ESP_LOGI(TAG, "mode is %d", lora_at_main->cad_mode);
   if (lora_at_main->cad_mode == 1) {
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
   }
