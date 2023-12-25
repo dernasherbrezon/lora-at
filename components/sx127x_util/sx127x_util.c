@@ -369,6 +369,35 @@ esp_err_t sx127x_util_reset() {
   return ESP_OK;
 }
 
+esp_err_t sx127x_util_deep_sleep_enter(sx127x *device) {
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
+  int8_t pins[] = {
+      CONFIG_PIN_CS,
+      CONFIG_PIN_MOSI,
+      CONFIG_PIN_MISO,
+      CONFIG_PIN_SCK,
+      CONFIG_PIN_DIO0,
+      CONFIG_PIN_DIO1,
+      CONFIG_PIN_DIO2,
+      CONFIG_PIN_RESET
+  };
+  uint64_t bit_mask = 0;
+  for (int i = 0; i < sizeof(pins); i++) {
+    if (pins[i] == -1) {
+      continue;
+    }
+    bit_mask |= (1ULL << pins[i]);
+  }
+  gpio_config_t conf = {
+      .pin_bit_mask = bit_mask, /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+      .mode = GPIO_MODE_INPUT,                   /*!< GPIO mode: set input/output mode                     */
+      .pull_up_en = GPIO_PULLUP_DISABLE,         /*!< GPIO pull-up                                         */
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,     /*!< GPIO pull-down                                       */
+      .intr_type = GPIO_INTR_DISABLE};
+  return gpio_config(&conf);
+}
+
 void sx127x_util_frame_destroy(lora_frame_t *frame) {
   if (frame == NULL) {
     return;

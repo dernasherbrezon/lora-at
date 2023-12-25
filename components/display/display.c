@@ -12,7 +12,6 @@
 #define CONFIG_PIN_OLED_SDA 21        /*!&lt; gpio number for I2C master data  */
 #endif
 
-//FIXME actually not used
 #ifndef CONFIG_PIN_OLED_RESET
 #define  CONFIG_PIN_OLED_RESET -1
 #endif
@@ -110,6 +109,28 @@ esp_err_t lora_at_display_set_status(const char *status, lora_at_display *displa
     return ESP_OK;
   }
   return lora_at_display_refresh(display);
+}
+
+esp_err_t lora_at_display_deep_sleep_enter() {
+  int8_t pins[] = {
+      CONFIG_PIN_OLED_SDL,
+      CONFIG_PIN_OLED_SDA,
+      CONFIG_PIN_OLED_RESET
+  };
+  uint64_t bit_mask = 0;
+  for (int i = 0; i < sizeof(pins); i++) {
+    if (pins[i] == -1) {
+      continue;
+    }
+    bit_mask |= (1ULL << pins[i]);
+  }
+  gpio_config_t conf = {
+      .pin_bit_mask = bit_mask, /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+      .mode = GPIO_MODE_INPUT,                   /*!< GPIO mode: set input/output mode                     */
+      .pull_up_en = GPIO_PULLUP_DISABLE,         /*!< GPIO pull-up                                         */
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,     /*!< GPIO pull-down                                       */
+      .intr_type = GPIO_INTR_DISABLE};
+  return gpio_config(&conf);
 }
 
 void lora_at_display_destroy(lora_at_display *display) {

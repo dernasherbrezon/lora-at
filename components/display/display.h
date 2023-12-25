@@ -13,6 +13,8 @@ esp_err_t lora_at_display_stop(lora_at_display *display);
 
 esp_err_t lora_at_display_set_status(const char *status, lora_at_display *display);
 
+esp_err_t lora_at_display_deep_sleep_enter();
+
 void lora_at_display_destroy(lora_at_display *display);
 
 #endif //LORA_AT_DISPLAY_H

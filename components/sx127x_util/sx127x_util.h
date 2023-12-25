@@ -77,6 +77,8 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device);
 
 esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x *device);
 
+esp_err_t sx127x_util_deep_sleep_enter(sx127x *device);
+
 void sx127x_util_frame_destroy(lora_frame_t *frame);
 
 uint64_t sx127x_util_get_min_frequency();
