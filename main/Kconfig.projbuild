@@ -98,6 +98,12 @@ menu "Lora-AT"
             Used during deep-sleep wake up phase
             The longer timeout the more time device will spend in non-deep sleep mode
             The more energy it will consume
+    config BLUETOOTH_RECONNECTION_INTERVAL
+        int "Bluetooth reconnection interval"
+        default 5000
+        help
+            Reconnect to bluetooth server while reading next observation
+            In millis
     config BLUETOOTH_POWER_PROFILING
         int "Pin for bluetooth power profiling"
         default -1

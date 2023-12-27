@@ -19,6 +19,10 @@ static const char *TAG = "lora-at";
 #define CONFIG_SX127X_POWER_PROFILING -1
 #endif
 
+#ifndef CONFIG_BLUETOOTH_RECONNECTION_INTERVAL
+#define CONFIG_BLUETOOTH_RECONNECTION_INTERVAL 5000
+#endif
+
 #define ERROR_CHECK(y, x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -33,7 +37,7 @@ static const char *TAG = "lora-at";
     esp_err_t __err_rc = (x); \
     if (__err_rc != ESP_OK) {      \
       ESP_LOGE(TAG, "unable to initialize %s: %s", y, esp_err_to_name(__err_rc)); \
-      deep_sleep_enter(main->config->deep_sleep_period_micros);                              \
+      deep_sleep_enter(CONFIG_BLUETOOTH_RECONNECTION_INTERVAL * 1000);                              \
       return;        \
     }                         \
   } while (0)
