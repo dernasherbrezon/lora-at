@@ -2,8 +2,6 @@
 #include <nvs_flash.h>
 #include <string.h>
 
-#define BT_ADDRESS_LENGTH 18
-
 const char *at_config_label = "lora-at";
 
 #define ERROR_CHECK(x)        \
@@ -36,20 +34,21 @@ const char *at_config_label = "lora-at";
 
 
 esp_err_t lora_at_config_read_bt_address(nvs_handle_t out_handle, lora_at_config_t *config) {
-  char bt_address[BT_ADDRESS_LENGTH];
-  size_t bt_address_length = sizeof(bt_address);
-  memset(bt_address, 0, bt_address_length);
-  esp_err_t err = nvs_get_blob(out_handle, "address", bt_address, &bt_address_length);
-  if (err == ESP_OK) {
-    config->bt_address = malloc(BT_ADDRESS_LENGTH);
-    if (config->bt_address == NULL) {
-      return ESP_ERR_NO_MEM;
-    }
-    memcpy(config->bt_address, bt_address, BT_ADDRESS_LENGTH);
-  } else if (err != ESP_ERR_NVS_NOT_FOUND) {
-    return err;
+  size_t bt_address_length = BT_ADDRESS_LENGTH;
+  config->bt_address = malloc(bt_address_length);
+  if (config->bt_address == NULL) {
+    return ESP_ERR_NO_MEM;
   }
-  return ESP_OK;
+  esp_err_t err = nvs_get_blob(out_handle, "address", config->bt_address, &bt_address_length);
+  if (err == ESP_OK) {
+    return ESP_OK;
+  }
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    free(config->bt_address);
+    config->bt_address = NULL;
+    return ESP_OK;
+  }
+  return err;
 }
 
 esp_err_t lora_at_config_create(lora_at_config_t **config) {
@@ -107,21 +106,21 @@ esp_err_t lora_at_config_set_dsconfig(uint64_t inactivity_period_micros, uint64_
   return ESP_OK;
 }
 
-esp_err_t lora_at_config_set_bt_address(char *bt_address, lora_at_config_t *config) {
+esp_err_t lora_at_config_set_bt_address(uint8_t *bt_address, size_t bt_address_len, lora_at_config_t *config) {
   if (bt_address != NULL) {
     nvs_handle_t out_handle;
     ERROR_CHECK(nvs_open(at_config_label, NVS_READWRITE, &out_handle));
-    ERROR_CHECK(nvs_set_blob(out_handle, "address", bt_address, BT_ADDRESS_LENGTH));
+    ERROR_CHECK(nvs_set_blob(out_handle, "address", bt_address, bt_address_len));
     ERROR_CHECK(nvs_commit(out_handle));
     nvs_close(out_handle);
     if (config->bt_address == NULL) {
-      config->bt_address = malloc(BT_ADDRESS_LENGTH);
+      config->bt_address = malloc(sizeof(uint8_t) * bt_address_len);
       if (config->bt_address == NULL) {
         return ESP_ERR_NO_MEM;
       }
-      memset(config->bt_address, 0, BT_ADDRESS_LENGTH);
+      memset(config->bt_address, 0, sizeof(uint8_t) * bt_address_len);
     }
-    memcpy(config->bt_address, bt_address, BT_ADDRESS_LENGTH);
+    memcpy(config->bt_address, bt_address, sizeof(uint8_t) * bt_address_len);
   } else {
     if (config->bt_address != NULL) {
       nvs_handle_t out_handle;

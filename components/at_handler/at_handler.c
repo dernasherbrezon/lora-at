@@ -106,7 +106,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   if (strcmp("AT+RESET", input) == 0) {
     esp_err_t code = sx127x_util_reset();
     if (code != ESP_OK) {
-      at_handler_respond(handler, callback, ctx, "Unable to reset sx127x chip: %s\r\nnERROR\r\n", esp_err_to_name(code));
+      at_handler_respond(handler, callback, ctx, "Unable to reset sx127x chip: %s\r\nERROR\r\n", esp_err_to_name(code));
     } else {
       at_handler_respond(handler, callback, ctx, "OK\r\n");
     }
@@ -134,16 +134,21 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   }
   if (strcmp("AT+BLUETOOTH?", input) == 0) {
     if (handler->at_config->bt_address != NULL) {
-      at_handler_respond(handler, callback, ctx, "Server: %s\r\n", handler->at_config->bt_address);
+      esp_err_t code = at_util_hex2string(handler->at_config->bt_address, sizeof(uint8_t) * BT_ADDRESS_LENGTH, handler->message);
+      if (code != ESP_OK) {
+        at_handler_respond(handler, callback, ctx, "Unable to convert MAC address to string: %s\r\n", esp_err_to_name(code));
+      } else {
+        at_handler_respond(handler, callback, ctx, "Server: %.2s:%.2s:%.2s:%.2s:%.2s:%.2s\r\n", handler->message, handler->message + 2, handler->message + 4, handler->message + 6, handler->message + 8, handler->message + 10);
+      }
     }
-    uint8_t mac[6];
+    uint8_t mac[BT_ADDRESS_LENGTH];
     esp_err_t code = esp_read_mac(mac, ESP_MAC_BT);
     if (code != ESP_OK) {
-      at_handler_respond(handler, callback, ctx, "Unable to read bluetooth address: %s\r\nnERROR\r\n", esp_err_to_name(code));
+      at_handler_respond(handler, callback, ctx, "Unable to read bluetooth address: %s\r\nERROR\r\n", esp_err_to_name(code));
     } else {
       code = at_util_hex2string(mac, sizeof(mac), handler->message);
       if (code != ESP_OK) {
-        at_handler_respond(handler, callback, ctx, "Unable to convert MAC address to string: %s\r\nnERROR\r\n", esp_err_to_name(code));
+        at_handler_respond(handler, callback, ctx, "Unable to convert MAC address to string: %s\r\nERROR\r\n", esp_err_to_name(code));
       } else {
         at_handler_respond(handler, callback, ctx, "LoraAt: %.2s:%.2s:%.2s:%.2s:%.2s:%.2s\r\nOK\r\n", handler->message, handler->message + 2, handler->message + 4, handler->message + 6, handler->message + 8, handler->message + 10);
       }
@@ -157,7 +162,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+BLUETOOTH=", input) == 0) {
-    ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(NULL, handler->at_config));
+    ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(NULL, 0, handler->at_config));
     ble_client_disconnect(handler->bluetooth);
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     return;
@@ -236,7 +241,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   }
 
   memset(handler->message, '\0', sizeof(handler->message));
-  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhd,%hd,%hhu", handler->message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.preambleLength, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length, &state.power, &state.ocp, &state.pin);
+  matched = sscanf(input, "AT+LORATX=%[^,],%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhd,%hd,%hhu", handler->message, &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.preambleLength, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length,
+                   &state.power, &state.ocp, &state.pin);
   if (matched == 14) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
     lora_at_display_set_status("TX", handler->display);
@@ -260,7 +266,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
 
   fsk_config_t fsk_config;
   memset(handler->syncword, '\0', sizeof(handler->syncword));
-  matched = sscanf(input, "AT+FSKRX=%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%" PRIu32 ",%" PRIu32, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
+  matched = sscanf(input, "AT+FSKRX=%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%" PRIu32 ",%" PRIu32, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc,
+                   &fsk_config.rx_bandwidth, &fsk_config.rx_afc_bandwidth);
   if (matched == 10) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
     fsk_config.syncword = handler->syncword_hex;
@@ -278,7 +285,8 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
 
   memset(handler->message, '\0', sizeof(handler->message));
   memset(handler->syncword, '\0', sizeof(handler->syncword));
-  matched = sscanf(input, "AT+FSKTX=%[^,],%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%hd,%hhu", handler->message, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping, &fsk_config.crc, &fsk_config.power, &fsk_config.ocp, &fsk_config.pin);
+  matched = sscanf(input, "AT+FSKTX=%[^,],%" PRIu64 ",%" PRIu32 ",%" PRIu32 ",%hu,%[^,],%hhu,%hhu,%hhu,%hhd,%hd,%hhu", handler->message, &fsk_config.freq, &fsk_config.bitrate, &fsk_config.freq_deviation, &fsk_config.preamble, handler->syncword, &fsk_config.encoding, &fsk_config.data_shaping,
+                   &fsk_config.crc, &fsk_config.power, &fsk_config.ocp, &fsk_config.pin);
   if (matched == 12) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
     fsk_config.syncword = handler->syncword_hex;
@@ -311,7 +319,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     if (message_length == 17) {
       ERROR_CHECK("unable to convert address to hex", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
       ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(handler->message_hex, handler->bluetooth));
-      ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(handler->message, handler->at_config));
+      ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(handler->message_hex, handler->message_hex_length, handler->at_config));
       at_handler_respond(handler, callback, ctx, "OK\r\n");
     } else {
       at_handler_respond(handler, callback, ctx, "invalid address format. expected: 00:00:00:00:00:00\r\nERROR\r\n");
