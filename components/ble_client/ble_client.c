@@ -417,8 +417,8 @@ void ble_client_log_request(lora_config_t *req) {
   ts = localtime((const time_t *) (&timeSeconds));
   strftime(buf, sizeof(buf), format, ts);
   ESP_LOGI(TAG, "end time:     %s", buf);
-  ESP_LOGI(TAG, "observation requested: %" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%" PRIu16 ",%hhu,%hhu,%hhu,%hhu", req->freq, req->bw, req->sf, req->cr, req->syncWord, req->power, req->preambleLength, req->gain, req->ldo,
-           req->useCrc, req->useExplicitHeader);
+  ESP_LOGI(TAG, "observation requested: %" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", req->freq, req->bw, req->sf, req->cr, req->syncWord, req->preambleLength, req->gain, req->ldo,
+           req->useCrc, req->useExplicitHeader, req->length);
 }
 
 esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
