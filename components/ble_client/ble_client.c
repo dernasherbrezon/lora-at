@@ -20,6 +20,7 @@
 #define CONFIG_BLUETOOTH_POWER_PROFILING -1
 #endif
 
+#define PROTOCOL_VERSION 2
 #define MUTEX_TIMEOUT_DELTA 1000
 #define BLE_ADDRESS_SIZE 6
 #define ERROR_CHECK(x)        \
@@ -60,6 +61,8 @@ struct ble_client_t {
 
   uint16_t request_characteristic_handle;
   bool characteristic_found;
+  uint16_t status_characteristic_handle;
+  bool status_characteristic_found;
 };
 
 // callbacks doesn't accept user's data
@@ -68,6 +71,9 @@ struct ble_client_t {
 ble_client *global_client = NULL;
 
 //#define STATUS_UUID "5b53256e-76d2-4259-b3aa-15b5b4cfdd32"
+static const ble_uuid_t *remote_status_chr_uuid =
+    BLE_UUID128_DECLARE(0x32, 0xdd, 0xcf, 0xb4, 0xb5, 0x15, 0xaa, 0xb3,
+                        0x59, 0x42, 0xd2, 0x76, 0x6e, 0x25, 0x53, 0x5b);
 
 //#define REQUEST_UUID "40d6f70c-5e28-4da4-a99e-c5298d1613fe"
 static const ble_uuid_t *remote_request_chr_uuid =
@@ -130,6 +136,12 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
   }
 
   memcpy(client->last_request, attr->om->om_data, sizeof(lora_config_t));
+  if (client->last_request->protocol_version != PROTOCOL_VERSION) {
+    ESP_LOGE(TAG, "unsupported protocol %d expected %d", client->last_request->protocol_version, PROTOCOL_VERSION);
+    client->semaphore_result = ESP_ERR_INVALID_ARG;
+    xSemaphoreGive(client->semaphore);
+    return 0;
+  }
   client->last_request->startTimeMillis = ntohll(client->last_request->startTimeMillis);
   client->last_request->endTimeMillis = ntohll(client->last_request->endTimeMillis);
   client->last_request->currentTimeMillis = ntohll(client->last_request->currentTimeMillis);
@@ -366,11 +378,26 @@ esp_err_t ble_client_find_characteristic(ble_client *client) {
   return client->semaphore_result;
 }
 
+esp_err_t ble_client_find_status_characteristic(ble_client *client) {
+  if (client->status_characteristic_found) {
+    return ESP_OK;
+  }
+  client->semaphore_result = ESP_FAIL;
+  int status = ble_gattc_disc_chrs_by_uuid(client->conn_handle, client->start_handle, client->end_handle, remote_status_chr_uuid, ble_client_gatt_chr_fn, client);
+  if (status != 0) {
+    ESP_LOGE(TAG, "unable to find status characteristic: %d", status);
+    return ESP_ERR_INVALID_ARG;
+  }
+  WAIT_FOR_SYNC("timeout waiting for status characteristic discovery");
+  return client->semaphore_result;
+}
+
 esp_err_t ble_client_reconnect(uint8_t *address, ble_client *client) {
   ERROR_CHECK(ble_client_init_controller(client));
   ERROR_CHECK(ble_client_connect_internally(address, client));
   ERROR_CHECK(ble_client_find_service(client));
   ERROR_CHECK(ble_client_find_characteristic(client));
+  ERROR_CHECK(ble_client_find_status_characteristic(client));
   return ESP_OK;
 }
 
@@ -462,6 +489,7 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
     ERROR_CHECK(ble_client_reconnect(client->address, client));
   }
   size_t length = 0;
+  length += sizeof(uint8_t);
   length += sizeof(frame->frequency_error);
   length += sizeof(frame->rssi);
   length += sizeof(frame->snr);
@@ -474,6 +502,10 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
     return ESP_ERR_NO_MEM;
   }
   size_t offset = 0;
+  uint8_t protocol_version = PROTOCOL_VERSION;
+  memcpy(message + offset, &protocol_version, sizeof(uint8_t));
+  offset += sizeof(uint8_t);
+
   int32_t frequency_error = htonl(frame->frequency_error);
   memcpy(message + offset, &frequency_error, sizeof(frequency_error));
   offset += sizeof(frequency_error);
@@ -515,7 +547,24 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
 }
 
 esp_err_t ble_client_send_status(ble_client_status *status, ble_client *client) {
-  //FIXME
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 1);
+  }
+  if (!client->status_characteristic_found) {
+    ERROR_CHECK(ble_client_reconnect(client->address, client));
+  }
+  status->protocol_version = PROTOCOL_VERSION;
+  client->semaphore_result = ESP_FAIL;
+  int code = ble_gattc_write_flat(client->conn_handle, client->status_characteristic_handle, status, sizeof(ble_client_status), ble_client_gatt_attr_fn, client);
+  if (code != 0) {
+    ESP_LOGE(TAG, "unable to send status. ble code: %d", code);
+    return ble_client_convert_ble_code(code);
+  }
+  WAIT_FOR_SYNC("timeout waiting for writing");
+  // assume success route during power profiling
+  if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
+    gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
+  }
   return ESP_OK;
 }
 

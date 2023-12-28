@@ -23,6 +23,7 @@ typedef enum {
 
 #pragma pack(push, 1)
 typedef struct {
+  uint8_t protocol_version;
   uint64_t startTimeMillis;
   uint64_t endTimeMillis;
   uint64_t currentTimeMillis;

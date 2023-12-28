@@ -9,6 +9,7 @@
 typedef struct ble_client_t ble_client;
 
 typedef struct {
+  uint8_t protocol_version;
   int8_t rssi;
   int8_t sx127x_raw_temperature;
   uint16_t solar_voltage;
