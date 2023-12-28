@@ -1,6 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  dernasherbrezon/sx127x: "^3.1.0"
+  dernasherbrezon/sx127x: "^3.1.2"
   espressif/ssd1306: "^1.0.5"
   ## Required IDF version
   idf:

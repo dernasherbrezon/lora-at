@@ -8,6 +8,7 @@
 
 #include <driver/gpio.h>
 #include <esp_intr_alloc.h>
+#include <rom/ets_sys.h>
 #include <freertos/task.h>
 #include <inttypes.h>
 #include <sys/time.h>
@@ -396,6 +397,17 @@ esp_err_t sx127x_util_deep_sleep_enter(sx127x *device) {
       .pull_down_en = GPIO_PULLDOWN_DISABLE,     /*!< GPIO pull-down                                       */
       .intr_type = GPIO_INTR_DISABLE};
   return gpio_config(&conf);
+}
+
+esp_err_t sx127x_util_read_temperature(sx127x *device, int8_t *temperature) {
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_FSRX, SX127x_MODULATION_FSK, device));
+  ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(true, device));
+  // a little bit longer for FSRX mode to kick off
+  ets_delay_us(150);
+  ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(false, device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
+  return sx127x_fsk_ook_get_raw_temperature(device, temperature);
 }
 
 void sx127x_util_frame_destroy(lora_frame_t *frame) {
