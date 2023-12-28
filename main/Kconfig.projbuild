@@ -118,5 +118,27 @@ menu "Lora-AT"
             Configure digital pin to become high when sx127x communication started
             and become low when completed. Can be used in the Power Profiler Kit II to
             capture periods when sx127x transmitter or receiver is active
+    config SOLAR_I2C_INA219_ADDR
+        int "I2C address for solar sensor"
+        default -1
+        help
+            If configured, then it will try to connect and read bus voltage and current
+            from INA219 sensor. This address is for solar panel sensor. "-1" - address is not configured
+    config BATTERY_I2C_INA219_ADDR
+        int "I2C address for battery sensor"
+        default -1
+        help
+            If configured, then it will try to connect and read bus voltage and current
+            from INA219 sensor. This address is for battery sensor. "-1" - address is not configured
+    config I2C_MASTER_SDA
+        int "SDA pin"
+        default 21
+        help
+            SDA pin of I2C bus where INA219 sensors attached
+    config I2C_MASTER_SCL
+        int "SCL pin"
+        default 22
+        help
+            SCL pin of I2C bus where INA219 sensors attached
 
 endmenu

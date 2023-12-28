@@ -401,6 +401,11 @@ esp_err_t ble_client_disconnect(ble_client *client) {
   return client->semaphore_result;
 }
 
+esp_err_t ble_client_get_rssi(ble_client *client, int8_t *rssi) {
+  ERROR_CHECK(ble_client_connect_internally(client->address, client));
+  return ble_gap_conn_rssi(client->conn_handle, rssi);
+}
+
 void ble_client_log_request(lora_config_t *req) {
   char buf[80];
   struct tm *ts;
@@ -506,6 +511,11 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
   if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
     gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 0);
   }
+  return ESP_OK;
+}
+
+esp_err_t ble_client_send_status(ble_client_status *status, ble_client *client) {
+  //FIXME
   return ESP_OK;
 }
 

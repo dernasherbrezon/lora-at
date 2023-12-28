@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <sdkconfig.h>
 #include <driver/gpio.h>
+#include <at_sensors.h>
 
 static const char *TAG = "lora-at";
 
@@ -118,7 +119,7 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   // this rx message was received using CAD<->RX mode
   // put back into CAD mode
   if (lora_at_main->cad_mode == 1) {
-    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
+    ERROR_CHECK("cad mode", sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
   }
 }
 
@@ -135,18 +136,28 @@ void cad_callback(sx127x *device, int cad_detected) {
   if (cad_detected == 0) {
     ESP_LOGD(TAG, "cad not detected");
     lora_at_main->cad_mode = 0;
-    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
+    ERROR_CHECK("cad mode", sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
     return;
   }
   // put into RX mode first to handle interrupt as soon as possible
   lora_at_main->cad_mode = 1;
-  ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_SINGLE, SX127x_MODULATION_LORA, device));
+  ERROR_CHECK("rx single", sx127x_set_opmod(SX127x_MODE_RX_SINGLE, SX127x_MODULATION_LORA, device));
   ESP_LOGD(TAG, "cad detected");
+}
+
+void send_status(main_t *main) {
+  ble_client_status status;
+  ERROR_CHECK("solar", at_sensors_get_solar(&status.solar_voltage, &status.solar_current));
+  ERROR_CHECK("battery", at_sensors_get_battery(&status.battery_voltage, &status.battery_current));
+  ERROR_CHECK("sx127x temperature", sx127x_util_read_temperature(main->device, &(status.sx127x_raw_temperature)));
+  ERROR_CHECK("bluetooth rssi", ble_client_get_rssi(main->bluetooth, &(status.rssi)));
+  ERROR_CHECK("send status", ble_client_send_status(&status, main->bluetooth));
 }
 
 void schedule_observation_and_go_ds(main_t *main) {
   lora_config_t *req = NULL;
   if (main->config->bt_address != NULL) {
+    send_status(main);
     ERROR_CHECK_DS("rx request", ble_client_load_request(&req, main->bluetooth));
   }
   if (req == NULL) {

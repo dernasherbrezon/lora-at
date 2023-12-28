@@ -8,6 +8,15 @@
 
 typedef struct ble_client_t ble_client;
 
+typedef struct {
+  int8_t rssi;
+  int8_t sx127x_raw_temperature;
+  uint16_t solar_voltage;
+  int16_t solar_current;
+  uint16_t battery_voltage;
+  int16_t battery_current;
+} ble_client_status;
+
 esp_err_t ble_client_create(uint8_t *address, ble_client **client);
 
 esp_err_t ble_client_connect(uint8_t *address, ble_client *client);
@@ -17,6 +26,10 @@ esp_err_t ble_client_disconnect(ble_client *client);
 esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client);
 
 esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client);
+
+esp_err_t ble_client_get_rssi(ble_client *client, int8_t *rssi);
+
+esp_err_t ble_client_send_status(ble_client_status *status, ble_client *client);
 
 void ble_client_destroy(ble_client *client);
 
