@@ -554,6 +554,10 @@ esp_err_t ble_client_send_status(ble_client_status *status, ble_client *client) 
     ERROR_CHECK(ble_client_reconnect(client->address, client));
   }
   status->protocol_version = PROTOCOL_VERSION;
+  status->battery_current = htons(status->battery_current);
+  status->battery_voltage = htons(status->battery_voltage);
+  status->solar_current = htons(status->solar_current);
+  status->solar_voltage = htons(status->solar_voltage);
   client->semaphore_result = ESP_FAIL;
   int code = ble_gattc_write_flat(client->conn_handle, client->status_characteristic_handle, status, sizeof(ble_client_status), ble_client_gatt_attr_fn, client);
   if (code != 0) {
