@@ -163,14 +163,24 @@ int ble_client_gatt_chr_fn(uint16_t conn_handle, const struct ble_gatt_error *er
   switch (error->status) {
     case 0: {
       ESP_LOGI(TAG, "characteristic found");
-      client->characteristic_found = true;
-      client->request_characteristic_handle = chr->val_handle;
-      client->semaphore_result = ESP_OK;
+      if (ble_uuid_cmp(&chr->uuid.u, remote_request_chr_uuid) == 0) {
+        client->characteristic_found = true;
+        client->request_characteristic_handle = chr->val_handle;
+        client->semaphore_result = ESP_OK;
+      } else if (ble_uuid_cmp(&chr->uuid.u, remote_status_chr_uuid) == 0) {
+        client->status_characteristic_found = true;
+        client->status_characteristic_handle = chr->val_handle;
+        client->semaphore_result = ESP_OK;
+      } else {
+        client->semaphore_result = ESP_ERR_INVALID_ARG;
+      }
       xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_EDONE: {
-      if (!client->characteristic_found) {
+      bool request_chr_expected_and_not_found = (ble_uuid_cmp(&chr->uuid.u, remote_request_chr_uuid) == 0 && !client->characteristic_found);
+      bool status_chr_expected_and_not_found = (ble_uuid_cmp(&chr->uuid.u, remote_status_chr_uuid) == 0 && !client->status_characteristic_found);
+      if (request_chr_expected_and_not_found || status_chr_expected_and_not_found) {
         client->semaphore_result = ESP_ERR_TIMEOUT;
         xSemaphoreGive(client->semaphore);
       }
@@ -243,6 +253,7 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
       client->connected = false;
       client->service_found = false;
       client->characteristic_found = false;
+      client->status_characteristic_found = false;
       xSemaphoreGive(client->semaphore);
       break;
     }
@@ -262,6 +273,7 @@ static void ble_client_on_reset(int reason) {
   global_client->connected = false;
   global_client->service_found = false;
   global_client->characteristic_found = false;
+  global_client->status_characteristic_found = false;
 }
 
 static void ble_client_on_sync(void) {
