@@ -124,12 +124,14 @@ menu "Lora-AT"
         help
             If configured, then it will try to connect and read bus voltage and current
             from INA219 sensor. This address is for solar panel sensor. "-1" - address is not configured
+            INA219 configuration assumes: max current 5A over 0.1 Ohm shunt resistor. Max voltage - 16V
     config BATTERY_I2C_INA219_ADDR
         int "I2C address for battery sensor"
         default -1
         help
             If configured, then it will try to connect and read bus voltage and current
             from INA219 sensor. This address is for battery sensor. "-1" - address is not configured
+            INA219 configuration assumes: max current 5A over 0.1 Ohm shunt resistor. Max voltage - 16V
     config I2C_MASTER_SDA
         int "SDA pin"
         default 21
