@@ -184,16 +184,15 @@ int ble_client_gatt_chr_fn(uint16_t conn_handle, const struct ble_gatt_error *er
       } else {
         client->semaphore_result = ESP_ERR_INVALID_ARG;
       }
-      xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_EDONE: {
       // can't detect if it was timeout for which characteristic because
       // chr is 0 on BLE_HS_EDONE
-      if (client->semaphore_result != ESP_OK) {
+      if (client->semaphore_result != ESP_OK && client->semaphore_result != ESP_ERR_INVALID_ARG) {
         client->semaphore_result = ESP_ERR_TIMEOUT;
-        xSemaphoreGive(client->semaphore);
       }
+      xSemaphoreGive(client->semaphore);
       break;
     }
   }
@@ -213,19 +212,17 @@ int ble_client_disc_svc_fn(uint16_t conn_handle, const struct ble_gatt_error *er
       client->start_handle = service->start_handle;
       client->end_handle = service->end_handle;
       client->semaphore_result = ESP_OK;
-      xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_ETIMEOUT: {
       client->semaphore_result = ESP_ERR_TIMEOUT;
-      xSemaphoreGive(client->semaphore);
       break;
     }
     case BLE_HS_EDONE: {
       if (!client->service_found) {
         client->semaphore_result = ESP_ERR_TIMEOUT;
-        xSemaphoreGive(client->semaphore);
       }
+      xSemaphoreGive(client->semaphore);
       break;
     }
   }
