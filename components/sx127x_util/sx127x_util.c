@@ -406,8 +406,9 @@ esp_err_t sx127x_util_read_temperature(sx127x *device, int8_t *temperature) {
   // a little bit longer for FSRX mode to kick off
   ets_delay_us(150);
   ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(false, device));
+  esp_err_t result = sx127x_fsk_ook_get_raw_temperature(device, temperature);
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device));
-  return sx127x_fsk_ook_get_raw_temperature(device, temperature);
+  return result;
 }
 
 void sx127x_util_frame_destroy(lora_frame_t *frame) {

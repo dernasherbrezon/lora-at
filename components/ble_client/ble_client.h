@@ -8,6 +8,7 @@
 
 typedef struct ble_client_t ble_client;
 
+#pragma pack(push, 1)
 typedef struct {
   uint8_t protocol_version;
   int8_t rssi;
@@ -17,6 +18,7 @@ typedef struct {
   uint16_t battery_voltage;
   int16_t battery_current;
 } ble_client_status;
+#pragma pack(pop)
 
 esp_err_t ble_client_create(uint8_t *address, ble_client **client);
 

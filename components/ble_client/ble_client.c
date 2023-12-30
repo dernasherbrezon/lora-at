@@ -103,6 +103,15 @@ esp_err_t ble_client_convert_ble_code(int ble_code) {
   }
 }
 
+void ble_client_reset_internally(ble_client *result) {
+  result->semaphore_result = ESP_FAIL;
+  result->connected = false;
+  result->service_found = false;
+  result->characteristic_found = false;
+  result->status_characteristic_found = false;
+  result->last_request = NULL;
+}
+
 int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *error, struct ble_gatt_attr *attr, void *arg) {
   struct ble_client_t *client = (struct ble_client_t *) arg;
   ESP_LOGD(TAG, "characteristic value response received: %d status: %d", conn_handle, error->status);
@@ -114,13 +123,13 @@ int ble_client_gatt_attr_fn(uint16_t conn_handle, const struct ble_gatt_error *e
     xSemaphoreGive(client->semaphore);
     return 0;
   }
-  ESP_LOGI(TAG, "received bytes: %d", attr->om->om_len);
   // no observations scheduled
-  if (attr->om->om_len == 0) {
+  if (attr->om == NULL || attr->om->om_len == 0) {
     client->semaphore_result = ESP_OK;
     xSemaphoreGive(client->semaphore);
     return 0;
   }
+  ESP_LOGI(TAG, "received bytes: %d", attr->om->om_len);
   client->last_request = malloc(sizeof(lora_config_t));
   if (client->last_request == NULL) {
     client->semaphore_result = ESP_ERR_NO_MEM;
@@ -162,12 +171,13 @@ int ble_client_gatt_chr_fn(uint16_t conn_handle, const struct ble_gatt_error *er
   }
   switch (error->status) {
     case 0: {
-      ESP_LOGI(TAG, "characteristic found");
-      if (ble_uuid_cmp(&chr->uuid.u, remote_request_chr_uuid) == 0) {
+      if (ble_uuid_cmp(&(chr->uuid.u), remote_request_chr_uuid) == 0) {
+        ESP_LOGI(TAG, "characteristic_found");
         client->characteristic_found = true;
         client->request_characteristic_handle = chr->val_handle;
         client->semaphore_result = ESP_OK;
-      } else if (ble_uuid_cmp(&chr->uuid.u, remote_status_chr_uuid) == 0) {
+      } else if (ble_uuid_cmp(&(chr->uuid.u), remote_status_chr_uuid) == 0) {
+        ESP_LOGI(TAG, "status_characteristic_found");
         client->status_characteristic_found = true;
         client->status_characteristic_handle = chr->val_handle;
         client->semaphore_result = ESP_OK;
@@ -178,9 +188,9 @@ int ble_client_gatt_chr_fn(uint16_t conn_handle, const struct ble_gatt_error *er
       break;
     }
     case BLE_HS_EDONE: {
-      bool request_chr_expected_and_not_found = (ble_uuid_cmp(&chr->uuid.u, remote_request_chr_uuid) == 0 && !client->characteristic_found);
-      bool status_chr_expected_and_not_found = (ble_uuid_cmp(&chr->uuid.u, remote_status_chr_uuid) == 0 && !client->status_characteristic_found);
-      if (request_chr_expected_and_not_found || status_chr_expected_and_not_found) {
+      // can't detect if it was timeout for which characteristic because
+      // chr is 0 on BLE_HS_EDONE
+      if (client->semaphore_result != ESP_OK) {
         client->semaphore_result = ESP_ERR_TIMEOUT;
         xSemaphoreGive(client->semaphore);
       }
@@ -249,11 +259,8 @@ static int ble_client_gap_event(struct ble_gap_event *event, void *arg) {
     }
     case BLE_GAP_EVENT_DISCONNECT: {
       ESP_LOGI(TAG, "disconnected");
+      ble_client_reset_internally(client);
       client->semaphore_result = ESP_ERR_INVALID_STATE;
-      client->connected = false;
-      client->service_found = false;
-      client->characteristic_found = false;
-      client->status_characteristic_found = false;
       xSemaphoreGive(client->semaphore);
       break;
     }
@@ -270,10 +277,7 @@ void ble_client_host_task(void *param) {
 
 static void ble_client_on_reset(int reason) {
   ESP_LOGE(TAG, "resetting state. reason: %d", reason);
-  global_client->connected = false;
-  global_client->service_found = false;
-  global_client->characteristic_found = false;
-  global_client->status_characteristic_found = false;
+  ble_client_reset_internally(global_client);
 }
 
 static void ble_client_on_sync(void) {
@@ -302,13 +306,9 @@ esp_err_t ble_client_create(uint8_t *address, ble_client **client) {
     return ESP_ERR_NO_MEM;
   }
   // pessimistic by default
-  result->semaphore_result = ESP_FAIL;
   result->controller_initialized = false;
-  result->connected = false;
-  result->service_found = false;
-  result->characteristic_found = false;
-  result->last_request = NULL;
   result->address = address;
+  ble_client_reset_internally(result);
   if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
     ESP_LOGI(TAG, "power profiling initialized");
     gpio_set_direction((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, GPIO_MODE_OUTPUT);
@@ -441,7 +441,7 @@ esp_err_t ble_client_disconnect(ble_client *client) {
 }
 
 esp_err_t ble_client_get_rssi(ble_client *client, int8_t *rssi) {
-  ERROR_CHECK(ble_client_connect_internally(client->address, client));
+  ERROR_CHECK(ble_client_reconnect(client->address, client));
   return ble_gap_conn_rssi(client->conn_handle, rssi);
 }
 
