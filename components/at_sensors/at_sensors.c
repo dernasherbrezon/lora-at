@@ -1,17 +1,18 @@
 #include "at_sensors.h"
 #include "sdkconfig.h"
 #include <ina219.h>
+#include <string.h>
 
 #define SHUNT_RESISTOR_MILLI_OHM 100
-#define MAX_CURRENT 5
+#define MAX_CURRENT 3.2
 #define I2C_PORT 0
 
 #ifndef CONFIG_SOLAR_I2C_INA219_ADDR
-#define CONFIG_SOLAR_I2C_INA219_ADDR -1
+#define CONFIG_SOLAR_I2C_INA219_ADDR 0
 #endif
 
 #ifndef CONFIG_BATTERY_I2C_INA219_ADDR
-#define CONFIG_BATTERY_I2C_INA219_ADDR -1
+#define CONFIG_BATTERY_I2C_INA219_ADDR 0
 #endif
 
 #ifndef CONFIG_I2C_MASTER_SDA
@@ -32,6 +33,7 @@
 
 esp_err_t at_sensors_get_data(uint8_t addr, uint16_t *bus_voltage, int16_t *current) {
   ina219_t dev;
+  memset(&dev, 0, sizeof(ina219_t));
   ERROR_CHECK(ina219_init_desc(&dev, addr, I2C_PORT, CONFIG_I2C_MASTER_SDA, CONFIG_I2C_MASTER_SCL));
   ERROR_CHECK(ina219_init(&dev));
   ERROR_CHECK(ina219_configure(&dev, INA219_BUS_RANGE_16V, INA219_GAIN_0_125, INA219_RES_12BIT_1S, INA219_RES_12BIT_1S, INA219_MODE_CONT_SHUNT_BUS));
@@ -47,7 +49,7 @@ esp_err_t at_sensors_get_data(uint8_t addr, uint16_t *bus_voltage, int16_t *curr
 }
 
 esp_err_t at_sensors_get_solar(uint16_t *bus_voltage, int16_t *current) {
-  if (CONFIG_SOLAR_I2C_INA219_ADDR == -1) {
+  if (CONFIG_SOLAR_I2C_INA219_ADDR == 0) {
     *bus_voltage = 0;
     *current = 0;
     return ESP_OK;
@@ -56,10 +58,18 @@ esp_err_t at_sensors_get_solar(uint16_t *bus_voltage, int16_t *current) {
 }
 
 esp_err_t at_sensors_get_battery(uint16_t *bus_voltage, int16_t *current) {
-  if (CONFIG_BATTERY_I2C_INA219_ADDR == -1) {
+  if (CONFIG_BATTERY_I2C_INA219_ADDR == 0) {
     *bus_voltage = 0;
     *current = 0;
     return ESP_OK;
   }
   return at_sensors_get_data(CONFIG_BATTERY_I2C_INA219_ADDR, bus_voltage, current);
+}
+
+esp_err_t at_sensors_init() {
+  return i2cdev_init();
+}
+
+void at_sensors_destroy() {
+  i2cdev_done();
 }

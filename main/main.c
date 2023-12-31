@@ -148,8 +148,10 @@ void cad_callback(sx127x *device, int cad_detected) {
 
 void send_status(main_t *main) {
   ble_client_status status;
+  ERROR_CHECK("sensors", at_sensors_init());
   ERROR_CHECK("solar", at_sensors_get_solar(&status.solar_voltage, &status.solar_current));
   ERROR_CHECK("battery", at_sensors_get_battery(&status.battery_voltage, &status.battery_current));
+  at_sensors_destroy();
   ERROR_CHECK("sx127x temperature", sx127x_util_read_temperature(main->device, &(status.sx127x_raw_temperature)));
   ERROR_CHECK("bluetooth rssi", ble_client_get_rssi(main->bluetooth, &(status.rssi)));
   ERROR_CHECK("send status", ble_client_send_status(&status, main->bluetooth));
