@@ -2,6 +2,7 @@
 dependencies:
   dernasherbrezon/sx127x: "^3.1.2"
   espressif/ssd1306: "^1.0.5"
+  espressif/mdns: "^1.0.3"
   ## Required IDF version
   idf:
     version: ">=4.1.0"

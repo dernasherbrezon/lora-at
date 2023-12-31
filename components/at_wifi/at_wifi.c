@@ -5,6 +5,8 @@
 #include <freertos/event_groups.h>
 #include <esp_netif.h>
 #include <esp_wifi.h>
+#include <mdns.h>
+#include <lwip/apps/netbiosns.h>
 #include "sdkconfig.h"
 
 #ifndef CONFIG_ESP_WIFI_SSID
@@ -35,6 +37,10 @@
 #define CONFIG_ESP_WIFI_AUTH WIFI_AUTH_WPA2_WPA3_PSK
 #elif CONFIG_ESP_WIFI_AUTH_WAPI_PSK
 #define CONFIG_ESP_WIFI_AUTH WIFI_AUTH_WAPI_PSK
+#endif
+
+#ifndef CONFIG_MDNS_HOST_NAME
+#define CONFIG_MDNS_HOST_NAME "lora-at"
 #endif
 
 /* The event group allows multiple bits for each event, but we only care about two events:
@@ -125,6 +131,27 @@ esp_err_t at_wifi_init_sta(void) {
   }
 }
 
+esp_err_t at_wifi_init_mdns() {
+  ERROR_CHECK(mdns_init());
+  ERROR_CHECK(mdns_hostname_set(CONFIG_MDNS_HOST_NAME));
+  ERROR_CHECK(mdns_instance_name_set(CONFIG_MDNS_HOST_NAME));
+
+  mdns_txt_item_t serviceTxtData[] = {
+      {"board", "esp32"},
+      {"path",  "/"}
+  };
+
+  ERROR_CHECK(mdns_service_add("lora-at-web-server", "_http", "_tcp", 80, serviceTxtData,
+                               sizeof(serviceTxtData) / sizeof(serviceTxtData[0])));
+  netbiosns_init();
+  netbiosns_set_name(CONFIG_MDNS_HOST_NAME);
+  return ESP_OK;
+}
+
+esp_err_t at_wifi_start_rest_server() {
+  return ESP_OK;
+}
+
 esp_err_t at_wifi_connect() {
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -133,5 +160,8 @@ esp_err_t at_wifi_connect() {
   }
   ERROR_CHECK(ret);
   ESP_LOGI(TAG, "initialize wifi");
-  return at_wifi_init_sta();
+  ERROR_CHECK(at_wifi_init_sta());
+  ERROR_CHECK(at_wifi_init_mdns());
+  ERROR_CHECK(at_wifi_start_rest_server());
+  return ESP_OK;
 }
