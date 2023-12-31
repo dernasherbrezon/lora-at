@@ -13,6 +13,7 @@
 #include <sdkconfig.h>
 #include <driver/gpio.h>
 #include <at_sensors.h>
+#include <at_wifi.h>
 
 static const char *TAG = "lora-at";
 
@@ -270,7 +271,8 @@ void app_main(void) {
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, lora_at_main->timer, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
-
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
+
+  ERROR_CHECK("at_wifi", at_wifi_connect());
   ESP_LOGI(TAG, "lora-at initialized");
 }
