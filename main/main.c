@@ -14,6 +14,7 @@
 #include <driver/gpio.h>
 #include <at_sensors.h>
 #include <at_wifi.h>
+#include <at_rest.h>
 
 static const char *TAG = "lora-at";
 
@@ -53,6 +54,7 @@ typedef struct {
   ble_client *bluetooth;
   lora_at_config_t *config;
   at_timer_t *timer;
+  at_rest *rest;
   int cad_mode;
 } main_t;
 
@@ -276,5 +278,6 @@ void app_main(void) {
   xTaskCreate(uart_rx_task, "uart_rx_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
 
   ERROR_CHECK("at_wifi", at_wifi_connect());
+  ERROR_CHECK("at_rest", at_rest_create(lora_at_main->device, &lora_at_main->rest));
   ESP_LOGI(TAG, "lora-at initialized");
 }

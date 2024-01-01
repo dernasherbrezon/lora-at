@@ -1,1 +1,1 @@
-idf_component_register(SRCS "main.c" "uart_at.c" REQUIRES at_sensors driver display sx127x_util at_config ble_client at_handler at_util deep_sleep at_timer at_wifi)
+idf_component_register(SRCS "main.c" "uart_at.c" REQUIRES at_sensors driver display sx127x_util at_config ble_client at_handler at_util deep_sleep at_timer at_wifi at_rest)

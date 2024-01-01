@@ -148,10 +148,6 @@ esp_err_t at_wifi_init_mdns() {
   return ESP_OK;
 }
 
-esp_err_t at_wifi_start_rest_server() {
-  return ESP_OK;
-}
-
 esp_err_t at_wifi_connect() {
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -162,6 +158,5 @@ esp_err_t at_wifi_connect() {
   ESP_LOGI(TAG, "initialize wifi");
   ERROR_CHECK(at_wifi_init_sta());
   ERROR_CHECK(at_wifi_init_mdns());
-  ERROR_CHECK(at_wifi_start_rest_server());
   return ESP_OK;
 }
