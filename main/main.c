@@ -117,7 +117,11 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
     }
     sx127x_util_frame_destroy(frame);
   } else {
+#if CONFIG_AT_WIFI_ENABLED
+    ERROR_CHECK("lora frame", at_rest_add_frame(frame, lora_at_main->rest));
+#else
     ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
+#endif
   }
   // this rx message was received using CAD<->RX mode
   // put back into CAD mode
@@ -266,7 +270,7 @@ void app_main(void) {
   }
 
   ERROR_CHECK("timer", at_timer_create(at_timer_callback, lora_at_main, &lora_at_main->timer));
-  if (lora_at_main->config->inactivity_period_micros != 0) {
+  if (lora_at_main->config->inactivity_period_micros != 0 && !CONFIG_AT_WIFI_ENABLED) {
     ERROR_CHECK("timer", at_timer_start(lora_at_main->config->inactivity_period_micros, lora_at_main->timer));
   }
 
