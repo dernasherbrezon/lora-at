@@ -6,12 +6,14 @@ esp_err_t at_sensors_init() {
 }
 
 esp_err_t at_sensors_get_solar(uint16_t *bus_voltage, int16_t *current) {
-  //do nothing
+  *bus_voltage = 0;
+  *current = 0;
   return ESP_OK;
 }
 
 esp_err_t at_sensors_get_battery(uint16_t *bus_voltage, int16_t *current) {
-  //do nothing
+  *bus_voltage = 0;
+  *current = 0;
   return ESP_OK;
 }
 
