@@ -4,6 +4,7 @@
 #include <esp_event.h>
 #include <freertos/event_groups.h>
 #include <esp_netif.h>
+#include <esp_netif_sntp.h>
 #include <esp_wifi.h>
 #include <mdns.h>
 #include <lwip/apps/netbiosns.h>
@@ -73,8 +74,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     ESP_LOGI(TAG, "connect to the AP fail");
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-    ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-    ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
     s_retry_num = 0;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   }
@@ -113,7 +112,7 @@ esp_err_t at_wifi_init_sta(void) {
   ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ERROR_CHECK(esp_wifi_start());
-  ESP_LOGI(TAG, "wifi_init_sta finished.");
+  ESP_LOGI(TAG, "init completed");
   /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
    * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
   EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
@@ -155,8 +154,17 @@ esp_err_t at_wifi_connect() {
     ret = nvs_flash_init();
   }
   ERROR_CHECK(ret);
-  ESP_LOGI(TAG, "initialize wifi");
+  ESP_LOGI(TAG, "starting wifi");
   ERROR_CHECK(at_wifi_init_sta());
   ERROR_CHECK(at_wifi_init_mdns());
+  ESP_LOGI(TAG, "starting sntp");
+  esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+  config.start = false;
+  config.server_from_dhcp = true;
+  config.renew_servers_after_new_IP = true;
+  config.index_of_first_server = 1;
+  config.ip_event_to_renew = IP_EVENT_STA_GOT_IP;
+  esp_netif_sntp_init(&config);
+  esp_netif_sntp_start();
   return ESP_OK;
 }
