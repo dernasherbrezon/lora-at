@@ -26,6 +26,10 @@ static const char *TAG = "lora-at";
 #define CONFIG_BLUETOOTH_RECONNECTION_INTERVAL 5000
 #endif
 
+#ifndef CONFIG_AT_WIFI_ENABLED
+#define CONFIG_AT_WIFI_ENABLED 0
+#endif
+
 #define ERROR_CHECK(y, x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
