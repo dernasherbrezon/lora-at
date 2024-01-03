@@ -208,5 +208,15 @@ menu "Lora-AT"
             help
                 Specify the domain name used in the mDNS service.
 
+        config AT_API_USERNAME
+            string "REST Service username"
+            default "r2lora"
+            help
+                Username for basic authentication
+        config AT_API_PASSWORD
+            string "REST Service password"
+            default ""
+            help
+                Password for basic authentication
     endmenu
 endmenu

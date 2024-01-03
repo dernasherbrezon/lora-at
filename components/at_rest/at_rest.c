@@ -3,6 +3,16 @@
 #include <esp_log.h>
 #include <cJSON.h>
 #include <at_util.h>
+#include <esp_tls_crypto.h>
+#include "sdkconfig.h"
+
+#ifndef CONFIG_AT_API_USERNAME
+#define CONFIG_AT_API_USERNAME "r2lora"
+#endif
+
+#ifndef CONFIG_AT_API_PASSWORD
+#define CONFIG_AT_API_PASSWORD ""
+#endif
 
 #define TEMP_BUFFER_LENGTH 1024
 #define ERROR_CHECK(x)        \
@@ -10,6 +20,14 @@
     esp_err_t __err_rc = (x); \
     if (__err_rc != ESP_OK) { \
       at_rest_destroy(result);                        \
+      return __err_rc;        \
+    }                         \
+  } while (0)
+
+#define ERROR_CHECK_RETURN(x)        \
+  do {                        \
+    esp_err_t __err_rc = (x); \
+    if (__err_rc != ESP_OK) { \
       return __err_rc;        \
     }                         \
   } while (0)
@@ -22,8 +40,32 @@ struct at_rest_t {
   httpd_handle_t server;
   at_util_vector_t *frames;
   sx127x_modulation_t active_mode;
+  char *digest;
   char temp_buffer[TEMP_BUFFER_LENGTH];
 };
+
+esp_err_t at_rest_respond_auth_failure(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(httpd_resp_set_status(req, "401 UNAUTHORIZED"));
+  ERROR_CHECK_RETURN(httpd_resp_set_type(req, "application/json"));
+  ERROR_CHECK_RETURN(httpd_resp_set_hdr(req, "Connection", "keep-alive"));
+  ERROR_CHECK_RETURN(httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"lora-at\""));
+  ERROR_CHECK_RETURN(httpd_resp_send(req, NULL, 0));
+  return ESP_OK;
+}
+
+esp_err_t at_rest_authenticate(httpd_req_t *req) {
+  size_t buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
+  if (buf_len <= 1) {
+    return at_rest_respond_auth_failure(req);
+  }
+  at_rest *rest = (at_rest *) req->user_ctx;
+  ERROR_CHECK_RETURN(httpd_req_get_hdr_value_str(req, "Authorization", rest->temp_buffer, buf_len));
+  if (strncmp(rest->digest, rest->temp_buffer, buf_len)) {
+    ESP_LOGI(TAG, "authentication failed");
+    return ESP_ERR_INVALID_ARG;
+  }
+  return ESP_OK;
+}
 
 esp_err_t at_rest_respond(const char *status, const char *status_message, httpd_req_t *req) {
   esp_err_t code = httpd_resp_set_type(req, "application/json");
@@ -65,10 +107,12 @@ esp_err_t at_rest_read_body(httpd_req_t *req) {
 }
 
 static esp_err_t at_rest_status(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   return at_rest_respond("SUCCESS", NULL, req);
 }
 
 static esp_err_t at_rest_rx_pull(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = httpd_resp_set_type(req, "application/json");
   if (code != ESP_OK) {
     return code;
@@ -104,6 +148,7 @@ static esp_err_t at_rest_rx_pull(httpd_req_t *req) {
 }
 
 static esp_err_t at_rest_rx_stop(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = at_rest_rx_pull(req);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "Unable to handle", req);
@@ -175,6 +220,7 @@ static void at_rest_read_fsk_request(fsk_config_t *fsk_req, cJSON *root, uint8_t
 }
 
 static esp_err_t at_rest_fsk_tx(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = at_rest_read_body(req);
   if (code != ESP_OK) {
     return code;
@@ -207,6 +253,7 @@ static esp_err_t at_rest_fsk_tx(httpd_req_t *req) {
 }
 
 static esp_err_t at_rest_fsk_rx_start(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = at_rest_read_body(req);
   if (code != ESP_OK) {
     return code;
@@ -233,6 +280,7 @@ static esp_err_t at_rest_fsk_rx_start(httpd_req_t *req) {
 }
 
 static esp_err_t at_rest_lora_tx(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = at_rest_read_body(req);
   if (code != ESP_OK) {
     return code;
@@ -264,6 +312,7 @@ static esp_err_t at_rest_lora_tx(httpd_req_t *req) {
 }
 
 static esp_err_t at_rest_lora_rx_start(httpd_req_t *req) {
+  ERROR_CHECK_RETURN(at_rest_authenticate(req));
   esp_err_t code = at_rest_read_body(req);
   if (code != ESP_OK) {
     return code;
@@ -288,6 +337,33 @@ static esp_err_t at_rest_lora_rx_start(httpd_req_t *req) {
   return at_rest_respond("SUCCESS", NULL, req);
 }
 
+static esp_err_t at_rest_digest(const char *username, const char *password, char **result) {
+  char *user_info = NULL;
+  int rc = asprintf(&user_info, "%s:%s", username, password);
+  if (rc < 0) {
+    return ESP_ERR_NO_MEM;
+  }
+  if (!user_info) {
+    return ESP_ERR_NO_MEM;
+  }
+  size_t n = 0;
+  esp_crypto_base64_encode(NULL, 0, &n, (const unsigned char *) user_info, strlen(user_info));
+
+  /* 6: The length of the "Basic " string
+   * n: Number of bytes for a base64 encode format
+   * 1: Number of bytes for a reserved which be used to fill zero
+  */
+  char *digest = calloc(1, 6 + n + 1);
+  if (digest) {
+    strcpy(digest, "Basic ");
+    size_t out;
+    esp_crypto_base64_encode((unsigned char *) digest + 6, n, &out, (const unsigned char *) user_info, strlen(user_info));
+  }
+  free(user_info);
+  *result = digest;
+  return ESP_OK;
+}
+
 esp_err_t at_rest_create(sx127x *device, at_rest **rest) {
   struct at_rest_t *result = malloc(sizeof(struct at_rest_t));
   if (result == NULL) {
@@ -296,6 +372,9 @@ esp_err_t at_rest_create(sx127x *device, at_rest **rest) {
   result->device = device;
   result->server = NULL;
   result->active_mode = SX127x_MODULATION_FSK;
+  result->digest = NULL;
+
+  ERROR_CHECK(at_rest_digest(CONFIG_AT_API_USERNAME, CONFIG_AT_API_PASSWORD, &result->digest));
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.uri_match_fn = httpd_uri_match_wildcard;
@@ -367,6 +446,9 @@ void at_rest_destroy(at_rest *result) {
   }
   if (result->server != NULL) {
     httpd_stop(result->server);
+  }
+  if (result->digest != NULL) {
+    free(result->digest);
   }
   free(result);
 }
