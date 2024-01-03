@@ -1,13 +1,12 @@
 import pytest
-from pytest_embedded import Dut
+from pytest_embedded_serial import SerialDut
 from typing import Tuple
 
 # @pytest.mark.supported_targets
-@pytest.mark.generic
 @pytest.mark.parametrize('count', [
     2,
 ], indirect=True)
-def test_common_at_commands(dut: Tuple[Dut, Dut]) -> None:
+def test_common_at_commands(dut: Tuple[SerialDut, SerialDut]) -> None:
     dut_tx = dut[0]
     dut_rx = dut[1]
 
