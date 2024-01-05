@@ -63,7 +63,8 @@ esp_err_t at_rest_authenticate(httpd_req_t *req) {
   ERROR_CHECK_RETURN(httpd_req_get_hdr_value_str(req, "Authorization", rest->temp_buffer, buf_len));
   if (strncmp(rest->digest, rest->temp_buffer, buf_len)) {
     ESP_LOGI(TAG, "authentication failed");
-    return ESP_ERR_INVALID_ARG;
+    ERROR_CHECK_RETURN(at_rest_respond_auth_failure(req));
+    return ESP_FAIL;
   }
   return ESP_OK;
 }
@@ -375,6 +376,7 @@ esp_err_t at_rest_create(sx127x *device, at_rest **rest) {
   result->active_mode = SX127x_MODULATION_FSK;
   result->digest = NULL;
 
+  ERROR_CHECK(at_util_vector_create(&result->frames));
   ERROR_CHECK(at_rest_digest(CONFIG_AT_API_USERNAME, CONFIG_AT_API_PASSWORD, &result->digest));
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
