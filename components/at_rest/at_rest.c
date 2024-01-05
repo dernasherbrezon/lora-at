@@ -56,7 +56,8 @@ esp_err_t at_rest_respond_auth_failure(httpd_req_t *req) {
 esp_err_t at_rest_authenticate(httpd_req_t *req) {
   size_t buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
   if (buf_len <= 1) {
-    return at_rest_respond_auth_failure(req);
+    ERROR_CHECK_RETURN(at_rest_respond_auth_failure(req));
+    return ESP_FAIL;
   }
   at_rest *rest = (at_rest *) req->user_ctx;
   ERROR_CHECK_RETURN(httpd_req_get_hdr_value_str(req, "Authorization", rest->temp_buffer, buf_len));
