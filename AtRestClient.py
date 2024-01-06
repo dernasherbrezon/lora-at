@@ -18,6 +18,12 @@ class AtRestClient:
     def loRaTx(self, payload):
         return requests.post('http://' + self.baseurl + '/api/v2/lora/tx', json = payload, auth=HTTPBasicAuth(self.user, self.password))
 
+    def startFskRx(self, payload):
+        return requests.post('http://' + self.baseurl + '/api/v2/fsk/rx/start', json = payload, auth=HTTPBasicAuth(self.user, self.password))
+
+    def fskTx(self, payload):
+        return requests.post('http://' + self.baseurl + '/api/v2/fsk/tx', json = payload, auth=HTTPBasicAuth(self.user, self.password))
+
     def stopRx(self):
         payload = {
             ## empty

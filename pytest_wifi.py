@@ -32,6 +32,34 @@ lora_tx = {
     "data": "cafe"
 }
 
+fsk_rx = {
+    "freq": 437200000,
+    "bitrate": 4800,
+    "freqDeviation": 5000,
+    "preamble": 8,
+    "syncword": "12AD",
+    "encoding": 0,
+    "dataShaping": 2,
+    "crc": 1,
+    "rxBandwidth": 5000,
+    "rxAfcBandwidth": 10000
+}
+
+fsk_tx = {
+    "freq": 437200000,
+    "bitrate": 4800,
+    "freqDeviation": 5000,
+    "preamble": 8,
+    "syncword": "12AD",
+    "encoding": 0,
+    "dataShaping": 2,
+    "crc": 1,
+    "power": 10,
+    "ocp": 240,
+    "pin": 1,
+    "data": "cafe"
+}
+
 expected_message = {
     "status": "SUCCESS",
     "frames": [
@@ -58,6 +86,24 @@ def test_lora_rx_tx() -> None:
     assert status0.status_code == 200
 
     status1 = client1.loRaTx(lora_tx)
+    assert status1.status_code == 200
+
+    status0 = client0.stopRx()
+    assert status0.status_code == 200
+    assert compare_objects(expected_message, status0.json(), ignore_fields=["rssi", "snr", "frequencyError", "timestamp"])
+
+def test_fsk_rx_tx() -> None:
+    client0 = AtRestClient('lora-at-0.local', 'r2lora', 'password')
+    status0 = client0.getStatus()
+    assert status0.status_code == 200
+    client1 = AtRestClient('lora-at-1.local', 'r2lora', 'password')
+    status1 = client1.getStatus()
+    assert status1.status_code == 200
+
+    status0 = client0.startFskRx(fsk_rx)
+    assert status0.status_code == 200
+
+    status1 = client1.fskTx(fsk_tx)
     assert status1.status_code == 200
 
     status0 = client0.stopRx()

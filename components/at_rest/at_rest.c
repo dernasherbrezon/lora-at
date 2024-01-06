@@ -247,7 +247,7 @@ static esp_err_t at_rest_fsk_tx(httpd_req_t *req) {
   }
   sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, rest->device);
   rest->active_mode = SX127x_MODULATION_FSK;
-  code = sx127x_util_fsk_rx(&fsk_req, rest->device);
+  code = sx127x_util_fsk_tx(message_hex, message_hex_length, &fsk_req, rest->device);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to start tx", req);
   }
