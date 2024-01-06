@@ -73,14 +73,22 @@ expected_message = {
     ]
 }
 
+expected_status = {
+    "status": "SUCCESS",
+    "minFreq": 25000000,
+    "maxFreq": 1700000000
+}
+
 
 def test_lora_rx_tx() -> None:
     client0 = AtRestClient('lora-at-0.local', 'r2lora', 'password')
     status0 = client0.getStatus()
     assert status0.status_code == 200
+    assert compare_objects(expected_status, status0.json())
     client1 = AtRestClient('lora-at-1.local', 'r2lora', 'password')
     status1 = client1.getStatus()
     assert status1.status_code == 200
+    assert compare_objects(expected_status, status1.json())
 
     status0 = client0.startLoRaRx(lora_rx)
     assert status0.status_code == 200
@@ -96,9 +104,11 @@ def test_fsk_rx_tx() -> None:
     client0 = AtRestClient('lora-at-0.local', 'r2lora', 'password')
     status0 = client0.getStatus()
     assert status0.status_code == 200
+    assert compare_objects(expected_status, status0.json())
     client1 = AtRestClient('lora-at-1.local', 'r2lora', 'password')
     status1 = client1.getStatus()
     assert status1.status_code == 200
+    assert compare_objects(expected_status, status1.json())
 
     status0 = client0.startFskRx(fsk_rx)
     assert status0.status_code == 200

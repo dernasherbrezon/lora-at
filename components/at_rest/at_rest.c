@@ -70,17 +70,14 @@ esp_err_t at_rest_authenticate(httpd_req_t *req) {
 }
 
 esp_err_t at_rest_respond(const char *status, const char *status_message, httpd_req_t *req) {
-  esp_err_t code = httpd_resp_set_type(req, "application/json");
-  if (code != ESP_OK) {
-    return code;
-  }
+  ERROR_CHECK_RETURN(httpd_resp_set_type(req, "application/json"));
   cJSON *root = cJSON_CreateObject();
   cJSON_AddStringToObject(root, "status", status);
   if (status_message != NULL) {
     cJSON_AddStringToObject(root, "failureMessage", status_message);
   }
   const char *response = cJSON_Print(root);
-  code = httpd_resp_sendstr(req, response);
+  esp_err_t code = httpd_resp_sendstr(req, response);
   free((void *) response);
   cJSON_Delete(root);
   return code;
@@ -110,7 +107,16 @@ esp_err_t at_rest_read_body(httpd_req_t *req) {
 
 static esp_err_t at_rest_status(httpd_req_t *req) {
   ERROR_CHECK_RETURN(at_rest_authenticate(req));
-  return at_rest_respond("SUCCESS", NULL, req);
+  ERROR_CHECK_RETURN(httpd_resp_set_type(req, "application/json"));
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddStringToObject(root, "status", "SUCCESS");
+  cJSON_AddNumberToObject(root, "minFreq", sx127x_util_get_min_frequency());
+  cJSON_AddNumberToObject(root, "maxFreq", sx127x_util_get_max_frequency());
+  const char *response = cJSON_Print(root);
+  esp_err_t code = httpd_resp_sendstr(req, response);
+  free((void *) response);
+  cJSON_Delete(root);
+  return code;
 }
 
 static esp_err_t at_rest_rx_pull(httpd_req_t *req) {
