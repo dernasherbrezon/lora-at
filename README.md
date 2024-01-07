@@ -10,6 +10,17 @@ Sometimes response might contain lines with "[I]" or "[E]". This is lora-at inte
 
 Full list of supported commands can be found here: [AT-commands](https://github.com/dernasherbrezon/lora-at/wiki/AT-commands)
 
+# Wi-Fi
+
+Despite the name lora-at can support Wi-Fi. By default, it is OFF and can be enabled using menuconfig: Lora-AT -> Wi-Fi -> Wi-Fi enabled. Then configure:
+
+ * SSID and password that will be used to connect to the local Wi-Fi access point.
+ * Username and password for basic authentication in REST service.
+
+Bluetooth should be disabled to reduce firmware size and free enough IRAM. 
+
+See ```pytest_wifi.py``` for examples. 
+
 # Supported boards
 
  * [ttgo-lora32-v2](https://docs.platformio.org/en/latest/boards/espressif32/ttgo-lora32-v2.html)
