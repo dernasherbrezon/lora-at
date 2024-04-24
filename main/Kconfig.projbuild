@@ -219,4 +219,46 @@ menu "Lora-AT"
             help
                 Password for basic authentication
     endmenu
+
+    menu "Battery"
+        config AT_BATTERY_MODEL
+            string "Battery model"
+            default "Unknown"
+            help
+                Unique model identifier. Will be exposed as a bluetooth parameter
+
+        config AT_BATTERY_VENDOR
+            string "Battery manufacturer"
+            default "Unknown"
+            help
+                Name of battery manufacturer. Will be exposed as a bluetooth parameter
+
+        config AT_BATTERY_MIN_VOLTAGE
+            int "Battery minimum voltage"
+            default 3000
+            help
+                Minimum battery voltage in milli-volts. Used to calculate remaining capacity
+
+        config AT_BATTERY_MAX_VOLTAGE
+            int "Battery maximum voltage"
+            default 4200
+            help
+                Maximum battery voltage in milli-volts. Used to calculate remaining capacity
+
+    endmenu
+
+    menu "Solar"
+        config AT_SOLAR_MODEL
+            string "Solar panel model"
+            default "Unknown"
+            help
+                Unique model identifier. Will be exposed as a bluetooth parameter
+
+        config AT_SOLAR_VENDOR
+            string "Solar panel manufacturer"
+            default "Unknown"
+            help
+                Name of solar panel manufacturer. Will be exposed as a bluetooth parameter
+    endmenu
+
 endmenu

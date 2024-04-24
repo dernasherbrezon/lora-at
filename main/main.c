@@ -4,8 +4,10 @@
 #include <at_config.h>
 #include <at_handler.h>
 #include <ble_client.h>
+#include <ble_server.h>
 #include <string.h>
 #include "uart_at.h"
+#include "i2cdev.h"
 #include <deep_sleep.h>
 #include <esp_sleep.h>
 #include <at_timer.h>
@@ -59,6 +61,8 @@ typedef struct {
   lora_at_config_t *config;
   at_timer_t *timer;
   at_rest *rest;
+  at_sensors *sensors;
+  ble_server *ble_server;
   int cad_mode;
 } main_t;
 
@@ -158,10 +162,15 @@ void cad_callback(sx127x *device, int cad_detected) {
 
 void send_status(main_t *main) {
   ble_client_status status;
-  ERROR_CHECK("sensors", at_sensors_init());
-  ERROR_CHECK("solar", at_sensors_get_solar(&status.solar_voltage, &status.solar_current));
-  ERROR_CHECK("battery", at_sensors_get_battery(&status.battery_voltage, &status.battery_current));
-  at_sensors_destroy();
+  ERROR_CHECK("i2c", i2cdev_init());
+  at_sensors *sensors = NULL;
+  ERROR_CHECK("sensors", at_sensors_init(&sensors));
+  ERROR_CHECK("solar", at_sensors_get_solar_voltage(&status.solar_voltage, sensors));
+  ERROR_CHECK("solar", at_sensors_get_solar_current(&status.solar_current, sensors));
+  ERROR_CHECK("battery", at_sensors_get_battery_voltage(&status.battery_voltage, sensors));
+  ERROR_CHECK("battery", at_sensors_get_battery_current(&status.battery_current, sensors));
+  at_sensors_destroy(sensors);
+  i2cdev_done();
   ERROR_CHECK("sx127x temperature", sx127x_util_read_temperature(main->device, &(status.sx127x_raw_temperature)));
   ERROR_CHECK("bluetooth rssi", ble_client_get_rssi(main->bluetooth, &(status.rssi)));
   ERROR_CHECK("send status", ble_client_send_status(&status, main->bluetooth));
@@ -251,7 +260,7 @@ void app_main(void) {
     sx127x_handle_interrupt(lora_at_main->device); // should always put esp32 into deep sleep. so can return from here
     return;
   }
-  esp_log_level_set("*", ESP_LOG_INFO);
+//  esp_log_level_set("*", ESP_LOG_INFO);
   // reset whatever state was before
   esp_err_t code = sx127x_util_reset();
   if (code != ESP_OK) {
@@ -280,6 +289,10 @@ void app_main(void) {
 
   ERROR_CHECK("at_handler", at_handler_create(lora_at_main->config, lora_at_main->display, lora_at_main->device, lora_at_main->bluetooth, lora_at_main->timer, &lora_at_main->at_handler));
   ESP_LOGI(TAG, "at handler initialized");
+
+  ERROR_CHECK("i2c", i2cdev_init());
+  ERROR_CHECK("sensors", at_sensors_init(&lora_at_main->sensors));
+  ERROR_CHECK("ble_server", ble_server_create(lora_at_main->sensors, &lora_at_main->ble_server));
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, lora_at_main->timer, &lora_at_main->uart_at_handler));
   ESP_LOGI(TAG, "uart initialized");
