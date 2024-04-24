@@ -10,6 +10,7 @@
 #include <host/util/util.h>
 #include <services/gap/ble_svc_gap.h>
 #include <nimble/nimble_port_freertos.h>
+#include <cc.h>
 #include "sdkconfig.h"
 
 #ifndef PROJECT_VER
@@ -169,6 +170,7 @@ static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_h
         if (code != ESP_OK) {
           return BLE_ATT_ERR_INSUFFICIENT_RES;
         }
+        voltage = htons(voltage);
         int rc = os_mbuf_append(ctxt->om, &voltage, sizeof(voltage));
         return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
       }
@@ -178,6 +180,7 @@ static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_h
         if (code != ESP_OK) {
           return BLE_ATT_ERR_INSUFFICIENT_RES;
         }
+        current = htons(current);
         int rc = os_mbuf_append(ctxt->om, &current, sizeof(current));
         return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
       }

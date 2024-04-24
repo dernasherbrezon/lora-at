@@ -79,7 +79,7 @@ esp_err_t at_sensors_get_battery_level(uint8_t *level, at_sensors *dev) {
     *level = 0;
     return ESP_OK;
   }
-  *level = (uint8_t) ((voltage - CONFIG_AT_BATTERY_MIN_VOLTAGE) / (CONFIG_AT_BATTERY_MAX_VOLTAGE - CONFIG_AT_BATTERY_MIN_VOLTAGE)) * 100;
+  *level = (uint8_t) (((float) (voltage - CONFIG_AT_BATTERY_MIN_VOLTAGE) / (CONFIG_AT_BATTERY_MAX_VOLTAGE - CONFIG_AT_BATTERY_MIN_VOLTAGE)) * 100);
   return ESP_OK;
 }
 
