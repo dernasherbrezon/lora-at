@@ -23,6 +23,14 @@
 #define CONFIG_I2C_MASTER_SCL 22
 #endif
 
+#ifndef CONFIG_AT_BATTERY_MIN_VOLTAGE
+#define CONFIG_AT_BATTERY_MIN_VOLTAGE 3000
+#endif
+
+#ifndef CONFIG_AT_BATTERY_MAX_VOLTAGE
+#define CONFIG_AT_BATTERY_MAX_VOLTAGE 4200
+#endif
+
 #define ERROR_CHECK(x)        \
   do {                        \
     esp_err_t __err_rc = (x); \
@@ -61,6 +69,17 @@ esp_err_t at_sensors_get_battery_current(int16_t *current, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->battery, &result_current));
   *current = (int16_t) (result_current * 1000);
+  return ESP_OK;
+}
+
+esp_err_t at_sensors_get_battery_level(uint8_t *level, at_sensors *dev) {
+  uint16_t voltage;
+  ERROR_CHECK(at_sensors_get_battery_voltage(&voltage, dev));
+  if (voltage < CONFIG_AT_BATTERY_MIN_VOLTAGE) {
+    *level = 0;
+    return ESP_OK;
+  }
+  *level = (uint8_t) ((voltage - CONFIG_AT_BATTERY_MIN_VOLTAGE) / (CONFIG_AT_BATTERY_MAX_VOLTAGE - CONFIG_AT_BATTERY_MIN_VOLTAGE)) * 100;
   return ESP_OK;
 }
 

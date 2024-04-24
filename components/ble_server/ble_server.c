@@ -24,14 +24,6 @@
 #define CONFIG_AT_BATTERY_VENDOR "Unknown"
 #endif
 
-#ifndef CONFIG_AT_BATTERY_MIN_VOLTAGE
-#define CONFIG_AT_BATTERY_MIN_VOLTAGE 3000
-#endif
-
-#ifndef CONFIG_AT_BATTERY_MAX_VOLTAGE
-#define CONFIG_AT_BATTERY_MAX_VOLTAGE 4200
-#endif
-
 #ifndef CONFIG_AT_SOLAR_MODEL
 #define CONFIG_AT_SOLAR_MODEL "Unknown"
 #endif
@@ -108,8 +100,6 @@ uint16_t ble_server_battery_manuf_name_handle;
 uint16_t ble_server_battery_level_handle;
 static const char ble_server_battery_model_name[] = CONFIG_AT_BATTERY_MODEL;
 static const char ble_server_battery_manuf_name[] = CONFIG_AT_BATTERY_VENDOR;
-static const float ble_server_battery_min_voltage = CONFIG_AT_BATTERY_MIN_VOLTAGE;
-static const float ble_server_battery_max_voltage = CONFIG_AT_BATTERY_MAX_VOLTAGE;
 
 uint16_t ble_server_solar_model_name_handle;
 uint16_t ble_server_solar_manuf_name_handle;
@@ -152,21 +142,12 @@ static int ble_server_handle_battery_service(uint16_t conn_handle, uint16_t attr
     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   }
   if (attr_handle == ble_server_battery_level_handle) {
-    uint16_t voltage;
-    esp_err_t code = at_sensors_get_battery_voltage(&voltage, global_ble_server->sensors);
+    uint8_t level;
+    esp_err_t code = at_sensors_get_battery_level(&level, global_ble_server->sensors);
     if (code != ESP_OK) {
       return BLE_ATT_ERR_INSUFFICIENT_RES;
     }
-    int16_t current;
-    code = at_sensors_get_battery_current(&current, global_ble_server->sensors);
-    if (code != ESP_OK) {
-      return BLE_ATT_ERR_INSUFFICIENT_RES;
-    }
-    //TODO check if current negative for discharging, positive for charging. Might indicate charging state
-    //TODO do not query too frequently. cache values
-    ESP_LOGI(TAG, "voltage: %d current: %d", voltage, current);
-    uint8_t value = (uint8_t) ((voltage - ble_server_battery_min_voltage) / (ble_server_battery_max_voltage - ble_server_battery_min_voltage)) * 100;
-    int rc = os_mbuf_append(ctxt->om, &value, sizeof(value));
+    int rc = os_mbuf_append(ctxt->om, &level, sizeof(level));
     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
   }
   return 0;
@@ -341,11 +322,10 @@ void ble_server_send_notifications(ble_server *server) {
   uint8_t battery_level;
   esp_err_t batter_level_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_notification(BATTERY_LEVEL_NOTIFICATION)) {
-    uint16_t voltage;
-    batter_level_code = at_sensors_get_battery_voltage(&voltage, global_ble_server->sensors);
+    batter_level_code = at_sensors_get_battery_level(&battery_level, global_ble_server->sensors);
     if (batter_level_code == ESP_OK) {
-      battery_level = (uint8_t) ((voltage - ble_server_battery_min_voltage) / (ble_server_battery_max_voltage - ble_server_battery_min_voltage)) * 100;
       if (battery_level == global_ble_server->previous_battery_level) {
+        // any status to skip update to clients
         batter_level_code = ESP_ERR_NOT_SUPPORTED;
       } else {
         global_ble_server->previous_battery_level = battery_level;
@@ -564,8 +544,9 @@ esp_err_t ble_server_create(at_sensors *sensors, ble_server **server) {
   ERROR_CHECK(ble_gatts_count_cfg(ble_server_items));
   ERROR_CHECK(ble_gatts_add_svcs(ble_server_items));
 
-  //FIXME random string
-  ESP_ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set("lora-at-2366"));
+  char device_name[8 + 4 + 1];
+  snprintf(device_name, sizeof(device_name), "lora-at-%04d", rand() % 1000);
+  ESP_ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set(device_name));
   nimble_port_freertos_init(ble_server_host_task);
   global_ble_server = result;
   *server = result;
