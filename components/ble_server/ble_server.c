@@ -63,7 +63,6 @@ typedef struct __attribute__((packed)) {
 } ble_presentation_format_t;
 
 struct ble_server_t {
-  uint8_t previous_battery_level;
   uint8_t temp_buffer[CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU];
   at_sensors *sensors;
   ble_server_client_t client[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
@@ -154,42 +153,46 @@ static int ble_server_handle_battery_service(uint16_t conn_handle, uint16_t attr
 }
 
 static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
-  if (attr_handle == ble_server_solar_model_name_handle) {
-    int rc = os_mbuf_append(ctxt->om, &ble_server_solar_model_name, sizeof(ble_server_solar_model_name));
-    return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-  }
-  if (attr_handle == ble_server_solar_manuf_name_handle) {
-    int rc = os_mbuf_append(ctxt->om, &ble_server_solar_manuf_name, sizeof(ble_server_solar_manuf_name));
-    return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-  }
-  if (ctxt->chr != NULL) {
-    if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2B18)) == 0) {
-      uint16_t voltage;
-      esp_err_t code = at_sensors_get_solar_voltage(&voltage, global_ble_server->sensors);
-      if (code != ESP_OK) {
-        return BLE_ATT_ERR_INSUFFICIENT_RES;
+  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR) {
+    if (attr_handle == ble_server_solar_model_name_handle) {
+      int rc = os_mbuf_append(ctxt->om, &ble_server_solar_model_name, sizeof(ble_server_solar_model_name));
+      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    }
+    if (attr_handle == ble_server_solar_manuf_name_handle) {
+      int rc = os_mbuf_append(ctxt->om, &ble_server_solar_manuf_name, sizeof(ble_server_solar_manuf_name));
+      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    }
+    if (ctxt->chr != NULL) {
+      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2B18)) == 0) {
+        uint16_t voltage;
+        esp_err_t code = at_sensors_get_solar_voltage(&voltage, global_ble_server->sensors);
+        if (code != ESP_OK) {
+          return BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
+        int rc = os_mbuf_append(ctxt->om, &voltage, sizeof(voltage));
+        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
       }
-      int rc = os_mbuf_append(ctxt->om, &voltage, sizeof(voltage));
-      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-    }
-    if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2AEE)) == 0) {
-      int16_t current;
-      esp_err_t code = at_sensors_get_solar_current(&current, global_ble_server->sensors);
-      if (code != ESP_OK) {
-        return BLE_ATT_ERR_INSUFFICIENT_RES;
+      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2AEE)) == 0) {
+        int16_t current;
+        esp_err_t code = at_sensors_get_solar_current(&current, global_ble_server->sensors);
+        if (code != ESP_OK) {
+          return BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
+        int rc = os_mbuf_append(ctxt->om, &current, sizeof(current));
+        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
       }
-      int rc = os_mbuf_append(ctxt->om, &current, sizeof(current));
-      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
     }
   }
-  if (ctxt->dsc != NULL) {
-    if (attr_handle == ble_server_solar_voltage_handle) {
-      int rc = os_mbuf_append(ctxt->om, &voltage_format, sizeof(voltage_format));
-      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-    }
-    if (attr_handle == ble_server_solar_current_handle) {
-      int rc = os_mbuf_append(ctxt->om, &current_format, sizeof(current_format));
-      return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
+    if (ctxt->dsc != NULL) {
+      if (attr_handle == ble_server_solar_voltage_handle) {
+        int rc = os_mbuf_append(ctxt->om, &voltage_format, sizeof(voltage_format));
+        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+      }
+      if (attr_handle == ble_server_solar_current_handle) {
+        int rc = os_mbuf_append(ctxt->om, &current_format, sizeof(current_format));
+        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+      }
     }
   }
   return 0;
@@ -219,8 +222,7 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
              },
              {
                  0
-             }
-            },
+             }}
     },
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
@@ -277,8 +279,7 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
                       },
                       {
                           0
-                      }
-                     },
+                      }}
              },
              {
                  .uuid = BLE_UUID16_DECLARE(0x2AEE),
@@ -293,17 +294,15 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
                       },
                       {
                           0
-                      }
-                     },
+                      }}
              },
              {
                  0
-             }
-            },
+             }}
     },
     {
-        0, /* No more services. */
-    },
+        0
+    }
 };
 
 bool ble_server_has_notification(ble_server_notification_type_t type) {
@@ -323,14 +322,6 @@ void ble_server_send_notifications(ble_server *server) {
   esp_err_t batter_level_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_notification(BATTERY_LEVEL_NOTIFICATION)) {
     batter_level_code = at_sensors_get_battery_level(&battery_level, global_ble_server->sensors);
-    if (batter_level_code == ESP_OK) {
-      if (battery_level == global_ble_server->previous_battery_level) {
-        // any status to skip update to clients
-        batter_level_code = ESP_ERR_NOT_SUPPORTED;
-      } else {
-        global_ble_server->previous_battery_level = battery_level;
-      }
-    }
   }
   uint16_t solar_voltage;
   esp_err_t solar_voltage_code = ESP_ERR_NOT_SUPPORTED;
@@ -512,7 +503,23 @@ static void ble_client_on_sync(void) {
   esp_err_t code = ble_hs_util_ensure_addr(0);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to ensure address: %d", code);
+    return;
   }
+  uint8_t addr_val[6] = {0};
+  code = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, addr_val, NULL);
+  if (code != ESP_OK) {
+    ESP_LOGE(TAG, "unable to get own address: %d", code);
+    return;
+  }
+  char device_name[8 + 4 + 1];
+  uint16_t unique = 0;
+  for (int i = 0; i < 6; i++) {
+    unique += addr_val[i];
+  }
+  snprintf(device_name, sizeof(device_name), "lora-at-%04x", unique);
+  ESP_LOGI(TAG, "device name: %s", device_name);
+  ESP_ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set(device_name));
+
   ble_server_advertise();
 }
 
@@ -526,8 +533,8 @@ esp_err_t ble_server_create(at_sensors *sensors, ble_server **server) {
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
+  memset(result, 0, sizeof(struct ble_server_t));
   result->sensors = sensors;
-  result->previous_battery_level = 0;
 
   // Initialize NVS.
   esp_err_t code = nvs_flash_init();
@@ -544,9 +551,6 @@ esp_err_t ble_server_create(at_sensors *sensors, ble_server **server) {
   ERROR_CHECK(ble_gatts_count_cfg(ble_server_items));
   ERROR_CHECK(ble_gatts_add_svcs(ble_server_items));
 
-  char device_name[8 + 4 + 1];
-  snprintf(device_name, sizeof(device_name), "lora-at-%04d", rand() % 1000);
-  ESP_ERROR_CHECK((esp_err_t) ble_svc_gap_device_name_set(device_name));
   nimble_port_freertos_init(ble_server_host_task);
   global_ble_server = result;
   *server = result;
