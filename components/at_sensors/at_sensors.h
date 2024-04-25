@@ -11,6 +11,8 @@ esp_err_t at_sensors_get_solar_voltage(uint16_t *bus_voltage, at_sensors *dev);
 
 esp_err_t at_sensors_get_solar_current(int16_t *current, at_sensors *dev);
 
+esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev);
+
 esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev);
 
 esp_err_t at_sensors_get_battery_current(int16_t *current, at_sensors *dev);

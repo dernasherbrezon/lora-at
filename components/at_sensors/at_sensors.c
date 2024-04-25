@@ -58,6 +58,15 @@ esp_err_t at_sensors_get_solar_current(int16_t *current, at_sensors *dev) {
   return ESP_OK;
 }
 
+esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev) {
+  float result_bus_voltage;
+  ERROR_CHECK(ina219_get_bus_voltage(&dev->solar, &result_bus_voltage));
+  float result_current;
+  ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
+  *power = (uint16_t) (result_bus_voltage * result_current);
+  return ESP_OK;
+}
+
 esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev) {
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->battery, &result_bus_voltage));
