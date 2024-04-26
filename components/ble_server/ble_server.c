@@ -599,7 +599,19 @@ static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
   return 0;
 }
 
+bool ble_server_can_accept_more() {
+  for (int i = 0; i < CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
+    if (!global_ble_server->client[i].active) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ble_server_advertise() {
+  if (!ble_server_can_accept_more()) {
+    return;
+  }
   struct ble_gap_adv_params adv_params;
   struct ble_hs_adv_fields fields;
   const char *name;
