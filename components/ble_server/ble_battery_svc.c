@@ -49,7 +49,7 @@ void ble_battery_send_updates() {
 static const struct ble_gatt_svc_def ble_battery_items[] = {
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = BLE_UUID16_DECLARE(0x180F),
+        .uuid = BLE_UUID16_DECLARE(BLE_SERVER_BATTERY_SERVICE),
         .characteristics = (struct ble_gatt_chr_def[])
             {{
                  .uuid = BLE_UUID16_DECLARE(BLE_SERVER_MODEL_NAME_UUID),
@@ -64,7 +64,7 @@ static const struct ble_gatt_svc_def ble_battery_items[] = {
                  .val_handle = &ble_server_battery_manuf_name_handle
              },
              {
-                 .uuid = BLE_UUID16_DECLARE(0x2A19),
+                 .uuid = BLE_UUID16_DECLARE(BLE_SERVER_BATTERY_LEVEL_UUID),
                  .access_cb = ble_server_handle_battery_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                  .val_handle = &ble_server_battery_level_handle

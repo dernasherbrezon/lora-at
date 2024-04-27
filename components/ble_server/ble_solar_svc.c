@@ -67,13 +67,13 @@ static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_h
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &solar_power, sizeof(solar_power)));
     }
     if (ctxt->chr != NULL) {
-      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2B18)) == 0) {
+      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(BLE_SERVER_VOLTAGE_UUID)) == 0) {
         uint16_t voltage;
         ERROR_CHECK_CALLBACK(at_sensors_get_solar_voltage(&voltage, global_ble_server.sensors));
         voltage = htons(voltage);
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &voltage, sizeof(voltage)));
       }
-      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(0x2AEE)) == 0) {
+      if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(BLE_SERVER_ELECTRIC_CURRENT_UUID)) == 0) {
         int16_t current;
         ERROR_CHECK_CALLBACK(at_sensors_get_solar_current(&current, global_ble_server.sensors));
         current = htons(current);
@@ -89,25 +89,25 @@ static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_h
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &current_format, sizeof(current_format)));
     }
     if (ctxt->dsc != NULL) {
-      if (attr_handle == ble_server_solar_nomvoltage_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2901)) == 0) {
+      if (attr_handle == ble_server_solar_nomvoltage_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_nomvoltage_name, sizeof(ble_server_nomvoltage_name)));
       }
-      if (attr_handle == ble_server_solar_nomvoltage_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2904)) == 0) {
+      if (attr_handle == ble_server_solar_nomvoltage_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &voltage_format, sizeof(voltage_format)));
       }
-      if (attr_handle == ble_server_solar_material_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2901)) == 0) {
+      if (attr_handle == ble_server_solar_material_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_solar_material_name, sizeof(ble_server_solar_material_name)));
       }
-      if (attr_handle == ble_server_solar_material_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2904)) == 0) {
+      if (attr_handle == ble_server_solar_material_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &utf8_string_format, sizeof(utf8_string_format)));
       }
-      if (attr_handle == ble_server_solar_rated_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2901)) == 0) {
+      if (attr_handle == ble_server_solar_rated_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_solar_rated_power_name, sizeof(ble_server_solar_rated_power_name)));
       }
-      if (attr_handle == ble_server_solar_rated_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2904)) == 0) {
+      if (attr_handle == ble_server_solar_rated_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &power_format, sizeof(power_format)));
       }
-      if (attr_handle == ble_server_solar_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(0x2904)) == 0) {
+      if (attr_handle == ble_server_solar_power_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
         ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &power_format, sizeof(power_format)));
       }
     }
@@ -163,13 +163,13 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                  .val_handle = &ble_server_solar_manuf_name_handle
              },
              {
-                 .uuid = BLE_UUID16_DECLARE(0x2B18),
+                 .uuid = BLE_UUID16_DECLARE(BLE_SERVER_VOLTAGE_UUID),
                  .access_cb = ble_server_handle_solar_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                  .val_handle = &ble_server_solar_voltage_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
@@ -184,12 +184,12 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                  .val_handle = &ble_server_solar_nomvoltage_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2901),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
                       {
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
@@ -204,12 +204,12 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                  .val_handle = &ble_server_solar_material_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2901),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
                       {
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
@@ -224,12 +224,12 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                  .val_handle = &ble_server_solar_rated_power_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2901),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
                       {
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
@@ -238,13 +238,13 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                       }}
              },
              {
-                 .uuid = BLE_UUID16_DECLARE(0x2B05),
+                 .uuid = BLE_UUID16_DECLARE(BLE_SERVER_POWER_UUID),
                  .access_cb = ble_server_handle_solar_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                  .val_handle = &ble_server_solar_power_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
@@ -253,13 +253,13 @@ static const struct ble_gatt_svc_def ble_solar_items[] = {
                       }}
              },
              {
-                 .uuid = BLE_UUID16_DECLARE(0x2AEE),
+                 .uuid = BLE_UUID16_DECLARE(BLE_SERVER_ELECTRIC_CURRENT_UUID),
                  .access_cb = ble_server_handle_solar_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                  .val_handle = &ble_server_solar_current_handle,
                  .descriptors = (struct ble_gatt_dsc_def[])
                      {{
-                          .uuid = BLE_UUID16_DECLARE(0x2904),
+                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
                           .att_flags = BLE_ATT_F_READ,
                           .access_cb = ble_server_handle_solar_service,
                       },
