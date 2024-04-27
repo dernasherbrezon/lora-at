@@ -300,7 +300,7 @@ void app_main(void) {
 
   ERROR_CHECK("i2c", i2cdev_init());
   ERROR_CHECK("sensors", at_sensors_init(&lora_at_main->sensors));
-  ERROR_CHECK("ble_server", ble_server_create(lora_at_main->sensors));
+  ERROR_CHECK("ble_server", ble_server_create(lora_at_main->sensors, lora_at_main->device));
   xTaskCreate(update_sensors, "update_sensors_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, lora_at_main->timer, &lora_at_main->uart_at_handler));

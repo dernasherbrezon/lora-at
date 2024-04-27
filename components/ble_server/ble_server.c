@@ -13,6 +13,7 @@
 #include "ble_common.h"
 #include "ble_solar_svc.h"
 #include "ble_battery_svc.h"
+#include "ble_sx127x_svc.h"
 
 #ifndef PROJECT_VER
 #define PROJECT_VER "2.0"
@@ -78,6 +79,7 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
 void ble_server_send_updates() {
   ble_solar_send_updates();
   ble_battery_send_updates();
+  ble_sx127x_send_updates();
 }
 
 static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
@@ -262,8 +264,9 @@ void ble_server_host_task(void *param) {
   nimble_port_freertos_deinit();
 }
 
-esp_err_t ble_server_create(at_sensors *sensors) {
+esp_err_t ble_server_create(at_sensors *sensors, sx127x *device) {
   global_ble_server.sensors = sensors;
+  global_ble_server.device = device;
 
   // Initialize NVS.
   esp_err_t code = nvs_flash_init();
@@ -281,6 +284,7 @@ esp_err_t ble_server_create(at_sensors *sensors) {
   ERROR_CHECK(ble_gatts_add_svcs(ble_server_items));
   ERROR_CHECK(ble_solar_svc_register());
   ERROR_CHECK(ble_battery_svc_register());
+  ERROR_CHECK(ble_sx127x_svc_register());
 
   nimble_port_freertos_init(ble_server_host_task);
   return ESP_OK;

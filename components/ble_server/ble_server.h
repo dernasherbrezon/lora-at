@@ -3,8 +3,9 @@
 
 #include <at_sensors.h>
 #include <esp_err.h>
+#include <sx127x.h>
 
-esp_err_t ble_server_create(at_sensors *sensors);
+esp_err_t ble_server_create(at_sensors *sensors, sx127x *device);
 
 void ble_server_send_updates();
 

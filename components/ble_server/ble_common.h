@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <at_sensors.h>
+#include <sx127x.h>
 
 #define BLE_SERVER_MAX_SUBSCRIPTIONS 4
 
@@ -15,6 +16,7 @@
 #define BLE_SERVER_MODEL_NAME_UUID 0x2A24
 #define BLE_SERVER_SOFTWARE_VERSION_UUID 0x2A28
 #define BLE_SERVER_MANUFACTURER_NAME_UUID 0x2A29
+#define BLE_SERVER_TEMPERATURE_UUID 0x2A6E
 #define BLE_SERVER_ELECTRIC_CURRENT_UUID 0x2AEE
 #define BLE_SERVER_POWER_UUID 0x2B05
 #define BLE_SERVER_VOLTAGE_UUID 0x2B18
@@ -63,6 +65,7 @@ typedef struct {
 typedef struct {
   uint8_t temp_buffer[CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU];
   at_sensors *sensors;
+  sx127x *device;
   ble_server_client_t client[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
 } ble_server_t;
 
@@ -70,6 +73,7 @@ extern ble_server_t global_ble_server;
 extern const ble_presentation_format_t voltage_format;
 extern const ble_presentation_format_t power_format;
 extern const ble_presentation_format_t current_format;
+extern const ble_presentation_format_t celsius_format;
 extern const ble_presentation_format_t utf8_string_format;
 
 bool ble_server_has_subscription(uint16_t handle);

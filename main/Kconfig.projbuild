@@ -90,6 +90,14 @@ menu "Lora-AT"
         help
             Some boards wire ssd1306 OLED displays so that they have to be reset at the start.
             Configure this pin if display doesn't work out-of-the-box
+    config AT_SX127X_TEMPERATURE_CORRECTION
+        int "Correction factor for temperature sensor"
+        default 0
+        help
+            Chip sx127x has internal temperature sensor that can be used to measure chip's temperature
+            This sensor return int8 data and must be calibrated before use
+            This parameter contains calibration factor: temperature = raw value + temperature correction
+
     config BLUETOOTH_CONNECTION_TIMEOUT
         int "Bluetooth connection timeout"
         default 30000
