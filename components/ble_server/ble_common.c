@@ -81,3 +81,13 @@ void ble_solar_send_update(uint16_t handle, void *data, size_t data_length) {
     ble_gatts_notify_custom(global_ble_server.client[i].conn_id, handle, txom);
   }
 }
+
+bool ble_server_is_authorized(uint16_t conn_id) {
+  for (int i = 0; i < CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
+    if (global_ble_server.client[i].conn_id != conn_id) {
+      continue;
+    }
+    return global_ble_server.client[i].authorized;
+  }
+  return false;
+}

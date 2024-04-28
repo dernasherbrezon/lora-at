@@ -318,7 +318,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     size_t message_length = strlen(handler->message);
     if (message_length == 17) {
       ERROR_CHECK("unable to convert address to hex", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
-      ERROR_CHECK("unable to connect to bluetooth device", ble_client_connect(handler->message_hex, handler->bluetooth));
       ERROR_CHECK("unable to save config", lora_at_config_set_bt_address(handler->message_hex, handler->message_hex_length, handler->at_config));
       at_handler_respond(handler, callback, ctx, "OK\r\n");
     } else {

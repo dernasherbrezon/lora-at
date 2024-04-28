@@ -1,15 +1,22 @@
 #include <host/ble_gatt.h>
 #include <os/os_mbuf.h>
 #include <rom/ets_sys.h>
+#include <esp_log.h>
+#include <host/ble_gap.h>
 #include "ble_sx127x_svc.h"
 #include "ble_common.h"
 #include "sdkconfig.h"
+#include "sx127x_util.h"
+
+static const char *SX127X_SVC_TAG = "sx127x_svc";
 
 #ifndef CONFIG_AT_SX127X_TEMPERATURE_CORRECTION
 #define CONFIG_AT_SX127X_TEMPERATURE_CORRECTION 0
 #endif
 
 uint16_t ble_server_sx127x_temperature_handle;
+uint16_t ble_server_sx127x_startrx_handle;
+uint16_t ble_server_sx127x_stoprx_handle;
 
 static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
   if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR) {
@@ -27,6 +34,20 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       ERROR_CHECK_CALLBACK(sx127x_fsk_ook_get_raw_temperature(global_ble_server.device, &temperature));
       temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &temperature, sizeof(temperature)));
+    }
+  }
+  if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR) {
+    if (!ble_server_is_authorized(conn_handle)) {
+      ESP_LOGI(SX127X_SVC_TAG, "connection %d is not authorized", conn_handle);
+      return BLE_ATT_ERR_INSUFFICIENT_AUTHOR;
+    }
+    if (attr_handle == ble_server_sx127x_startrx_handle) {
+      lora_config_t lora_req;
+      ERROR_CHECK_CALLBACK(os_mbuf_copydata(ctxt->om, 0, sizeof(lora_config_t), &lora_req));
+      ERROR_CHECK_RESPONSE(sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, global_ble_server.device));
+    }
+    if (attr_handle == ble_server_sx127x_stoprx_handle) {
+      ERROR_CHECK_RESPONSE(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device));
     }
   }
   if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
@@ -60,6 +81,18 @@ static const struct ble_gatt_svc_def ble_sx127x_items[] = {
                       }}
              },
              {
+                 .uuid = BLE_UUID128_DECLARE(0xab, 0x50, 0x9d, 0xf5, 0x1, 0xdb, 0x40, 0x1d, 0x9f, 0xde, 0xa9, 0x4e, 0xd7, 0x53, 0x20, 0xbb),
+                 .access_cb = ble_server_handle_sx127x_service,
+                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
+                 .val_handle = &ble_server_sx127x_startrx_handle
+             },
+             {
+                 .uuid = BLE_UUID128_DECLARE(0x36, 0x40, 0xdd, 0xa2, 0x77, 0xa9, 0x41, 0x68, 0xa4, 0x83, 0x8e, 0xab, 0x3, 0xa, 0x2b, 0x89),
+                 .access_cb = ble_server_handle_sx127x_service,
+                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
+                 .val_handle = &ble_server_sx127x_stoprx_handle
+             },
+             {
                  0
              }}
     },
@@ -78,6 +111,10 @@ void ble_sx127x_send_updates() {
   if (temperature_code == ESP_OK) {
     ble_solar_send_update(ble_server_sx127x_temperature_handle, &temperature, sizeof(temperature));
   }
+}
+
+void ble_sx127x_send_frame(lora_frame_t *frame) {
+
 }
 
 esp_err_t ble_sx127x_svc_register() {

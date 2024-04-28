@@ -7,4 +7,4 @@ endif()
 
 idf_component_register(SRCS ${srcs}
         INCLUDE_DIRS "."
-        REQUIRES bt nvs_flash at_sensors sx127x_util)
+        REQUIRES bt nvs_flash at_sensors sx127x_util at_config)

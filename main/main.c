@@ -127,10 +127,7 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   ERROR_CHECK("lora frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {
-    esp_err_t code = ble_client_send_frame(frame, lora_at_main->bluetooth);
-    if (code != ESP_OK) {
-      ESP_LOGE(TAG, "unable to send frame: %s", esp_err_to_name(code));
-    }
+    ble_server_send_frame(frame);
     sx127x_util_frame_destroy(frame);
   } else {
 #if CONFIG_AT_WIFI_ENABLED
@@ -300,7 +297,7 @@ void app_main(void) {
 
   ERROR_CHECK("i2c", i2cdev_init());
   ERROR_CHECK("sensors", at_sensors_init(&lora_at_main->sensors));
-  ERROR_CHECK("ble_server", ble_server_create(lora_at_main->sensors, lora_at_main->device));
+  ERROR_CHECK("ble_server", ble_server_create(lora_at_main->sensors, lora_at_main->device, lora_at_main->config));
   xTaskCreate(update_sensors, "update_sensors_task", 1024 * 4, lora_at_main, configMAX_PRIORITIES, NULL);
 
   ERROR_CHECK("uart_at", uart_at_handler_create(lora_at_main->at_handler, lora_at_main->timer, &lora_at_main->uart_at_handler));

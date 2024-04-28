@@ -23,6 +23,8 @@ static const char *TAG = "ble_server";
 
 extern void ble_server_advertise();
 
+void ble_store_config_init(void);
+
 uint16_t ble_server_model_name_handle;
 uint16_t ble_server_manuf_name_handle;
 static const char ble_server_model_name[] = "lora-at";
@@ -82,6 +84,22 @@ void ble_server_send_updates() {
   ble_sx127x_send_updates();
 }
 
+void ble_server_send_frame(lora_frame_t *frame) {
+  ble_sx127x_send_frame(frame);
+}
+
+bool ble_server_authorize(const uint8_t *peer) {
+  if (global_ble_server.config->bt_address == NULL) {
+    return false;
+  }
+  for (int i = 0; i < BT_ADDRESS_LENGTH; i++) {
+    if (global_ble_server.config->bt_address[i] != peer[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
   switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
@@ -94,6 +112,9 @@ static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
         global_ble_server.client[i].active = true;
         global_ble_server.client[i].conn_id = event->connect.conn_handle;
         memset(global_ble_server.client[i].subsription_handles, 0, sizeof(uint16_t) * BLE_SERVER_MAX_SUBSCRIPTIONS);
+        struct ble_gap_conn_desc desc;
+        ERROR_CHECK_CALLBACK(ble_gap_conn_find(event->connect.conn_handle, &desc));
+        global_ble_server.client[i].authorized = ble_server_authorize(desc.peer_id_addr.val);
         break;
       }
       ble_server_advertise();
@@ -156,8 +177,21 @@ static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
       return 0;
 
     case BLE_GAP_EVENT_ENC_CHANGE:
+      ESP_LOGI(TAG, "encryption change event; status=%d ", event->enc_change.status);
+      return 0;
     case BLE_GAP_EVENT_REPEAT_PAIRING:
+      return BLE_GAP_REPEAT_PAIRING_RETRY;
     case BLE_GAP_EVENT_PASSKEY_ACTION:
+      ESP_LOGI(TAG, "PASSKEY_ACTION_EVENT started: %d", event->passkey.params.action);
+      struct ble_sm_io pkey = {0};
+
+      if (event->passkey.params.action == BLE_SM_IOACT_DISP) {
+        pkey.action = event->passkey.params.action;
+        pkey.passkey = 123456; // This is the passkey to be entered on peer
+        ESP_LOGI(TAG, "Enter passkey %" PRIu32 "on the peer side", pkey.passkey);
+        int rc = ble_sm_inject_io(event->passkey.conn_handle, &pkey);
+        ESP_LOGI(TAG, "ble_sm_inject_io result: %d\n", rc);
+      }
       return 0;
   }
 
@@ -264,9 +298,10 @@ void ble_server_host_task(void *param) {
   nimble_port_freertos_deinit();
 }
 
-esp_err_t ble_server_create(at_sensors *sensors, sx127x *device) {
+esp_err_t ble_server_create(at_sensors *sensors, sx127x *device, lora_at_config_t *config) {
   global_ble_server.sensors = sensors;
   global_ble_server.device = device;
+  global_ble_server.config = config;
 
   // Initialize NVS.
   esp_err_t code = nvs_flash_init();
@@ -278,6 +313,13 @@ esp_err_t ble_server_create(at_sensors *sensors, sx127x *device) {
 
   ble_hs_cfg.reset_cb = ble_client_on_reset;
   ble_hs_cfg.sync_cb = ble_client_on_sync;
+  ble_hs_cfg.sm_io_cap = BLE_SM_IO_CAP_NO_IO;
+  ble_hs_cfg.sm_bonding = 1;
+  ble_hs_cfg.sm_mitm = 1;
+  ble_hs_cfg.sm_sc = 1;
+  ble_hs_cfg.sm_our_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC;
+  ble_hs_cfg.sm_their_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC;
+  ble_store_config_init();
 
   ERROR_CHECK(nimble_port_init());
   ERROR_CHECK(ble_gatts_count_cfg(ble_server_items));
