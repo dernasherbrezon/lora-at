@@ -42,7 +42,7 @@ void ble_battery_send_updates() {
     batter_level_code = at_sensors_get_battery_level(&battery_level, global_ble_server.sensors);
   }
   if (batter_level_code == ESP_OK) {
-    ble_solar_send_update(ble_server_battery_level_handle, &battery_level, sizeof(battery_level));
+    ble_server_send_update(ble_server_battery_level_handle, &battery_level, sizeof(battery_level));
   }
 }
 

@@ -7,7 +7,10 @@
 #include <sx127x.h>
 #include <at_config.h>
 
-#define BLE_SERVER_MAX_SUBSCRIPTIONS 4
+// 1 battery
+// 3 solar panel
+// 2 sx127x
+#define BLE_SERVER_MAX_SUBSCRIPTIONS 6
 
 // services
 #define BLE_SERVER_BATTERY_SERVICE 0x180F
@@ -85,6 +88,6 @@ bool ble_server_has_client_subscription(ble_server_client_t *client, uint16_t ha
 
 bool ble_server_is_authorized(uint16_t conn_id);
 
-void ble_solar_send_update(uint16_t handle, void *data, size_t data_length);
+void ble_server_send_update(uint16_t handle, void *data, size_t data_length);
 
 #endif //LORA_AT_BLE_COMMON_H

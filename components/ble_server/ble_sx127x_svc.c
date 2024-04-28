@@ -3,10 +3,13 @@
 #include <rom/ets_sys.h>
 #include <esp_log.h>
 #include <host/ble_gap.h>
+#include <cc.h>
 #include "ble_sx127x_svc.h"
 #include "ble_common.h"
 #include "sdkconfig.h"
 #include "sx127x_util.h"
+
+#define PROTOCOL_VERSION 2
 
 static const char *SX127X_SVC_TAG = "sx127x_svc";
 
@@ -17,21 +20,13 @@ static const char *SX127X_SVC_TAG = "sx127x_svc";
 uint16_t ble_server_sx127x_temperature_handle;
 uint16_t ble_server_sx127x_startrx_handle;
 uint16_t ble_server_sx127x_stoprx_handle;
+uint16_t ble_server_sx127x_frame_handle;
 
 static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
   if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR) {
     if (attr_handle == ble_server_sx127x_temperature_handle) {
       int8_t temperature;
-      ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_FSRX, SX127x_MODULATION_FSK, global_ble_server.device));
-      //enable temp monitoring
-      ESP_ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(true, global_ble_server.device));
-      // a little bit longer for FSRX mode to kick off
-      ets_delay_us(150);
-      //disable temp monitoring
-      ESP_ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(false, global_ble_server.device));
-      ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, global_ble_server.device));
-
-      ERROR_CHECK_CALLBACK(sx127x_fsk_ook_get_raw_temperature(global_ble_server.device, &temperature));
+      ESP_ERROR_CHECK(sx127x_util_read_temperature(global_ble_server.device, &temperature));
       temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &temperature, sizeof(temperature)));
     }
@@ -43,6 +38,9 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
     }
     if (attr_handle == ble_server_sx127x_startrx_handle) {
       lora_config_t lora_req;
+      if (OS_MBUF_PKTLEN(ctxt->om) < sizeof(lora_config_t)) {
+        return BLE_ATT_ERR_INSUFFICIENT_RES;
+      }
       ERROR_CHECK_CALLBACK(os_mbuf_copydata(ctxt->om, 0, sizeof(lora_config_t), &lora_req));
       ERROR_CHECK_RESPONSE(sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, global_ble_server.device));
     }
@@ -81,6 +79,12 @@ static const struct ble_gatt_svc_def ble_sx127x_items[] = {
                       }}
              },
              {
+                 .uuid = BLE_UUID128_DECLARE(0x72, 0xca, 0xaf, 0x36, 0x4d, 0x63, 0x43, 0xd6, 0xa8, 0xe6, 0x7f, 0x42, 0x1b, 0xae, 0x37, 0x3c),
+                 .access_cb = ble_server_handle_sx127x_service,
+                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                 .val_handle = &ble_server_sx127x_frame_handle,
+             },
+             {
                  .uuid = BLE_UUID128_DECLARE(0xab, 0x50, 0x9d, 0xf5, 0x1, 0xdb, 0x40, 0x1d, 0x9f, 0xde, 0xa9, 0x4e, 0xd7, 0x53, 0x20, 0xbb),
                  .access_cb = ble_server_handle_sx127x_service,
                  .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
@@ -105,16 +109,52 @@ void ble_sx127x_send_updates() {
   int8_t temperature;
   esp_err_t temperature_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_subscription(ble_server_sx127x_temperature_handle)) {
-    temperature_code = sx127x_fsk_ook_get_raw_temperature(global_ble_server.device, &temperature);
+    temperature_code = sx127x_util_read_temperature(global_ble_server.device, &temperature);
     temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
   }
   if (temperature_code == ESP_OK) {
-    ble_solar_send_update(ble_server_sx127x_temperature_handle, &temperature, sizeof(temperature));
+    ble_server_send_update(ble_server_sx127x_temperature_handle, &temperature, sizeof(temperature));
   }
 }
 
 void ble_sx127x_send_frame(lora_frame_t *frame) {
+  size_t length = 0;
+  length += sizeof(uint8_t);
+  length += sizeof(frame->frequency_error);
+  length += sizeof(frame->rssi);
+  length += sizeof(frame->snr);
+  length += sizeof(frame->timestamp);
+  length += sizeof(frame->data_length);
+  length += frame->data_length;
 
+  uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * length);
+  if (message == NULL) {
+    return;
+  }
+  size_t offset = 0;
+  uint8_t protocol_version = PROTOCOL_VERSION;
+  memcpy(message + offset, &protocol_version, sizeof(uint8_t));
+  offset += sizeof(uint8_t);
+  int32_t frequency_error = htonl(frame->frequency_error);
+  memcpy(message + offset, &frequency_error, sizeof(frequency_error));
+  offset += sizeof(frequency_error);
+  int16_t rssi = htons(frame->rssi);
+  memcpy(message + offset, &rssi, sizeof(rssi));
+  offset += sizeof(rssi);
+  uint32_t snr;
+  memcpy(&snr, &(frame->snr), sizeof(frame->snr));
+  snr = htonl(snr);
+  memcpy(message + offset, &snr, sizeof(snr));
+  offset += sizeof(snr);
+  uint64_t timestamp = htonll(frame->timestamp);
+  memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
+  offset += sizeof(frame->timestamp);
+  memcpy(message + offset, &frame->data_length, sizeof(frame->data_length));
+  offset += sizeof(frame->data_length);
+  memcpy(message + offset, frame->data, frame->data_length);
+
+  ble_server_send_update(ble_server_sx127x_frame_handle, message, length);
+  free(message);
 }
 
 esp_err_t ble_sx127x_svc_register() {

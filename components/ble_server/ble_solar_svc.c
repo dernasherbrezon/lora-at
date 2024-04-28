@@ -123,7 +123,7 @@ void ble_solar_send_updates() {
     solar_voltage = htons(solar_voltage);
   }
   if (solar_voltage_code == ESP_OK) {
-    ble_solar_send_update(ble_server_solar_voltage_handle, &solar_voltage, sizeof(solar_voltage));
+    ble_server_send_update(ble_server_solar_voltage_handle, &solar_voltage, sizeof(solar_voltage));
   }
   int16_t solar_current;
   esp_err_t solar_current_code = ESP_ERR_NOT_SUPPORTED;
@@ -132,7 +132,7 @@ void ble_solar_send_updates() {
     solar_current = htons(solar_current);
   }
   if (solar_current_code == ESP_OK) {
-    ble_solar_send_update(ble_server_solar_current_handle, &solar_current, sizeof(solar_current));
+    ble_server_send_update(ble_server_solar_current_handle, &solar_current, sizeof(solar_current));
   }
   uint16_t solar_power;
   esp_err_t solar_power_code = ESP_ERR_NOT_SUPPORTED;
@@ -141,7 +141,7 @@ void ble_solar_send_updates() {
     solar_power = htons(solar_power);
   }
   if (solar_power_code == ESP_OK) {
-    ble_solar_send_update(ble_server_solar_power_handle, &solar_power, sizeof(solar_power));
+    ble_server_send_update(ble_server_solar_power_handle, &solar_power, sizeof(solar_power));
   }
 }
 

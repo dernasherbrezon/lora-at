@@ -68,7 +68,7 @@ bool ble_server_has_client_subscription(ble_server_client_t *client, uint16_t ha
   return false;
 }
 
-void ble_solar_send_update(uint16_t handle, void *data, size_t data_length) {
+void ble_server_send_update(uint16_t handle, void *data, size_t data_length) {
   for (int i = 0; i < CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
     if (!global_ble_server.client[i].active) {
       continue;
