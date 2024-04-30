@@ -13,8 +13,8 @@ const ble_presentation_format_t voltage_format = {
 
 const ble_presentation_format_t power_format = {
     .gatt_format = 0x06, //uint16
-    .exponent = 0x00,
-    .gatt_unit = 0x2726, //watt
+    .exponent = 0x03,
+    .gatt_unit = 0x2726, //milliwatt
     .gatt_namespace = 0x00,
     .gatt_nsdesc = 0x0000
 };

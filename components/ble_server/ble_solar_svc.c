@@ -37,7 +37,7 @@ uint16_t ble_server_solar_nomvoltage_handle;
 uint16_t ble_server_nomvoltage = htons(CONFIG_AT_SOLAR_NOMVOLTAGE * 1000);
 static const char ble_server_solar_rated_power_name[] = "Rated Power";
 uint16_t ble_server_solar_rated_power_handle;
-uint16_t ble_server_solar_rated_power = htons(CONFIG_AT_SOLAR_RATED_POWER);
+uint16_t ble_server_solar_rated_power = htons(CONFIG_AT_SOLAR_RATED_POWER * 1000);
 uint16_t ble_server_solar_power_handle;
 uint16_t ble_server_solar_material_handle;
 static const char ble_server_solar_material[] = CONFIG_AT_SOLAR_MATERIAL;
@@ -120,27 +120,27 @@ void ble_solar_send_updates() {
   esp_err_t solar_voltage_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_subscription(ble_server_solar_voltage_handle)) {
     solar_voltage_code = at_sensors_get_solar_voltage(&solar_voltage, global_ble_server.sensors);
-    solar_voltage = htons(solar_voltage);
   }
   if (solar_voltage_code == ESP_OK) {
+    solar_voltage = htons(solar_voltage);
     ble_server_send_update(ble_server_solar_voltage_handle, &solar_voltage, sizeof(solar_voltage));
   }
   int16_t solar_current;
   esp_err_t solar_current_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_subscription(ble_server_solar_current_handle)) {
     solar_current_code = at_sensors_get_solar_current(&solar_current, global_ble_server.sensors);
-    solar_current = htons(solar_current);
   }
   if (solar_current_code == ESP_OK) {
+    solar_current = htons(solar_current);
     ble_server_send_update(ble_server_solar_current_handle, &solar_current, sizeof(solar_current));
   }
   uint16_t solar_power;
   esp_err_t solar_power_code = ESP_ERR_NOT_SUPPORTED;
   if (ble_server_has_subscription(ble_server_solar_power_handle)) {
     solar_power_code = at_sensors_get_solar_power(&solar_power, global_ble_server.sensors);
-    solar_power = htons(solar_power);
   }
   if (solar_power_code == ESP_OK) {
+    solar_power = htons(solar_power);
     ble_server_send_update(ble_server_solar_power_handle, &solar_power, sizeof(solar_power));
   }
 }

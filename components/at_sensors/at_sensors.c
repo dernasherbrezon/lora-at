@@ -63,7 +63,7 @@ esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev) {
   ERROR_CHECK(ina219_get_bus_voltage(&dev->solar, &result_bus_voltage));
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
-  *power = (uint16_t) (result_bus_voltage * result_current);
+  *power = (uint16_t) (result_bus_voltage * result_current * 1000);
   return ESP_OK;
 }
 
