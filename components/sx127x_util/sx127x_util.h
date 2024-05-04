@@ -13,7 +13,7 @@ typedef struct {
   uint64_t timestamp;
   uint8_t *data;
   uint16_t data_length;
-} lora_frame_t;
+} sx127x_frame_t;
 
 typedef enum {
   LDO_AUTO = 0,
@@ -66,7 +66,7 @@ typedef struct {
 
 esp_err_t sx127x_util_init(sx127x **device);
 
-esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, sx127x_modulation_t active_mode, lora_frame_t **result);
+esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, sx127x_modulation_t active_mode, sx127x_frame_t **result);
 
 esp_err_t sx127x_util_read_temperature(sx127x *device, int8_t *temperature);
 
@@ -82,7 +82,7 @@ esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *re
 
 esp_err_t sx127x_util_deep_sleep_enter(sx127x *device);
 
-void sx127x_util_frame_destroy(lora_frame_t *frame);
+void sx127x_util_frame_destroy(sx127x_frame_t *frame);
 
 uint64_t sx127x_util_get_min_frequency();
 

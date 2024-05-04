@@ -101,7 +101,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
   } else {
     remaining_micros = 0;
   }
-  lora_frame_t *frame = NULL;
+  sx127x_frame_t *frame = NULL;
   esp_err_t code = sx127x_util_read_frame(device, data, data_length, SX127x_MODULATION_LORA, &frame);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to read frame: %s", esp_err_to_name(code));
@@ -123,7 +123,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
 }
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
-  lora_frame_t *frame = NULL;
+  sx127x_frame_t *frame = NULL;
   ERROR_CHECK("sx127x frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {

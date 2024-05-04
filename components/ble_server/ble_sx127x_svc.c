@@ -133,7 +133,7 @@ void ble_sx127x_send_updates() {
   }
 }
 
-void ble_sx127x_send_frame(lora_frame_t *frame) {
+void ble_sx127x_send_frame(sx127x_frame_t *frame) {
   size_t length = 0;
   length += sizeof(uint8_t);
   length += sizeof(frame->frequency_error);

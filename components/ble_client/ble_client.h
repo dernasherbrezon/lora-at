@@ -28,7 +28,7 @@ esp_err_t ble_client_disconnect(ble_client *client);
 
 esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client);
 
-esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client);
+esp_err_t ble_client_send_frame(sx127x_frame_t *frame, ble_client *client);
 
 esp_err_t ble_client_get_rssi(ble_client *client, int8_t *rssi);
 

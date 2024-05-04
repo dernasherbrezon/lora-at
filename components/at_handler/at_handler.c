@@ -61,7 +61,7 @@ void at_handler_respond(at_handler_t *handler, void (*callback)(char *, size_t, 
 
 void at_handler_handle_pull(void (*callback)(char *, size_t, void *ctx), void *ctx, at_handler_t *handler) {
   for (size_t i = 0; i < at_util_vector_size(handler->frames); i++) {
-    lora_frame_t *cur_frame = NULL;
+    sx127x_frame_t *cur_frame = NULL;
     at_util_vector_get(i, (void *) &cur_frame, handler->frames);
     int code = at_util_hex2string(cur_frame->data, cur_frame->data_length, handler->message);
     if (code != 0) {
@@ -76,7 +76,7 @@ void at_handler_handle_pull(void (*callback)(char *, size_t, void *ctx), void *c
   at_handler_respond(handler, callback, ctx, "OK\r\n");
 }
 
-esp_err_t at_handler_add_frame(lora_frame_t *frame, at_handler_t *handler) {
+esp_err_t at_handler_add_frame(sx127x_frame_t *frame, at_handler_t *handler) {
   return at_util_vector_add(frame, handler->frames);
 }
 

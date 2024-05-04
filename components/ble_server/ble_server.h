@@ -11,6 +11,6 @@ esp_err_t ble_server_create(at_sensors *sensors, sx127x *device, lora_at_config_
 
 void ble_server_send_updates();
 
-void ble_server_send_frame(lora_frame_t *frame);
+void ble_server_send_frame(sx127x_frame_t *frame);
 
 #endif //LORA_AT_BLE_SERVER_H

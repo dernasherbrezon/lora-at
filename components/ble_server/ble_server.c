@@ -84,7 +84,7 @@ void ble_server_send_updates() {
   ble_sx127x_send_updates();
 }
 
-void ble_server_send_frame(lora_frame_t *frame) {
+void ble_server_send_frame(sx127x_frame_t *frame) {
   ble_sx127x_send_frame(frame);
 }
 
