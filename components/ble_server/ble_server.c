@@ -93,7 +93,7 @@ bool ble_server_authorize(const uint8_t *peer) {
     return false;
   }
   for (int i = 0; i < BT_ADDRESS_LENGTH; i++) {
-    if (global_ble_server.config->bt_address[i] != peer[i]) {
+    if (global_ble_server.config->bt_address[BT_ADDRESS_LENGTH - i - 1] != peer[i]) {
       return false;
     }
   }
@@ -180,6 +180,18 @@ static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
       ESP_LOGI(TAG, "encryption change event; status=%d ", event->enc_change.status);
       return 0;
     case BLE_GAP_EVENT_REPEAT_PAIRING:
+      ESP_LOGI(TAG, "repeat pairing");
+      struct ble_gap_conn_desc desc;
+      int code = ble_gap_conn_find(event->repeat_pairing.conn_handle, &desc);
+      if (code != 0) {
+        ESP_LOGI(TAG, "can't find connection. do not repeat pairing");
+        return BLE_GAP_REPEAT_PAIRING_IGNORE;
+      }
+      code = ble_store_util_delete_peer(&desc.peer_id_addr);
+      if (code != 0) {
+        ESP_LOGI(TAG, "can't delete pairing information");
+        return BLE_GAP_REPEAT_PAIRING_IGNORE;
+      }
       return BLE_GAP_REPEAT_PAIRING_RETRY;
     case BLE_GAP_EVENT_PASSKEY_ACTION:
       ESP_LOGI(TAG, "PASSKEY_ACTION_EVENT started: %d", event->passkey.params.action);
@@ -192,6 +204,9 @@ static int ble_server_event_handler(struct ble_gap_event *event, void *arg) {
         int rc = ble_sm_inject_io(event->passkey.conn_handle, &pkey);
         ESP_LOGI(TAG, "ble_sm_inject_io result: %d\n", rc);
       }
+      return 0;
+    default:
+      ESP_LOGI(TAG, "unhandled event: %d", event->type);
       return 0;
   }
 

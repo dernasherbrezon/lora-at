@@ -533,7 +533,8 @@ esp_err_t ble_client_send_frame(lora_frame_t *frame, ble_client *client) {
   memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
   offset += sizeof(frame->timestamp);
 
-  memcpy(message + offset, &frame->data_length, sizeof(frame->data_length));
+  uint16_t data_length_network_encoding = htons(frame->data_length);
+  memcpy(message + offset, &data_length_network_encoding, sizeof(frame->data_length));
   offset += sizeof(frame->data_length);
 
   memcpy(message + offset, frame->data, frame->data_length);

@@ -4,6 +4,7 @@
 #include <esp_log.h>
 #include <host/ble_gap.h>
 #include <cc.h>
+#include <sys/time.h>
 #include "ble_sx127x_svc.h"
 #include "ble_common.h"
 #include "sdkconfig.h"
@@ -39,9 +40,24 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
     if (attr_handle == ble_server_sx127x_startrx_handle) {
       lora_config_t lora_req;
       if (OS_MBUF_PKTLEN(ctxt->om) < sizeof(lora_config_t)) {
+        ESP_LOGI("ble", "invalid request");
         return BLE_ATT_ERR_INSUFFICIENT_RES;
       }
       ERROR_CHECK_CALLBACK(os_mbuf_copydata(ctxt->om, 0, sizeof(lora_config_t), &lora_req));
+      lora_req.startTimeMillis = ntohll(lora_req.startTimeMillis);
+      lora_req.endTimeMillis = ntohll(lora_req.endTimeMillis);
+      lora_req.currentTimeMillis = ntohll(lora_req.currentTimeMillis);
+      lora_req.freq = ntohll(lora_req.freq);
+      lora_req.bw = ntohl(lora_req.bw);
+      lora_req.preambleLength = ntohs(lora_req.preambleLength);
+      // stop rx in case BLE disconnected and stoprx was missed
+      sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device);
+      // sync time with the client
+      // time will be used in rx callback for precise beacon reception
+      struct timeval tm_vl;
+      tm_vl.tv_sec = lora_req.currentTimeMillis / 1000;
+      tm_vl.tv_usec = 0;
+      settimeofday(&tm_vl, NULL);
       ERROR_CHECK_RESPONSE(sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, global_ble_server.device));
     }
     if (attr_handle == ble_server_sx127x_stoprx_handle) {
@@ -87,13 +103,13 @@ static const struct ble_gatt_svc_def ble_sx127x_items[] = {
              {
                  .uuid = BLE_UUID128_DECLARE(0xab, 0x50, 0x9d, 0xf5, 0x1, 0xdb, 0x40, 0x1d, 0x9f, 0xde, 0xa9, 0x4e, 0xd7, 0x53, 0x20, 0xbb),
                  .access_cb = ble_server_handle_sx127x_service,
-                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
+                 .flags = BLE_GATT_CHR_PROP_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
                  .val_handle = &ble_server_sx127x_startrx_handle
              },
              {
                  .uuid = BLE_UUID128_DECLARE(0x36, 0x40, 0xdd, 0xa2, 0x77, 0xa9, 0x41, 0x68, 0xa4, 0x83, 0x8e, 0xab, 0x3, 0xa, 0x2b, 0x89),
                  .access_cb = ble_server_handle_sx127x_service,
-                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
+                 .flags = BLE_GATT_CHR_PROP_WRITE | BLE_GATT_CHR_F_WRITE_ENC,
                  .val_handle = &ble_server_sx127x_stoprx_handle
              },
              {
@@ -149,7 +165,8 @@ void ble_sx127x_send_frame(lora_frame_t *frame) {
   uint64_t timestamp = htonll(frame->timestamp);
   memcpy(message + offset, &timestamp, sizeof(frame->timestamp));
   offset += sizeof(frame->timestamp);
-  memcpy(message + offset, &frame->data_length, sizeof(frame->data_length));
+  uint16_t data_length_network_order = htons(frame->data_length);
+  memcpy(message + offset, &data_length_network_order, sizeof(frame->data_length));
   offset += sizeof(frame->data_length);
   memcpy(message + offset, frame->data, frame->data_length);
 

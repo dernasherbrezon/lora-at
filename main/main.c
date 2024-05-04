@@ -124,7 +124,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   lora_frame_t *frame = NULL;
-  ERROR_CHECK("lora frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
+  ERROR_CHECK("sx127x frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {
     ble_server_send_frame(frame);
@@ -133,7 +133,7 @@ static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
 #if CONFIG_AT_WIFI_ENABLED
     ERROR_CHECK("lora frame", at_rest_add_frame(frame, lora_at_main->rest));
 #else
-    ERROR_CHECK("lora frame", at_handler_add_frame(frame, lora_at_main->at_handler));
+    ERROR_CHECK("sx127x frame", at_handler_add_frame(frame, lora_at_main->at_handler));
 #endif
   }
   // this rx message was received using CAD<->RX mode
