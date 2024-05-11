@@ -442,26 +442,6 @@ esp_err_t ble_client_get_rssi(ble_client *client, int8_t *rssi) {
   return ble_gap_conn_rssi(client->conn_handle, rssi);
 }
 
-void ble_client_log_request(lora_config_t *req) {
-  char buf[80];
-  struct tm *ts;
-  const char *format = "%Y-%m-%d %H:%M:%S";
-  uint64_t timeSeconds = req->currentTimeMillis / 1000;
-  ts = localtime((const time_t *) (&timeSeconds));
-  strftime(buf, sizeof(buf), format, ts);
-  ESP_LOGI(TAG, "current time: %s", buf);
-  timeSeconds = req->startTimeMillis / 1000;
-  ts = localtime((const time_t *) (&timeSeconds));
-  strftime(buf, sizeof(buf), format, ts);
-  ESP_LOGI(TAG, "start time:   %s", buf);
-  timeSeconds = req->endTimeMillis / 1000;
-  ts = localtime((const time_t *) (&timeSeconds));
-  strftime(buf, sizeof(buf), format, ts);
-  ESP_LOGI(TAG, "end time:     %s", buf);
-  ESP_LOGI(TAG, "observation requested: %" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", req->freq, req->bw, req->sf, req->cr, req->syncWord, req->preambleLength, req->gain, req->ldo,
-           req->useCrc, req->useExplicitHeader, req->length);
-}
-
 esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
   if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {
     gpio_set_level((gpio_num_t) CONFIG_BLUETOOTH_POWER_PROFILING, 1);
@@ -481,7 +461,7 @@ esp_err_t ble_client_load_request(lora_config_t **request, ble_client *client) {
     *request = client->last_request;
   }
   if (*request != NULL) {
-    ble_client_log_request(*request);
+    sx127x_util_log_request(*request);
   }
   // assume success route during power profiling
   if (CONFIG_BLUETOOTH_POWER_PROFILING > 0) {

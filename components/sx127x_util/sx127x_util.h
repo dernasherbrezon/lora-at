@@ -88,4 +88,6 @@ uint64_t sx127x_util_get_min_frequency();
 
 uint64_t sx127x_util_get_max_frequency();
 
+void sx127x_util_log_request(lora_config_t *req);
+
 #endif //LORA_AT_SX127X_UTIL_H

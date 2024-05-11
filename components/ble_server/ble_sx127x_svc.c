@@ -50,6 +50,7 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       lora_req.freq = ntohll(lora_req.freq);
       lora_req.bw = ntohl(lora_req.bw);
       lora_req.preambleLength = ntohs(lora_req.preambleLength);
+      sx127x_util_log_request(&lora_req);
       // stop rx in case BLE disconnected and stoprx was missed
       sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device);
       // sync time with the client

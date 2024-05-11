@@ -411,6 +411,26 @@ esp_err_t sx127x_util_read_temperature(sx127x *device, int8_t *temperature) {
   return result;
 }
 
+void sx127x_util_log_request(lora_config_t *req) {
+  char buf[80];
+  struct tm *ts;
+  const char *format = "%Y-%m-%d %H:%M:%S";
+  uint64_t timeSeconds = req->currentTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "current time: %s", buf);
+  timeSeconds = req->startTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "start time:   %s", buf);
+  timeSeconds = req->endTimeMillis / 1000;
+  ts = localtime((const time_t *) (&timeSeconds));
+  strftime(buf, sizeof(buf), format, ts);
+  ESP_LOGI(TAG, "end time:     %s", buf);
+  ESP_LOGI(TAG, "observation requested: %" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", req->freq, req->bw, req->sf, req->cr, req->syncWord, req->preambleLength, req->gain, req->ldo,
+           req->useCrc, req->useExplicitHeader, req->length);
+}
+
 void sx127x_util_frame_destroy(sx127x_frame_t *frame) {
   if (frame == NULL) {
     return;
