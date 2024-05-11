@@ -2,6 +2,7 @@
 #include "sdkconfig.h"
 #include <string.h>
 #include <ina219.h>
+#include <esp_log.h>
 
 #define SHUNT_RESISTOR_MILLI_OHM 100
 #define MAX_CURRENT 3.2
@@ -48,6 +49,7 @@ esp_err_t at_sensors_get_solar_voltage(uint16_t *bus_voltage, at_sensors *dev) {
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->solar, &result_bus_voltage));
   *bus_voltage = (uint16_t) (result_bus_voltage * 1000);
+  ESP_LOGD("solar", "voltage: %d", *bus_voltage);
   return ESP_OK;
 }
 
@@ -55,6 +57,7 @@ esp_err_t at_sensors_get_solar_current(int16_t *current, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
   *current = (int16_t) (result_current * 1000);
+  ESP_LOGD("solar", "current: %d", *current);
   return ESP_OK;
 }
 
@@ -64,6 +67,7 @@ esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
   *power = (uint16_t) (result_bus_voltage * result_current * 1000);
+  ESP_LOGD("solar", "power: %d", *power);
   return ESP_OK;
 }
 
@@ -71,6 +75,7 @@ esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev)
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->battery, &result_bus_voltage));
   *bus_voltage = (uint16_t) (result_bus_voltage * 1000);
+  ESP_LOGD("battery", "voltage: %d", *bus_voltage);
   return ESP_OK;
 }
 
@@ -78,6 +83,7 @@ esp_err_t at_sensors_get_battery_current(int16_t *current, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->battery, &result_current));
   *current = (int16_t) (result_current * 1000);
+  ESP_LOGD("battery", "current: %d", *current);
   return ESP_OK;
 }
 
@@ -89,6 +95,7 @@ esp_err_t at_sensors_get_battery_level(uint8_t *level, at_sensors *dev) {
     return ESP_OK;
   }
   *level = (uint8_t) (((float) (voltage - CONFIG_AT_BATTERY_MIN_VOLTAGE) / (CONFIG_AT_BATTERY_MAX_VOLTAGE - CONFIG_AT_BATTERY_MIN_VOLTAGE)) * 100);
+  ESP_LOGD("battery", "level: %d", *level);
   return ESP_OK;
 }
 

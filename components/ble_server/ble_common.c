@@ -1,6 +1,7 @@
 #include <host/ble_hs_mbuf.h>
 #include <host/ble_gatt.h>
 #include <string.h>
+#include <esp_log.h>
 #include "ble_common.h"
 
 const ble_presentation_format_t voltage_format = {
@@ -78,6 +79,7 @@ void ble_server_send_update(uint16_t handle, void *data, size_t data_length) {
     }
     memcpy(global_ble_server.temp_buffer, data, data_length);
     struct os_mbuf *txom = ble_hs_mbuf_from_flat(global_ble_server.temp_buffer, data_length);
+    ESP_LOGD("ble_server", "sending %d bytes to connection %d on handle %d", data_length, global_ble_server.client[i].conn_id, handle);
     ble_gatts_notify_custom(global_ble_server.client[i].conn_id, handle, txom);
   }
 }
