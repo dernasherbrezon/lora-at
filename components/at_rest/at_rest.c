@@ -160,7 +160,7 @@ static esp_err_t at_rest_rx_stop(httpd_req_t *req) {
     return at_rest_respond("FAILURE", "Unable to handle", req);
   }
   at_rest *rest = (at_rest *) req->user_ctx;
-  code = sx127x_set_opmod(SX127x_MODE_SLEEP, rest->device->active_mode, rest->device->device);
+  code = sx127x_util_stop_rx(rest->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to stop rx: %d", code);
   }

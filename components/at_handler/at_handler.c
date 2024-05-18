@@ -167,7 +167,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+STOPRX", input) == 0) {
-    ERROR_CHECK("unable to stop RX", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->device->modulation, handler->device->device));
+    ERROR_CHECK("unable to stop RX", sx127x_util_stop_rx(handler->device));
     at_handler_handle_pull(callback, ctx, handler);
     ERROR_CHECK("unable to set display status", lora_at_display_set_status("IDLE", handler->display));
     return;

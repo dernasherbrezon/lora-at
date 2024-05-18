@@ -92,6 +92,8 @@ esp_err_t sx127x_util_init(sx127x_wrapper **device) {
   }
   *result = (sx127x_wrapper) {0};
   result->modulation = SX127x_MODULATION_FSK;
+  result->mode = SX127x_MODE_SLEEP;
+  result->temperature = -128;
   spi_bus_config_t config = {
       .mosi_io_num = CONFIG_PIN_MOSI,
       .miso_io_num = CONFIG_PIN_MISO,
@@ -184,6 +186,7 @@ esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x_wr
   }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device->device));
   device->modulation = SX127x_MODULATION_LORA;
+  device->mode = SX127x_MODE_SLEEP;
   if (req->useExplicitHeader) {
     ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, device->device));
   } else {
@@ -202,6 +205,7 @@ esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x_wr
   ERROR_CHECK(sx127x_rx_set_lna_gain((sx127x_gain_t) (req->gain << 5), device->device));
   int result = sx127x_set_opmod(opmod, SX127x_MODULATION_LORA, device->device);
   if (result == SX127X_OK) {
+    device->mode = opmod;
     ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
   }
   return result;
@@ -213,6 +217,7 @@ esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t 
   }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device->device));
   device->modulation = SX127x_MODULATION_LORA;
+  device->mode = SX127x_MODE_SLEEP;
   if (req->useExplicitHeader) {
     ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, device->device));
     sx127x_tx_header_t header = {
@@ -277,6 +282,7 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x_wrapper *device) {
   }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device->device));
   device->modulation = SX127x_MODULATION_FSK;
+  device->mode = SX127x_MODE_SLEEP;
   ERROR_CHECK(sx127x_util_common_fsk(req, device->device));
   setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device->device, GPIO_INTR_POSEDGE);
   ERROR_CHECK(sx127x_fsk_ook_rx_set_afc_auto(true, device->device));
@@ -294,6 +300,7 @@ esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x_wrapper *device) {
   ERROR_CHECK(sx127x_rx_set_lna_gain(SX127x_LNA_GAIN_AUTO, device->device));
   int result = sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_FSK, device->device);
   if (result == SX127X_OK) {
+    device->mode = SX127x_MODE_RX_CONT;
     ESP_LOGI(TAG, "rx started on %" PRIu64, req->freq);
   }
   return result;
@@ -305,6 +312,7 @@ esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *re
   }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device->device));
   device->modulation = SX127x_MODULATION_FSK;
+  device->mode = SX127x_MODE_SLEEP;
   ERROR_CHECK(sx127x_util_common_fsk(req, device->device));
   ERROR_CHECK(sx127x_set_preamble_length(req->preamble, device->device));
   setup_gpio_interrupts((gpio_num_t) CONFIG_PIN_DIO1, device->device, GPIO_INTR_NEGEDGE);
@@ -425,7 +433,18 @@ esp_err_t sx127x_util_deep_sleep_enter(sx127x_wrapper *device) {
   return gpio_config(&conf);
 }
 
+esp_err_t sx127x_util_stop_rx(sx127x_wrapper *device) {
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, device->modulation, device->device));
+  device->mode = SX127x_MODE_SLEEP;
+  return ESP_OK;
+}
+
 esp_err_t sx127x_util_read_temperature(sx127x_wrapper *device, int8_t *temperature) {
+  if (device->mode != SX127x_MODE_SLEEP) {
+    // read cached if RX is currently running
+    *temperature = device->temperature;
+    return ESP_OK;
+  }
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, device->device));
   ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_FSRX, SX127x_MODULATION_FSK, device->device));
   ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(true, device->device));
@@ -433,7 +452,9 @@ esp_err_t sx127x_util_read_temperature(sx127x_wrapper *device, int8_t *temperatu
   ets_delay_us(150);
   ERROR_CHECK(sx127x_fsk_ook_set_temp_monitor(false, device->device));
   esp_err_t result = sx127x_fsk_ook_get_raw_temperature(device->device, temperature);
-  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, device->device));
+  ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, device->modulation, device->device));
+  device->temperature = *temperature;
+  device->mode = SX127x_MODE_SLEEP;
   return result;
 }
 

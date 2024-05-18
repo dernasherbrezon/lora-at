@@ -53,7 +53,7 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       ERROR_CHECK_RESPONSE(sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, global_ble_server.device));
     }
     if (attr_handle == ble_server_sx127x_stoprx_handle) {
-      ERROR_CHECK_RESPONSE(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device->device));
+      ERROR_CHECK_RESPONSE(sx127x_util_stop_rx(global_ble_server.device));
     }
   }
   return 0;

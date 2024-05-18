@@ -67,6 +67,7 @@ typedef struct {
 typedef struct {
   sx127x *device;
   sx127x_modulation_t modulation;
+  sx127x_mode_t mode;
   int8_t temperature;
 } sx127x_wrapper;
 
@@ -85,6 +86,8 @@ esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t 
 esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x_wrapper *device);
 
 esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x_wrapper *device);
+
+esp_err_t sx127x_util_stop_rx(sx127x_wrapper *device);
 
 esp_err_t sx127x_util_deep_sleep_enter(sx127x_wrapper *device);
 
