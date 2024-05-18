@@ -18,20 +18,11 @@ static const char *SX127X_SVC_TAG = "sx127x_svc";
 #define CONFIG_AT_SX127X_TEMPERATURE_CORRECTION 0
 #endif
 
-uint16_t ble_server_sx127x_temperature_handle;
 uint16_t ble_server_sx127x_startrx_handle;
 uint16_t ble_server_sx127x_stoprx_handle;
 uint16_t ble_server_sx127x_frame_handle;
 
 static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
-  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR) {
-    if (attr_handle == ble_server_sx127x_temperature_handle) {
-      int8_t temperature;
-      ESP_ERROR_CHECK(sx127x_util_read_temperature(global_ble_server.device, &temperature));
-      temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &temperature, sizeof(temperature)));
-    }
-  }
   if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR) {
     if (!ble_server_is_authorized(conn_handle)) {
       ESP_LOGI(SX127X_SVC_TAG, "connection %d is not authorized", conn_handle);
@@ -65,13 +56,6 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       ERROR_CHECK_RESPONSE(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device));
     }
   }
-  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
-    if (ctxt->dsc != NULL) {
-      if (attr_handle == ble_server_sx127x_temperature_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
-        ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &celsius_format, sizeof(celsius_format)));
-      }
-    }
-  }
   return 0;
 }
 
@@ -81,21 +65,6 @@ static const struct ble_gatt_svc_def ble_sx127x_items[] = {
         .uuid = BLE_UUID128_DECLARE(0xe6, 0xcf, 0xb1, 0xb8, 0x47, 0x87, 0x46, 0x48, 0xaf, 0x27, 0x2, 0x6c, 0xc2, 0x2d, 0xf9, 0x5f),
         .characteristics = (struct ble_gatt_chr_def[])
             {{
-                 .uuid = BLE_UUID16_DECLARE(BLE_SERVER_TEMPERATURE_UUID),
-                 .access_cb = ble_server_handle_sx127x_service,
-                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
-                 .val_handle = &ble_server_sx127x_temperature_handle,
-                 .descriptors = (struct ble_gatt_dsc_def[])
-                     {{
-                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
-                          .att_flags = BLE_ATT_F_READ,
-                          .access_cb = ble_server_handle_sx127x_service,
-                      },
-                      {
-                          0
-                      }}
-             },
-             {
                  .uuid = BLE_UUID128_DECLARE(0x72, 0xca, 0xaf, 0x36, 0x4d, 0x63, 0x43, 0xd6, 0xa8, 0xe6, 0x7f, 0x42, 0x1b, 0xae, 0x37, 0x3c),
                  .access_cb = ble_server_handle_sx127x_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
@@ -121,18 +90,6 @@ static const struct ble_gatt_svc_def ble_sx127x_items[] = {
         0
     }
 };
-
-void ble_sx127x_send_updates() {
-  int8_t temperature;
-  esp_err_t temperature_code = ESP_ERR_NOT_SUPPORTED;
-  if (ble_server_has_subscription(ble_server_sx127x_temperature_handle)) {
-    temperature_code = sx127x_util_read_temperature(global_ble_server.device, &temperature);
-    temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
-  }
-  if (temperature_code == ESP_OK) {
-    ble_server_send_update(ble_server_sx127x_temperature_handle, &temperature, sizeof(temperature));
-  }
-}
 
 void ble_sx127x_send_frame(sx127x_frame_t *frame) {
   size_t length = 0;

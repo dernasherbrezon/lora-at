@@ -1,6 +1,6 @@
 set(srcs "")
 if(CONFIG_BT_ENABLED)
-    list(APPEND srcs "ble_server.c" "ble_common.c" "ble_solar_svc.c" "ble_battery_svc.c" "ble_sx127x_svc.c")
+    list(APPEND srcs "ble_server.c" "ble_common.c" "ble_solar_svc.c" "ble_battery_svc.c" "ble_sx127x_svc.c" "ble_antenna_svc.c")
 else()
     list(APPEND srcs "no_ble_server.c")
 endif()

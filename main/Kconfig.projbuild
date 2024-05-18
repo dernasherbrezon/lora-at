@@ -287,4 +287,36 @@ menu "Lora-AT"
                 Material used to make solar panel
     endmenu
 
+    menu "Antenna"
+        config AT_ANTENNA_MODEL
+            string "Antenna model"
+            default "Unknown"
+            help
+                Unique model identifier. Will be exposed as a bluetooth parameter
+
+        config AT_ANTENNA_VENDOR
+            string "Antenna manufacturer"
+            default "Unknown"
+            help
+                Antenna manufacturer. Will be exposed as a bluetooth parameter
+
+        config AT_ANTENNA_TYPE
+            string "Type"
+            default "Unknown"
+            help
+                Can be any standard types like 'discone' or 'yagi'. Will be exposed as a bluetooth parameter
+
+        config AT_ANTENNA_POLARIZATION
+            string "Polarization"
+            default "Unknown"
+            help
+                Circular, RHCP, LHCP or any other types. Will be exposed as a bluetooth parameter
+
+        config AT_ANTENNA_FREQ_RANGE
+            string "Frequency range"
+            default "Unknown"
+            help
+                Free-form frequency range. For example: 400 ~ 404Mhz. Will be exposed as a bluetooth parameter
+    endmenu
+
 endmenu
