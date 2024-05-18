@@ -353,7 +353,7 @@ void ble_server_host_task(void *param) {
   nimble_port_freertos_deinit();
 }
 
-esp_err_t ble_server_create(at_sensors *sensors, sx127x *device, lora_at_config_t *config) {
+esp_err_t ble_server_create(at_sensors *sensors, sx127x_wrapper *device, lora_at_config_t *config) {
   global_ble_server.sensors = sensors;
   global_ble_server.device = device;
   global_ble_server.config = config;

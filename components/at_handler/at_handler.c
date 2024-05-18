@@ -24,13 +24,12 @@
     }                         \
   } while (0)
 
-esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x *device, ble_client *bluetooth, at_timer_t *timer, at_handler_t **handler) {
+esp_err_t at_handler_create(lora_at_config_t *at_config, lora_at_display *display, sx127x_wrapper *device, ble_client *bluetooth, at_timer_t *timer, at_handler_t **handler) {
   at_handler_t *result = malloc(sizeof(at_handler_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
   result->buffer_length = CONFIG_AT_UART_BUFFER_LENGTH;
-  result->active_mode = SX127x_MODULATION_LORA;
   result->at_config = at_config;
   result->display = display;
   result->device = device;
@@ -92,7 +91,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   }
   if (strcmp("AT+STATE", input) == 0) {
     uint8_t registers[0x80];
-    sx127x_dump_registers(registers, handler->device);
+    sx127x_dump_registers(registers, handler->device->device);
     for (int i = 0; i < sizeof(registers); i++) {
       if (i != 0) {
         printf(",");
@@ -168,7 +167,7 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     return;
   }
   if (strcmp("AT+STOPRX", input) == 0) {
-    ERROR_CHECK("unable to stop RX", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
+    ERROR_CHECK("unable to stop RX", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->device->modulation, handler->device->device));
     at_handler_handle_pull(callback, ctx, handler);
     ERROR_CHECK("unable to set display status", lora_at_display_set_status("IDLE", handler->display));
     return;
@@ -215,11 +214,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   lora_config_t state;
   matched = sscanf(input, "AT+LORARX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 11) {
-    if (handler->active_mode != SX127x_MODULATION_LORA) {
-      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
-    }
-    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
-    handler->active_mode = SX127x_MODULATION_LORA;
     ERROR_CHECK("unable to rx", sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &state, handler->device));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("RX", handler->display);
@@ -229,11 +223,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   memset(handler->message, '\0', sizeof(handler->message));
   matched = sscanf(input, "AT+LORACADRX=%" PRIu64 ",%" PRIu32 ",%hhu,%hhu,%hhu,%hu,%hhu,%hhu,%hhu,%hhu,%hhu", &state.freq, &state.bw, &state.sf, &state.cr, &state.syncWord, &state.preambleLength, &state.gain, &state.ldo, &state.useCrc, &state.useExplicitHeader, &state.length);
   if (matched == 11) {
-    if (handler->active_mode != SX127x_MODULATION_LORA) {
-      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
-    }
-    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
-    handler->active_mode = SX127x_MODULATION_LORA;
     ERROR_CHECK("unable to cadrx", sx127x_util_lora_rx(SX127x_MODE_CAD, &state, handler->device));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("CAD", handler->display);
@@ -246,11 +235,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
   if (matched == 14) {
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
     lora_at_display_set_status("TX", handler->display);
-    if (handler->active_mode != SX127x_MODULATION_LORA) {
-      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
-    }
-    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, handler->device));
-    handler->active_mode = SX127x_MODULATION_LORA;
     esp_err_t code = sx127x_util_lora_tx(handler->message_hex, handler->message_hex_length, &state, handler->device);
     if (code != ESP_OK) {
       lora_at_display_set_status("IDLE", handler->display);
@@ -272,11 +256,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->syncword, handler->syncword_hex, &handler->syncword_hex_length));
     fsk_config.syncword = handler->syncword_hex;
     fsk_config.syncword_length = handler->syncword_hex_length;
-    if (handler->active_mode != SX127x_MODULATION_FSK) {
-      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
-    }
-    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, handler->device));
-    handler->active_mode = SX127x_MODULATION_FSK;
     ERROR_CHECK("unable to rx", sx127x_util_fsk_rx(&fsk_config, handler->device));
     at_handler_respond(handler, callback, ctx, "OK\r\n");
     lora_at_display_set_status("RX", handler->display);
@@ -294,11 +273,6 @@ void at_handler_process(char *input, size_t input_length, void (*callback)(char 
 // set tx before actually running function because if the race with tx_Callback
     ERROR_CHECK("unable to convert HEX to byte array", at_util_string2hex(handler->message, handler->message_hex, &handler->message_hex_length));
     lora_at_display_set_status("TX", handler->display);
-    if (handler->active_mode != SX127x_MODULATION_FSK) {
-      ERROR_CHECK("unable to switch mode", sx127x_set_opmod(SX127x_MODE_SLEEP, handler->active_mode, handler->device));
-    }
-    ERROR_CHECK("unable to go to sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, handler->device));
-    handler->active_mode = SX127x_MODULATION_FSK;
     esp_err_t code = sx127x_util_fsk_tx(handler->message_hex, handler->message_hex_length, &fsk_config, handler->device);
     if (code != ESP_OK) {
       lora_at_display_set_status("IDLE", handler->display);

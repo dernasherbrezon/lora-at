@@ -64,23 +64,29 @@ typedef struct {
 } fsk_config_t;
 #pragma pack(pop)
 
-esp_err_t sx127x_util_init(sx127x **device);
+typedef struct {
+  sx127x *device;
+  sx127x_modulation_t modulation;
+  int8_t temperature;
+} sx127x_wrapper;
 
-esp_err_t sx127x_util_read_frame(sx127x *device, uint8_t *data, uint16_t data_length, sx127x_modulation_t active_mode, sx127x_frame_t **result);
+esp_err_t sx127x_util_init(sx127x_wrapper **device);
 
-esp_err_t sx127x_util_read_temperature(sx127x *device, int8_t *temperature);
+esp_err_t sx127x_util_read_frame(sx127x_wrapper *device, uint8_t *data, uint16_t data_length, sx127x_frame_t **result);
 
-esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x *device);
+esp_err_t sx127x_util_read_temperature(sx127x_wrapper *device, int8_t *temperature);
+
+esp_err_t sx127x_util_lora_rx(sx127x_mode_t opmod, lora_config_t *req, sx127x_wrapper *device);
 
 esp_err_t sx127x_util_reset();
 
-esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t *req, sx127x *device);
+esp_err_t sx127x_util_lora_tx(uint8_t *data, uint8_t data_length, lora_config_t *req, sx127x_wrapper *device);
 
-esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x *device);
+esp_err_t sx127x_util_fsk_rx(fsk_config_t *req, sx127x_wrapper *device);
 
-esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x *device);
+esp_err_t sx127x_util_fsk_tx(uint8_t *data, size_t data_length, fsk_config_t *req, sx127x_wrapper *device);
 
-esp_err_t sx127x_util_deep_sleep_enter(sx127x *device);
+esp_err_t sx127x_util_deep_sleep_enter(sx127x_wrapper *device);
 
 void sx127x_util_frame_destroy(sx127x_frame_t *frame);
 

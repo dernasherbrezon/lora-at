@@ -53,7 +53,7 @@ static const char *TAG = "lora-at";
 
 
 typedef struct {
-  sx127x *device;
+  sx127x_wrapper *device;
   lora_at_display *display;
   at_handler_t *at_handler;
   uart_at_handler_t *uart_at_handler;
@@ -102,7 +102,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
     remaining_micros = 0;
   }
   sx127x_frame_t *frame = NULL;
-  esp_err_t code = sx127x_util_read_frame(device, data, data_length, SX127x_MODULATION_LORA, &frame);
+  esp_err_t code = sx127x_util_read_frame(lora_at_main->device, data, data_length, &frame);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to read frame: %s", esp_err_to_name(code));
     //enter deep sleep
@@ -124,7 +124,7 @@ static void rx_callback_deep_sleep(sx127x *device, uint8_t *data, uint16_t data_
 
 static void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   sx127x_frame_t *frame = NULL;
-  ERROR_CHECK("sx127x frame", sx127x_util_read_frame(device, data, data_length, lora_at_main->at_handler->active_mode, &frame));
+  ERROR_CHECK("sx127x frame", sx127x_util_read_frame(lora_at_main->device, data, data_length, &frame));
   ESP_LOGI(TAG, "received frame: %d rssi: %d snr: %f freq_error: %" PRId32, data_length, frame->rssi, frame->snr, frame->frequency_error);
   if (lora_at_main->config->bt_address != NULL) {
     ble_server_send_frame(frame);
@@ -251,7 +251,7 @@ void app_main(void) {
   if (cause == ESP_SLEEP_WAKEUP_TIMER) {
     ESP_LOGI(TAG, "woken up by timer. loading new rx request");
     ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
-    esp_err_t code = sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device);
+    esp_err_t code = sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device->device);
     if (code != ESP_OK) {
       ESP_LOGE(TAG, "unable to put sx127x to sleep: %s", esp_err_to_name(code));
     }
@@ -261,8 +261,8 @@ void app_main(void) {
   if (cause == ESP_SLEEP_WAKEUP_EXT0) {
     ESP_LOGI(TAG, "woken up by incoming message. loading the message");
     ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
-    sx127x_rx_set_callback(rx_callback_deep_sleep, lora_at_main->device);
-    sx127x_handle_interrupt(lora_at_main->device); // should always put esp32 into deep sleep. so can return from here
+    sx127x_rx_set_callback(rx_callback_deep_sleep, lora_at_main->device->device);
+    sx127x_handle_interrupt(lora_at_main->device->device); // should always put esp32 into deep sleep. so can return from here
     return;
   }
 //  esp_log_level_set("*", ESP_LOG_INFO);
@@ -272,10 +272,10 @@ void app_main(void) {
     ESP_LOGE(TAG, "unable to reset sx127x chip");
   }
   ERROR_CHECK("lora", sx127x_util_init(&lora_at_main->device));
-  ERROR_CHECK("lora sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device));
-  sx127x_rx_set_callback(rx_callback, lora_at_main->device);
-  sx127x_tx_set_callback(tx_callback, lora_at_main->device);
-  sx127x_lora_cad_set_callback(cad_callback, lora_at_main->device);
+  ERROR_CHECK("lora sleep", sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, lora_at_main->device->device));
+  sx127x_rx_set_callback(rx_callback, lora_at_main->device->device);
+  sx127x_tx_set_callback(tx_callback, lora_at_main->device->device);
+  sx127x_lora_cad_set_callback(cad_callback, lora_at_main->device->device);
   ESP_LOGI(TAG, "sx127x initialized");
 
   ERROR_CHECK("display", lora_at_display_create(&lora_at_main->display));

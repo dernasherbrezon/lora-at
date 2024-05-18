@@ -43,7 +43,7 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       lora_req.preambleLength = ntohs(lora_req.preambleLength);
       sx127x_util_log_request(&lora_req);
       // stop rx in case BLE disconnected and stoprx was missed
-      sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device);
+      sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device->device);
       // sync time with the client
       // time will be used in rx callback for precise beacon reception
       struct timeval tm_vl;
@@ -53,7 +53,7 @@ static int ble_server_handle_sx127x_service(uint16_t conn_handle, uint16_t attr_
       ERROR_CHECK_RESPONSE(sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, global_ble_server.device));
     }
     if (attr_handle == ble_server_sx127x_stoprx_handle) {
-      ERROR_CHECK_RESPONSE(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device));
+      ERROR_CHECK_RESPONSE(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, global_ble_server.device->device));
     }
   }
   return 0;

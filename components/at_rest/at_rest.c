@@ -36,10 +36,9 @@
 static const char *TAG = "at_rest";
 
 struct at_rest_t {
-  sx127x *device;
+  sx127x_wrapper *device;
   httpd_handle_t server;
   at_util_vector_t *frames;
-  sx127x_modulation_t active_mode;
   char *digest;
   char temp_buffer[TEMP_BUFFER_LENGTH];
 };
@@ -92,10 +91,9 @@ esp_err_t at_rest_read_body(httpd_req_t *req) {
     return at_rest_respond("FAILURE", "content is too long", req);
   }
   size_t cur_len = 0;
-  int received = 0;
   at_rest *rest = (at_rest *) req->user_ctx;
   while (cur_len < total_len) {
-    received = httpd_req_recv(req, rest->temp_buffer + cur_len, total_len);
+    int received = httpd_req_recv(req, rest->temp_buffer + cur_len, total_len);
     if (received <= 0) {
       return at_rest_respond("FAILURE", "unable to read body", req);
     }
@@ -130,7 +128,7 @@ static esp_err_t at_rest_rx_pull(httpd_req_t *req) {
   at_rest *rest = (at_rest *) req->user_ctx;
   cJSON *frames = cJSON_AddArrayToObject(root, "frames");
   for (size_t i = 0; i < at_util_vector_size(rest->frames); i++) {
-    lora_frame_t *cur_frame = NULL;
+    sx127x_frame_t *cur_frame = NULL;
     at_util_vector_get(i, (void *) &cur_frame, rest->frames);
     code = at_util_hex2string(cur_frame->data, cur_frame->data_length, rest->temp_buffer);
     if (code != ESP_OK) {
@@ -162,7 +160,7 @@ static esp_err_t at_rest_rx_stop(httpd_req_t *req) {
     return at_rest_respond("FAILURE", "Unable to handle", req);
   }
   at_rest *rest = (at_rest *) req->user_ctx;
-  code = sx127x_set_opmod(SX127x_MODE_SLEEP, rest->active_mode, rest->device);
+  code = sx127x_set_opmod(SX127x_MODE_SLEEP, rest->device->active_mode, rest->device->device);
   if (code != ESP_OK) {
     ESP_LOGE(TAG, "unable to stop rx: %d", code);
   }
@@ -248,11 +246,6 @@ static esp_err_t at_rest_fsk_tx(httpd_req_t *req) {
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to convert data to hex", req);
   }
-  if (rest->active_mode != SX127x_MODULATION_FSK) {
-    sx127x_set_opmod(SX127x_MODE_SLEEP, rest->active_mode, rest->device);
-  }
-  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, rest->device);
-  rest->active_mode = SX127x_MODULATION_FSK;
   code = sx127x_util_fsk_tx(message_hex, message_hex_length, &fsk_req, rest->device);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to start tx", req);
@@ -275,11 +268,6 @@ static esp_err_t at_rest_fsk_rx_start(httpd_req_t *req) {
   uint8_t syncword_hex[16];
   at_rest_read_fsk_request(&fsk_req, root, syncword_hex);
   cJSON_Delete(root);
-  if (rest->active_mode != SX127x_MODULATION_FSK) {
-    sx127x_set_opmod(SX127x_MODE_SLEEP, rest->active_mode, rest->device);
-  }
-  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_FSK, rest->device);
-  rest->active_mode = SX127x_MODULATION_FSK;
   code = sx127x_util_fsk_rx(&fsk_req, rest->device);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to rx", req);
@@ -307,11 +295,6 @@ static esp_err_t at_rest_lora_tx(httpd_req_t *req) {
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to convert data to hex", req);
   }
-  if (rest->active_mode != SX127x_MODULATION_LORA) {
-    sx127x_set_opmod(SX127x_MODE_SLEEP, rest->active_mode, rest->device);
-  }
-  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, rest->device);
-  rest->active_mode = SX127x_MODULATION_LORA;
   code = sx127x_util_lora_tx(message_hex, message_hex_length, &lora_req, rest->device);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to start tx", req);
@@ -333,11 +316,6 @@ static esp_err_t at_rest_lora_rx_start(httpd_req_t *req) {
   lora_config_t lora_req;
   at_rest_read_request(&lora_req, root);
   cJSON_Delete(root);
-  if (rest->active_mode != SX127x_MODULATION_LORA) {
-    sx127x_set_opmod(SX127x_MODE_SLEEP, rest->active_mode, rest->device);
-  }
-  sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, rest->device);
-  rest->active_mode = SX127x_MODULATION_LORA;
   code = sx127x_util_lora_rx(SX127x_MODE_RX_CONT, &lora_req, rest->device);
   if (code != ESP_OK) {
     return at_rest_respond("FAILURE", "unable to rx", req);
@@ -372,14 +350,13 @@ static esp_err_t at_rest_digest(const char *username, const char *password, char
   return ESP_OK;
 }
 
-esp_err_t at_rest_create(sx127x *device, at_rest **rest) {
+esp_err_t at_rest_create(sx127x_wrapper *device, at_rest **rest) {
   struct at_rest_t *result = malloc(sizeof(struct at_rest_t));
   if (result == NULL) {
     return ESP_ERR_NO_MEM;
   }
   result->device = device;
   result->server = NULL;
-  result->active_mode = SX127x_MODULATION_FSK;
   result->digest = NULL;
 
   ERROR_CHECK(at_util_vector_create(&result->frames));
@@ -445,7 +422,7 @@ esp_err_t at_rest_create(sx127x *device, at_rest **rest) {
   return ESP_OK;
 }
 
-esp_err_t at_rest_add_frame(lora_frame_t *frame, at_rest *handler) {
+esp_err_t at_rest_add_frame(sx127x_frame_t *frame, at_rest *handler) {
   return at_util_vector_add(frame, handler->frames);
 }
 

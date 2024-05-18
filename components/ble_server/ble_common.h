@@ -6,6 +6,7 @@
 #include <at_sensors.h>
 #include <sx127x.h>
 #include <at_config.h>
+#include "sx127x_util.h"
 
 // 1 battery
 // 3 solar panel
@@ -70,7 +71,7 @@ typedef struct {
 typedef struct {
   uint8_t temp_buffer[CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU];
   at_sensors *sensors;
-  sx127x *device;
+  sx127x_wrapper *device;
   lora_at_config_t *config;
   ble_server_client_t client[CONFIG_BT_NIMBLE_MAX_CONNECTIONS];
 } ble_server_t;
