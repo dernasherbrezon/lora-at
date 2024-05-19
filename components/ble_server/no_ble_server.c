@@ -1,6 +1,6 @@
 #include "ble_server.h"
 
-esp_err_t ble_server_create(at_sensors *sensors, sx127x *device, lora_at_config_t *config) {
+esp_err_t ble_server_create(at_sensors *sensors, sx127x_wrapper *device, lora_at_config_t *config) {
   //do nothing
   return ESP_OK;
 }
