@@ -1,9 +1,7 @@
 #include "ble_antenna_svc.h"
 #include "ble_common.h"
-#include <cc.h>
 #include <host/ble_gatt.h>
 #include <os/os_mbuf.h>
-#include <host/ble_hs_mbuf.h>
 #include "sdkconfig.h"
 
 #ifndef CONFIG_AT_ANTENNA_MODEL
@@ -60,20 +58,23 @@ static int ble_server_handle_antenna_service(uint16_t conn_handle, uint16_t attr
     }
   }
   if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
-    if (attr_handle == ble_server_antenna_type_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_type, sizeof(ble_server_antenna_type)));
-    }
-    if (attr_handle == ble_server_antenna_polarization_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_polarization, sizeof(ble_server_antenna_polarization)));
-    }
-    if (attr_handle == ble_server_antenna_freq_range_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_freq_range, sizeof(ble_server_antenna_freq_range)));
+    if (ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_USER_DESCRIPTION)) == 0) {
+      // user description is always registered first, so subtract 1 to get corresponding characteristic
+      attr_handle -= 1;
+      if (attr_handle == ble_server_antenna_type_handle) {
+        ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_type, sizeof(ble_server_antenna_type)));
+      }
+      if (attr_handle == ble_server_antenna_polarization_handle) {
+        ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_polarization, sizeof(ble_server_antenna_polarization)));
+      }
+      if (attr_handle == ble_server_antenna_freq_range_handle) {
+        ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_antenna_freq_range, sizeof(ble_server_antenna_freq_range)));
+      }
     }
     // all properties utf8
     if (ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &utf8_string_format, sizeof(utf8_string_format)));
     }
-
   }
   return 0;
 }

@@ -28,6 +28,7 @@ void ble_store_config_init(void);
 
 uint16_t ble_server_model_name_handle;
 uint16_t ble_server_manuf_name_handle;
+uint16_t ble_server_software_handle;
 uint16_t ble_server_sx127x_temperature_handle;
 static const char ble_server_model_name[] = "lora-at";
 static const char ble_server_manuf_name[] = "dernasherbrezon";
@@ -41,25 +42,20 @@ static int ble_server_handle_generic_service(uint16_t conn_handle, uint16_t attr
       temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &temperature, sizeof(temperature)));
     }
-  }
-  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
-    if (ctxt->dsc != NULL) {
-      if (attr_handle == ble_server_sx127x_temperature_handle && ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
-        ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &celsius_format, sizeof(celsius_format)));
-      }
+    if (attr_handle == ble_server_model_name_handle) {
+      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_model_name, sizeof(ble_server_model_name)));
+    }
+    if (attr_handle == ble_server_manuf_name_handle) {
+      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_manuf_name, sizeof(ble_server_manuf_name)));
+    }
+    if (attr_handle == ble_server_software_handle) {
+      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_version, sizeof(ble_server_version)));
     }
   }
-  if (ctxt->chr == NULL) {
-    return 0;
-  }
-  if (attr_handle == ble_server_model_name_handle) {
-    ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_model_name, sizeof(ble_server_model_name)));
-  }
-  if (attr_handle == ble_server_manuf_name_handle) {
-    ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_manuf_name, sizeof(ble_server_manuf_name)));
-  }
-  if (ble_uuid_cmp(ctxt->chr->uuid, BLE_UUID16_DECLARE(BLE_SERVER_SOFTWARE_VERSION_UUID)) == 0) {
-    ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_version, sizeof(ble_server_version)));
+  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
+    if (ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
+      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &celsius_format, sizeof(celsius_format)));
+    }
   }
   return 0;
 }
@@ -84,7 +80,8 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
              {
                  .uuid = BLE_UUID16_DECLARE(BLE_SERVER_SOFTWARE_VERSION_UUID),
                  .access_cb = ble_server_handle_generic_service,
-                 .flags = BLE_GATT_CHR_F_READ
+                 .flags = BLE_GATT_CHR_F_READ,
+                 .val_handle = &ble_server_software_handle
              },
              {
                  .uuid = BLE_UUID16_DECLARE(BLE_SERVER_TEMPERATURE_UUID),

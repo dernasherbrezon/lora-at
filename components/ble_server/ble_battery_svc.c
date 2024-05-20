@@ -18,7 +18,7 @@ static const char ble_server_battery_model_name[] = CONFIG_AT_BATTERY_MODEL;
 static const char ble_server_battery_manuf_name[] = CONFIG_AT_BATTERY_VENDOR;
 
 static int ble_server_handle_battery_service(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
-  if (ctxt->chr == NULL) {
+  if (ctxt->op != BLE_GATT_ACCESS_OP_READ_CHR) {
     return 0;
   }
   if (attr_handle == ble_server_battery_model_name_handle) {
