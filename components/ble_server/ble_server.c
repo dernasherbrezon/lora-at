@@ -40,7 +40,8 @@ static int ble_server_handle_generic_service(uint16_t conn_handle, uint16_t attr
       int8_t temperature;
       ESP_ERROR_CHECK(sx127x_util_read_temperature(global_ble_server.device, &temperature));
       temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &temperature, sizeof(temperature)));
+      int16_t ble_format = (int16_t)(temperature * 100);
+      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_format, sizeof(ble_format)));
     }
     if (attr_handle == ble_server_model_name_handle) {
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_model_name, sizeof(ble_server_model_name)));
@@ -50,11 +51,6 @@ static int ble_server_handle_generic_service(uint16_t conn_handle, uint16_t attr
     }
     if (attr_handle == ble_server_software_handle) {
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &ble_server_version, sizeof(ble_server_version)));
-    }
-  }
-  if (ctxt->op == BLE_GATT_ACCESS_OP_READ_DSC) {
-    if (ble_uuid_cmp(ctxt->dsc->uuid, BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT)) == 0) {
-      ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &celsius_format, sizeof(celsius_format)));
     }
   }
   return 0;
@@ -87,16 +83,7 @@ static const struct ble_gatt_svc_def ble_server_items[] = {
                  .uuid = BLE_UUID16_DECLARE(BLE_SERVER_TEMPERATURE_UUID),
                  .access_cb = ble_server_handle_generic_service,
                  .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
-                 .val_handle = &ble_server_sx127x_temperature_handle,
-                 .descriptors = (struct ble_gatt_dsc_def[])
-                     {{
-                          .uuid = BLE_UUID16_DECLARE(BLE_SERVER_PRESENTATION_FORMAT),
-                          .att_flags = BLE_ATT_F_READ,
-                          .access_cb = ble_server_handle_generic_service,
-                      },
-                      {
-                          0
-                      }}
+                 .val_handle = &ble_server_sx127x_temperature_handle
              },
              {
                  0
@@ -117,7 +104,8 @@ void ble_server_send_updates() {
     temperature += CONFIG_AT_SX127X_TEMPERATURE_CORRECTION;
   }
   if (temperature_code == ESP_OK) {
-    ble_server_send_update(ble_server_sx127x_temperature_handle, &temperature, sizeof(temperature));
+    int16_t ble_format = (int16_t)(temperature * 100);
+    ble_server_send_update(ble_server_sx127x_temperature_handle, &ble_format, sizeof(ble_format));
   }
 }
 

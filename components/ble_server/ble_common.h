@@ -79,8 +79,6 @@ typedef struct {
 extern ble_server_t global_ble_server;
 extern const ble_presentation_format_t voltage_format;
 extern const ble_presentation_format_t power_format;
-extern const ble_presentation_format_t current_format;
-extern const ble_presentation_format_t celsius_format;
 extern const ble_presentation_format_t utf8_string_format;
 
 bool ble_server_has_subscription(uint16_t handle);

@@ -20,22 +20,6 @@ const ble_presentation_format_t power_format = {
     .gatt_nsdesc = 0x0000
 };
 
-const ble_presentation_format_t current_format = {
-    .gatt_format = 0x0E, //int16
-    .exponent = 0x03, //milliampere
-    .gatt_unit = 0x2704, //ampere
-    .gatt_namespace = 0x00,
-    .gatt_nsdesc = 0x0000
-};
-
-const ble_presentation_format_t celsius_format = {
-    .gatt_format = 0x0C, //sint8
-    .exponent = 0x00,
-    .gatt_unit = 0x272F, //degree Celsius
-    .gatt_namespace = 0x00,
-    .gatt_nsdesc = 0x0000
-};
-
 const ble_presentation_format_t utf8_string_format = {
     .gatt_format = 0x19, //utf8
     .exponent = 0x00,

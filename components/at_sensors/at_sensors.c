@@ -48,7 +48,7 @@ struct at_sensors_t {
 esp_err_t at_sensors_get_solar_voltage(uint16_t *bus_voltage, at_sensors *dev) {
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->solar, &result_bus_voltage));
-  *bus_voltage = (uint16_t) (result_bus_voltage * 1000);
+  *bus_voltage = (uint16_t) (result_bus_voltage * 64); // According to BLE spec Voltage is uint16 with resolution 1/64V
   ESP_LOGD("solar", "voltage: %d", *bus_voltage);
   return ESP_OK;
 }
@@ -56,25 +56,25 @@ esp_err_t at_sensors_get_solar_voltage(uint16_t *bus_voltage, at_sensors *dev) {
 esp_err_t at_sensors_get_solar_current(int16_t *current, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
-  *current = (int16_t) (result_current * 1000);
+  *current = (int16_t) (result_current * 100); // According to BLE spec Electrical current is uint16 with resolution 0.01
   ESP_LOGD("solar", "current: %d", *current);
   return ESP_OK;
 }
 
-esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev) {
+esp_err_t at_sensors_get_solar_power(uint32_t *power, at_sensors *dev) {
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->solar, &result_bus_voltage));
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->solar, &result_current));
-  *power = (uint16_t) (result_bus_voltage * result_current * 1000);
-  ESP_LOGD("solar", "power: %d", *power);
+  *power = (uint32_t) (result_bus_voltage * result_current * 10);
+  ESP_LOGD("solar", "power: %" PRIu32, *power);
   return ESP_OK;
 }
 
 esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev) {
   float result_bus_voltage;
   ERROR_CHECK(ina219_get_bus_voltage(&dev->battery, &result_bus_voltage));
-  *bus_voltage = (uint16_t) (result_bus_voltage * 1000);
+  *bus_voltage = (uint16_t) (result_bus_voltage * 64); // According to BLE spec Voltage is uint16 with resolution 1/64V
   ESP_LOGD("battery", "voltage: %d", *bus_voltage);
   return ESP_OK;
 }
@@ -82,7 +82,7 @@ esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev)
 esp_err_t at_sensors_get_battery_current(int16_t *current, at_sensors *dev) {
   float result_current;
   ERROR_CHECK(ina219_get_current(&dev->battery, &result_current));
-  *current = (int16_t) (result_current * 1000);
+  *current = (int16_t) (result_current * 100); // According to BLE spec Electrical current is uint16 with resolution 0.01
   ESP_LOGD("battery", "current: %d", *current);
   return ESP_OK;
 }

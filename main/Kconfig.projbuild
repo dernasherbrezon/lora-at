@@ -269,14 +269,14 @@ menu "Lora-AT"
                 Name of solar panel manufacturer. Will be exposed as a bluetooth parameter
 
         config AT_SOLAR_NOMVOLTAGE
-            int "Nominal voltage (V)"
-            default 0
+            string "Nominal voltage (V)"
+            default "Unknown"
             help
                 This is the voltage available when the panel is connected to a load and is operating at its maximum capacity
 
         config AT_SOLAR_RATED_POWER
-            int "Rated power (W)"
-            default 0
+            string "Rated power (W)"
+            default "Unknown"
             help
                 How much electricity a solar panel can generate in optimal conditions
 

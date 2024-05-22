@@ -6,27 +6,27 @@ esp_err_t at_sensors_init(at_sensors **dev) {
 }
 
 esp_err_t at_sensors_get_solar_voltage(uint16_t *bus_voltage, at_sensors *dev) {
-  *bus_voltage = 0;
+  *bus_voltage = 0xFFFF; // According to BLE spec this is "value is not known"
   return ESP_OK;
 }
 
 esp_err_t at_sensors_get_solar_current(int16_t *current, at_sensors *dev) {
-  *current = 0;
+  *current = 0xFFFF; // According to BLE spec this is "value is not known"
   return ESP_OK;
 }
 
-esp_err_t at_sensors_get_solar_power(uint16_t *power, at_sensors *dev) {
-  *power = 0;
+esp_err_t at_sensors_get_solar_power(uint32_t *power, at_sensors *dev) {
+  *power = 0xFFFFFFFF; // According to BLE spec this is "value is not known"
   return ESP_OK;
 }
 
 esp_err_t at_sensors_get_battery_voltage(uint16_t *bus_voltage, at_sensors *dev) {
-  *bus_voltage = 0;
+  *bus_voltage = 0xFFFF; // According to BLE spec this is "value is not known"
   return ESP_OK;
 }
 
 esp_err_t at_sensors_get_battery_current(int16_t *current, at_sensors *dev) {
-  *current =0;
+  *current = 0xFFFF; // According to BLE spec this is "value is not known"
   return ESP_OK;
 }
 
