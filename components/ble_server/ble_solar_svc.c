@@ -1,6 +1,5 @@
 #include "ble_solar_svc.h"
 #include "ble_common.h"
-#include <cc.h>
 #include <host/ble_gatt.h>
 #include <os/os_mbuf.h>
 #include "sdkconfig.h"
@@ -62,19 +61,19 @@ static int ble_server_handle_solar_service(uint16_t conn_handle, uint16_t attr_h
     if (attr_handle == ble_server_solar_power_handle) {
       uint32_t solar_power;
       ERROR_CHECK_CALLBACK(at_sensors_get_solar_power(&solar_power, global_ble_server.sensors));
-      solar_power = htonl(solar_power);
+      solar_power = htole32(solar_power);
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &solar_power, 3)); // uint24 according to BLE spec
     }
     if (attr_handle == ble_server_solar_voltage_handle) {
       uint16_t voltage;
       ERROR_CHECK_CALLBACK(at_sensors_get_solar_voltage(&voltage, global_ble_server.sensors));
-      voltage = htons(voltage);
+      voltage = htole16(voltage);
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &voltage, sizeof(voltage)));
     }
     if (attr_handle == ble_server_solar_current_handle) {
       int16_t current;
       ERROR_CHECK_CALLBACK(at_sensors_get_solar_current(&current, global_ble_server.sensors));
-      current = htons(current);
+      current = htole16(current);
       ERROR_CHECK_RESPONSE(os_mbuf_append(ctxt->om, &current, sizeof(current)));
     }
   }
@@ -105,7 +104,7 @@ void ble_solar_send_updates() {
     solar_voltage_code = at_sensors_get_solar_voltage(&solar_voltage, global_ble_server.sensors);
   }
   if (solar_voltage_code == ESP_OK) {
-    solar_voltage = htons(solar_voltage);
+    solar_voltage = htole16(solar_voltage);
     ble_server_send_update(ble_server_solar_voltage_handle, &solar_voltage, sizeof(solar_voltage));
   }
   int16_t solar_current;
@@ -114,7 +113,7 @@ void ble_solar_send_updates() {
     solar_current_code = at_sensors_get_solar_current(&solar_current, global_ble_server.sensors);
   }
   if (solar_current_code == ESP_OK) {
-    solar_current = htons(solar_current);
+    solar_current = htole16(solar_current);
     ble_server_send_update(ble_server_solar_current_handle, &solar_current, sizeof(solar_current));
   }
   uint32_t solar_power;
@@ -123,7 +122,7 @@ void ble_solar_send_updates() {
     solar_power_code = at_sensors_get_solar_power(&solar_power, global_ble_server.sensors);
   }
   if (solar_power_code == ESP_OK) {
-    solar_power = htonl(solar_power);
+    solar_power = htole32(solar_power);
     ble_server_send_update(ble_server_solar_power_handle, &solar_power, 3);
   }
 }

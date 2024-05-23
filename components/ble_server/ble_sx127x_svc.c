@@ -2,7 +2,6 @@
 #include <os/os_mbuf.h>
 #include <rom/ets_sys.h>
 #include <esp_log.h>
-#include <host/ble_gap.h>
 #include <cc.h>
 #include <sys/time.h>
 #include "ble_sx127x_svc.h"
